@@ -1,0 +1,19 @@
+package com.spendsense.data.local.entity
+
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+
+@Entity(tableName = "transactions")
+data class TransactionEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val amount: Double,
+    val merchant: String,
+    val categoryId: Long,
+    val timestamp: Long,
+    val sourcePackageName: String,
+    val sourceAppName: String,
+    val notes: String? = null,
+    val isSynced: Boolean = false,
+    val firestoreId: String? = null
+)

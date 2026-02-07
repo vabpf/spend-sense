@@ -41,6 +41,12 @@
             </intent-filter>
         </service>
         
+        <!-- Action Overlay Service -->
+        <service
+            android:name=".presentation.overlay.ActionOverlayService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+        
     </application>
 
 </manifest>
