@@ -13,6 +13,7 @@
     
     <!-- Foreground service (for reliable notification listening) -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
     <application
         android:name=".SpendSenseApplication"
@@ -40,6 +41,12 @@
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
+        
+        <!-- Action Overlay Service -->
+        <service
+            android:name=".presentation.overlay.ActionOverlayService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
         
     </application>
 
