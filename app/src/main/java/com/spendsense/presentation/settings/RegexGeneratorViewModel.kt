@@ -8,7 +8,7 @@ import com.spendsense.data.local.entity.AiProviderEntity
 import com.spendsense.data.remote.ChatCompletionApi
 import com.spendsense.data.remote.DynamicBaseUrlInterceptor
 import com.spendsense.data.remote.model.Message
-import com.spendsense.data.remote.model.OpenRouterRequest
+import com.spendsense.data.remote.model.ChatCompletionRequest
 import com.spendsense.domain.model.RegexPattern
 import com.spendsense.domain.repository.RegexPatternRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -125,7 +125,7 @@ class RegexGeneratorViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val prompt = buildPrompt(notificationText)
-                val request = OpenRouterRequest(
+                val request = ChatCompletionRequest(
                     model = provider.defaultModel,
                     messages = listOf(
                         Message(role = "user", content = prompt)
