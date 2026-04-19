@@ -89,16 +89,16 @@ Run: `mv app/src/main/java/com/spendsense/data/remote/OpenRouterApi.kt app/src/m
 ```kotlin
 package com.spendsense.data.remote
 
-import com.spendsense.data.remote.model.OpenRouterRequest
-import com.spendsense.data.remote.model.OpenRouterResponse
+import com.spendsense.data.remote.model.ChatCompletionRequest
+import com.spendsense.data.remote.model.ChatCompletionResponse
 import retrofit2.http.Body
 import retrofit2.http.POST
 
 interface ChatCompletionApi {
     @POST("chat/completions")
     suspend fun generateCompletion(
-        @Body request: OpenRouterRequest
-    ): OpenRouterResponse
+        @Body request: ChatCompletionRequest
+    ): ChatCompletionResponse
 }
 ```
 
@@ -219,8 +219,8 @@ class RegexGeneratorViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val prompt = buildPrompt(notificationText)
-                val request = OpenRouterRequest(
-                    model = "meta-llama/llama-3.2-3b-instruct:free",
+                val request = ChatCompletionRequest(
+                    model = provider.defaultModel,
                     messages = listOf(
                         Message(role = "user", content = prompt)
                     )
