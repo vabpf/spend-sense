@@ -29,7 +29,7 @@ graph TD
     NLS --> VM
     UI --> VM
     VM --> RepoInt
-    RepoImpl ..|> RepoInt
+    RepoImpl --> RepoInt
     RepoImpl --> Room
     RepoImpl --> API
 ```
