@@ -62,7 +62,6 @@ class AiProvidersViewModel @Inject constructor(
             val provider = AiProviderEntity(
                 name = currentState.name,
                 baseUrl = currentState.baseUrl,
-                apiKey = currentState.apiKey,
                 defaultModel = currentState.defaultModel,
                 jobType = currentState.jobType
             )

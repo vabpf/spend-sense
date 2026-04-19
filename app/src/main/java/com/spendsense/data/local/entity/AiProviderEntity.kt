@@ -8,7 +8,7 @@ data class AiProviderEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
     val baseUrl: String,
-    val apiKey: String,
     val defaultModel: String,
-    val jobType: String // e.g., "REGEX_GEN"
+    val jobType: String,
+    val isPreset: Boolean = false
 )
