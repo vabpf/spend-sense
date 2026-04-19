@@ -2,6 +2,8 @@ package com.spendsense.presentation.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.spendsense.data.local.dao.RawNotificationDao
+import com.spendsense.data.local.entity.RawNotificationEntity
 import com.spendsense.domain.model.Category
 import com.spendsense.domain.model.Transaction
 import com.spendsense.domain.repository.CategoryRepository
@@ -16,7 +18,8 @@ import javax.inject.Inject
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository,
-    private val categoryRepository: CategoryRepository
+    private val categoryRepository: CategoryRepository,
+    private val rawNotificationDao: RawNotificationDao
 ) : ViewModel() {
 
     private val _transactions = MutableStateFlow<List<Transaction>>(emptyList())
@@ -25,9 +28,21 @@ class HomeViewModel @Inject constructor(
     private val _categories = MutableStateFlow<List<Category>>(emptyList())
     val categories: StateFlow<List<Category>> = _categories.asStateFlow()
 
+    private val _pendingNotifications = MutableStateFlow<List<RawNotificationEntity>>(emptyList())
+    val pendingNotifications: StateFlow<List<RawNotificationEntity>> = _pendingNotifications.asStateFlow()
+
     init {
         loadTransactions()
         loadCategories()
+        loadPendingNotifications()
+    }
+
+    private fun loadPendingNotifications() {
+        viewModelScope.launch {
+            rawNotificationDao.getUnprocessedNotificationsFlow().collect { notifications ->
+                _pendingNotifications.value = notifications
+            }
+        }
     }
 
     private fun loadTransactions() {
@@ -43,6 +58,30 @@ class HomeViewModel @Inject constructor(
             categoryRepository.getAllCategories().collect { categories ->
                 _categories.value = categories
             }
+        }
+    }
+
+    fun deleteTransaction(transaction: Transaction) {
+        viewModelScope.launch {
+            transactionRepository.deleteTransaction(transaction)
+        }
+    }
+
+    fun updateTransaction(transaction: Transaction) {
+        viewModelScope.launch {
+            transactionRepository.updateTransaction(transaction)
+        }
+    }
+    
+    fun deleteNotification(notification: RawNotificationEntity) {
+        viewModelScope.launch {
+            rawNotificationDao.delete(notification)
+        }
+    }
+
+    fun markNotificationAsProcessed(notification: RawNotificationEntity) {
+        viewModelScope.launch {
+            rawNotificationDao.markAsProcessed(notification.id)
         }
     }
 }

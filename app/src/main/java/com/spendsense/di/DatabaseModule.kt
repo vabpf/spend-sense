@@ -46,4 +46,15 @@ object DatabaseModule {
     fun provideWhitelistedAppDao(database: SpendSenseDatabase): WhitelistedAppDao {
         return database.whitelistedAppDao()
     }
+
+    @Provides
+    fun provideRawNotificationDao(database: SpendSenseDatabase): RawNotificationDao {
+        return database.rawNotificationDao()
+    }
+
+    @Provides
+    fun provideAiProviderDao(database: SpendSenseDatabase): AiProviderDao {
+        return database.aiProviderDao()
+    }
 }
+

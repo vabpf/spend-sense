@@ -78,9 +78,11 @@ class ActionOverlayService : Service(), ViewModelStoreOwner, LifecycleOwner, Sav
                 val merchant = intent.getStringExtra(TransactionNotificationListener.EXTRA_MERCHANT) ?: ""
                 val packageName = intent.getStringExtra(TransactionNotificationListener.EXTRA_PACKAGE_NAME) ?: ""
                 val appName = intent.getStringExtra(TransactionNotificationListener.EXTRA_APP_NAME) ?: ""
+                val rawNotificationId = intent.getLongExtra("extra_raw_notification_id", -1L)
                 
-                showOverlay(amount, merchant, packageName, appName)
+                showOverlay(amount, merchant, packageName, appName, rawNotificationId)
             }
+
         }
     }
 
@@ -118,7 +120,7 @@ class ActionOverlayService : Service(), ViewModelStoreOwner, LifecycleOwner, Sav
         return START_STICKY
     }
 
-    private fun showOverlay(amount: Double, merchant: String, packageName: String, appName: String) {
+    private fun showOverlay(amount: Double, merchant: String, packageName: String, appName: String, rawNotificationId: Long) {
         // Check permission
         if (!canDrawOverlays()) {
             Log.e(TAG, "Cannot draw overlays - permission not granted")
@@ -130,7 +132,8 @@ class ActionOverlayService : Service(), ViewModelStoreOwner, LifecycleOwner, Sav
 
         val viewModel = viewModelFactory.get()
         currentOverlayViewModel = viewModel
-        viewModel.initialize(amount, merchant, packageName, appName)
+        viewModel.initialize(amount, merchant, packageName, appName, rawNotificationId)
+
 
         // Create ComposeView
         overlayView = ComposeView(this).apply {

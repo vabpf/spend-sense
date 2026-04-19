@@ -15,9 +15,11 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 class ActionOverlayViewModel @Inject constructor(
-    private val transactionRepository: TransactionRepository,
-    private val categoryRepository: CategoryRepository
+    private val transactionRepository: com.spendsense.domain.repository.TransactionRepository,
+    private val categoryRepository: com.spendsense.domain.repository.CategoryRepository,
+    private val rawNotificationDao: com.spendsense.data.local.dao.RawNotificationDao
 ) {
+
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
@@ -31,15 +33,17 @@ class ActionOverlayViewModel @Inject constructor(
         loadCategories()
     }
 
-    fun initialize(amount: Double, merchant: String, packageName: String, appName: String) {
+    fun initialize(amount: Double, merchant: String, packageName: String, appName: String, rawNotificationId: Long) {
         _state.value = _state.value.copy(
             amount = amount.toString(),
             merchant = merchant,
             sourcePackageName = packageName,
             sourceAppName = appName,
+            rawNotificationId = rawNotificationId,
             isAmountValid = amount > 0
         )
     }
+
 
     private fun loadCategories() {
         scope.launch {
@@ -99,7 +103,13 @@ class ActionOverlayViewModel @Inject constructor(
 
                 transactionRepository.insertTransaction(transaction)
 
+                // Mark raw notification as processed if it exists
+                currentState.rawNotificationId?.let {
+                    rawNotificationDao.markAsProcessed(it)
+                }
+
                 _state.value = currentState.copy(
+
                     isSaving = false,
                     showSuccess = true
                 )

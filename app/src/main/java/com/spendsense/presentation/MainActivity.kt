@@ -11,12 +11,15 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.spendsense.domain.repository.CategoryRepository
 import com.spendsense.presentation.home.HomeScreen
 import com.spendsense.presentation.overlay.ActionOverlayService
+import com.spendsense.presentation.settings.AiProvidersScreen
 import com.spendsense.presentation.settings.RegexGeneratorScreen
 import com.spendsense.presentation.settings.SettingsScreen
 import com.spendsense.presentation.theme.SpendSenseTheme
@@ -33,12 +36,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Initialize default categories
         lifecycleScope.launch {
             categoryRepository.initializeDefaultCategories()
         }
         
-        // Start ActionOverlayService
         startActionOverlayService()
         
         setContent {
@@ -58,8 +59,13 @@ class MainActivity : ComponentActivity() {
                                 onNavigateToSettings = {
                                     navController.navigate("settings")
                                 },
-                                onNavigateToRegexGenerator = {
-                                    navController.navigate("regex_generator")
+                                onNavigateToRegexGenerator = { text ->
+                                    val route = if (text != null) {
+                                        "regex_generator?text=$text"
+                                    } else {
+                                        "regex_generator"
+                                    }
+                                    navController.navigate(route)
                                 }
                             )
                         }
@@ -71,12 +77,34 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onNavigateToRegexGenerator = {
                                     navController.navigate("regex_generator")
+                                },
+                                onNavigateToAiProviders = {
+                                    navController.navigate("ai_providers")
+                                }
+                            )
+                        }
+
+                        composable("ai_providers") {
+                            AiProvidersScreen(
+                                onNavigateBack = {
+                                    navController.popBackStack()
                                 }
                             )
                         }
                         
-                        composable("regex_generator") {
+                        composable(
+                            route = "regex_generator?text={text}",
+                            arguments = listOf(
+                                navArgument("text") {
+                                    type = NavType.StringType
+                                    nullable = true
+                                    defaultValue = null
+                                }
+                            )
+                        ) { backStackEntry ->
+                            val text = backStackEntry.arguments?.getString("text")
                             RegexGeneratorScreen(
+                                initialNotificationText = text,
                                 onNavigateBack = {
                                     navController.popBackStack()
                                 }

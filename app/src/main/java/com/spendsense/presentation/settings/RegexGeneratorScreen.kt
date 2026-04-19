@@ -20,11 +20,19 @@ import androidx.hilt.navigation.compose.hiltViewModel
 @Composable
 fun RegexGeneratorScreen(
     viewModel: RegexGeneratorViewModel = hiltViewModel(),
+    initialNotificationText: String? = null,
     onNavigateBack: () -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
     var apiKey by remember { mutableStateOf("") }
     var showApiKeyDialog by remember { mutableStateOf(false) }
+
+    // Pre-fill initial text if provided
+    LaunchedEffect(initialNotificationText) {
+        if (initialNotificationText != null) {
+            viewModel.updateNotificationText(initialNotificationText)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -103,8 +111,32 @@ fun RegexGeneratorScreen(
                         placeholder = { Text("Paste your notification text here...") },
                         maxLines = 6
                     )
+
+                    Divider()
+
+                    Text(
+                        text = "Regex Pattern (Manual or AI)",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    OutlinedTextField(
+                        value = state.manualPattern,
+                        onValueChange = { viewModel.updateManualPattern(it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("Enter regex manually or generate with AI...") },
+                        label = { Text("Regex Pattern") },
+                        trailingIcon = {
+                            if (state.manualPattern.isNotBlank()) {
+                                IconButton(onClick = { viewModel.testManualPattern() }) {
+                                    Icon(Icons.Default.PlayArrow, contentDescription = "Test Pattern")
+                                }
+                            }
+                        }
+                    )
                 }
             }
+
 
             // Generate Button
             Button(
@@ -175,14 +207,16 @@ fun RegexGeneratorScreen(
             }
 
             // Result Section
-            if (state.generatedPattern != null) {
+            val displayPattern = state.manualPattern.takeIf { it.isNotBlank() } ?: state.generatedPattern
+            
+            if (displayPattern != null) {
                 Card {
                     Column(
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Text(
-                            text = "Generated Pattern",
+                            text = if (state.manualPattern.isNotBlank()) "Manual Pattern" else "Generated Pattern",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -194,7 +228,7 @@ fun RegexGeneratorScreen(
                         ) {
                             SelectionContainer {
                                 Text(
-                                    text = state.generatedPattern!!,
+                                    text = displayPattern,
                                     modifier = Modifier.padding(12.dp),
                                     style = MaterialTheme.typography.bodySmall,
                                     fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace

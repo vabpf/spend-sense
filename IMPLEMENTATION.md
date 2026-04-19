@@ -1,31 +1,24 @@
 # SpendSense Implementation Details
 
-## Current Status: ✅ Foundations Complete
+## Current Status: 🚧 Enhancements In Progress
 
-All core components of the foundational architecture are implemented and functional.
+Foundational architecture is complete. Now implementing behavioral design improvements and advanced configuration features.
 
-### 1. Notification Listener Service
-- ✅ Properly registers as a `NotificationListenerService`.
-- ✅ Efficiently filters and processes notifications from whitelisted apps.
-- ✅ Uses `Dispatchers.IO` for non-blocking regex matching and DB operations.
-- ✅ Successfully triggers the Action Overlay upon extraction.
+### 1. Notification Listener & Inbox (Behavioral Design)
+- 🚧 Implementing `raw_notifications` capture for unmatched alerts.
+- 🚧 Adding manual processing flow for intercepted notifications.
 
-### 2. Action Overlay Service
-- ✅ Uses `WindowManager` with `TYPE_APPLICATION_OVERLAY`.
-- ✅ Provides a full Jetpack Compose UI for categorization.
-- ✅ Validates inputs (amount, category selection).
-- ✅ Handles background state and service lifecycle.
+### 2. Home Screen Management
+- 🚧 Adding Swipe-to-Dismiss for transaction deletion.
+- 🚧 Implementing Edit Dialog for transaction modification.
 
-### 3. AI-Powered Regex Generator
-- ✅ Integrated with OpenRouter for client-side AI rule generation.
-- ✅ Uses the `meta-llama/llama-3.2-3b-instruct:free` model.
-- ✅ Validates generated patterns against user-provided input.
-- ✅ Persists verified rules to the local database.
+### 3. Advanced Regex Engine
+- ✅ AI-powered rule generation (OpenRouter).
+- 🚧 Manual regex pattern entry and local testing.
 
-### 4. Database & Repositories
-- ✅ **Room Database:** Manages persistent storage for all entities.
-- ✅ **Repository Pattern:** Abstracted interfaces in the Domain layer.
-- ✅ **Default Categories:** Automatically initialized on first launch (Food, Transport, Shopping, etc.).
+### 4. AI Provider Management
+- 🚧 New screen for multi-provider configuration (OpenRouter, OpenAI, etc.).
+- 🚧 Secure storage for API keys and task-based provider selection.
 
 ## Testing Checklist
 
@@ -34,13 +27,16 @@ All core components of the foundational architecture are implemented and functio
 2.  **Regex Matching:** Verify that generated patterns accurately extract amounts and merchants.
 3.  **Overlay UI:** Confirm the overlay appears above other apps with pre-filled data.
 4.  **Transaction Persistence:** Check that saved transactions appear on the Home Screen.
-5.  **Regex Generation:** Test AI rule generation with various notification formats.
+5.  **Home Screen Management:** Test swipe-to-delete and click-to-edit features.
+6.  **Regex Generation:** Test both AI generation and manual regex entry.
+7.  **Inbox Pattern:** Verify that unhandled notifications are saved and accessible for manual categorization.
 
 ### Known Limitations
 - **Manual Add:** FAB on Home Screen is a placeholder.
 - **Whitelisted Apps UI:** Configuration screen is not yet implemented.
 - **Category Management:** Custom category creation is pending.
 - **Cloud Sync:** Firestore integration is prepared but not fully implemented.
+
 
 ## Future Enhancements
 - [ ] Budgeting and spending alerts.

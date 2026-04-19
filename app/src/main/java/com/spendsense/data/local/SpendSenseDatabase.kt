@@ -10,9 +10,11 @@ import com.spendsense.data.local.entity.*
         TransactionEntity::class,
         CategoryEntity::class,
         RegexPatternEntity::class,
-        WhitelistedAppEntity::class
+        WhitelistedAppEntity::class,
+        RawNotificationEntity::class,
+        AiProviderEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 abstract class SpendSenseDatabase : RoomDatabase() {
@@ -20,6 +22,9 @@ abstract class SpendSenseDatabase : RoomDatabase() {
     abstract fun categoryDao(): CategoryDao
     abstract fun regexPatternDao(): RegexPatternDao
     abstract fun whitelistedAppDao(): WhitelistedAppDao
+    abstract fun rawNotificationDao(): RawNotificationDao
+    abstract fun aiProviderDao(): AiProviderDao
+
 
     companion object {
         const val DATABASE_NAME = "spend_sense.db"

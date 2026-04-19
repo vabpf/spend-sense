@@ -19,8 +19,10 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun SettingsScreen(
     onNavigateBack: () -> Unit = {},
-    onNavigateToRegexGenerator: () -> Unit = {}
+    onNavigateToRegexGenerator: () -> Unit = {},
+    onNavigateToAiProviders: () -> Unit = {}
 ) {
+
     val context = LocalContext.current
 
     Scaffold(
@@ -93,6 +95,16 @@ fun SettingsScreen(
                     )
                     
                     Divider()
+
+                    SettingsItem(
+                        icon = Icons.Default.SmartToy,
+                        title = "AI Providers",
+                        description = "Configure AI models and API keys",
+                        onClick = onNavigateToAiProviders
+                    )
+
+                    Divider()
+
                     
                     SettingsItem(
                         icon = Icons.Default.Apps,

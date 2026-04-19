@@ -22,8 +22,12 @@ class TransactionNotificationListener : NotificationListenerService() {
     @Inject
     lateinit var whitelistedAppDao: WhitelistedAppDao
 
+    @Inject
+    lateinit var rawNotificationDao: com.spendsense.data.local.dao.RawNotificationDao
+
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var whitelistedPackages: Set<String> = emptySet()
+
 
     companion object {
         private const val TAG = "TransactionNotification"
@@ -80,8 +84,18 @@ class TransactionNotificationListener : NotificationListenerService() {
 
         Log.d(TAG, "Notification text: $notificationText")
 
+        // Save to raw_notifications first
+        val rawId = rawNotificationDao.insert(
+            com.spendsense.data.local.entity.RawNotificationEntity(
+                packageName = packageName,
+                text = notificationText,
+                timestamp = System.currentTimeMillis()
+            )
+        )
+
         // Get regex patterns for this package
         val patterns = regexPatternDao.getActivePatternsForPackage(packageName)
+
         if (patterns.isEmpty()) {
             Log.d(TAG, "No active patterns found for package: $packageName")
             return
@@ -116,8 +130,9 @@ class TransactionNotificationListener : NotificationListenerService() {
 
                             // Trigger the Action Overlay
                             withContext(Dispatchers.Main) {
-                                showActionOverlay(amount, merchant, packageName, appName)
+                                showActionOverlay(amount, merchant, packageName, appName, rawId)
                             }
+
                             return // Stop after first match
                         }
                     }
@@ -167,7 +182,8 @@ class TransactionNotificationListener : NotificationListenerService() {
         amount: Double,
         merchant: String,
         packageName: String,
-        appName: String
+        appName: String,
+        rawNotificationId: Long
     ) {
         val intent = Intent(ACTION_SHOW_OVERLAY).apply {
             setPackage(this@TransactionNotificationListener.packageName)
@@ -175,10 +191,12 @@ class TransactionNotificationListener : NotificationListenerService() {
             putExtra(EXTRA_MERCHANT, merchant)
             putExtra(EXTRA_PACKAGE_NAME, packageName)
             putExtra(EXTRA_APP_NAME, appName)
+            putExtra("extra_raw_notification_id", rawNotificationId)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         sendBroadcast(intent)
     }
+
 
     private fun loadWhitelistedPackages() {
         serviceScope.launch(Dispatchers.IO) {

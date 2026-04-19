@@ -2,6 +2,7 @@ package com.spendsense.presentation.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.spendsense.data.local.dao.AiProviderDao
 import com.spendsense.data.remote.OpenRouterApi
 import com.spendsense.data.remote.model.Message
 import com.spendsense.data.remote.model.OpenRouterRequest
@@ -17,7 +18,8 @@ import javax.inject.Inject
 @HiltViewModel
 class RegexGeneratorViewModel @Inject constructor(
     private val openRouterApi: OpenRouterApi,
-    private val regexPatternRepository: RegexPatternRepository
+    private val regexPatternRepository: RegexPatternRepository,
+    private val aiProviderDao: AiProviderDao
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(RegexGeneratorState())
@@ -26,6 +28,13 @@ class RegexGeneratorViewModel @Inject constructor(
     fun updateNotificationText(text: String) {
         _state.value = _state.value.copy(
             notificationText = text,
+            errorMessage = null
+        )
+    }
+
+    fun updateManualPattern(pattern: String) {
+        _state.value = _state.value.copy(
+            manualPattern = pattern,
             errorMessage = null
         )
     }
@@ -42,6 +51,19 @@ class RegexGeneratorViewModel @Inject constructor(
         _state.value = RegexGeneratorState()
     }
 
+    fun testManualPattern() {
+        val currentState = _state.value
+        if (currentState.manualPattern.isBlank()) {
+            _state.value = currentState.copy(errorMessage = "Please enter a regex pattern")
+            return
+        }
+        if (currentState.notificationText.isBlank()) {
+            _state.value = currentState.copy(errorMessage = "Please enter notification text to test against")
+            return
+        }
+        testPattern(currentState.manualPattern, currentState.notificationText)
+    }
+
     fun generateRegex(apiKey: String) {
         val notificationText = _state.value.notificationText
         if (notificationText.isBlank()) {
@@ -49,11 +71,9 @@ class RegexGeneratorViewModel @Inject constructor(
             return
         }
 
-        if (apiKey.isBlank()) {
-            _state.value = _state.value.copy(errorMessage = "API key is required")
-            return
-        }
-
+        // For now, still use the passed apiKey if provided, otherwise we would fetch from aiProviderDao
+        // In the future, we will fetch the selected provider from the DB.
+        
         _state.value = _state.value.copy(
             isGenerating = true,
             errorMessage = null,
@@ -79,12 +99,12 @@ class RegexGeneratorViewModel @Inject constructor(
 
                 val generatedText = response.choices.firstOrNull()?.message?.content
                 if (generatedText != null) {
-                    // Extract regex pattern from the response
                     val pattern = extractRegexPattern(generatedText)
                     if (pattern != null) {
                         _state.value = _state.value.copy(
                             isGenerating = false,
-                            generatedPattern = pattern
+                            generatedPattern = pattern,
+                            manualPattern = "" // Clear manual if AI succeeds
                         )
                         testPattern(pattern, notificationText)
                     } else {
@@ -131,24 +151,17 @@ Respond with only the regex pattern:
     }
 
     private fun extractRegexPattern(response: String): String? {
-        // Try to extract regex pattern from response
-        // Look for patterns that contain named groups
         val lines = response.trim().lines()
-        
-        // Try to find a line that looks like a regex with named groups
         for (line in lines) {
             val trimmed = line.trim()
             if (trimmed.contains("(?<amount>") && trimmed.contains("(?<merchant>")) {
                 return trimmed
             }
         }
-        
-        // If no clear pattern found, return the whole response trimmed
         val trimmed = response.trim()
         if (trimmed.contains("(?<amount>") && trimmed.contains("(?<merchant>")) {
             return trimmed
         }
-        
         return null
     }
 
@@ -163,7 +176,8 @@ Respond with only the regex pattern:
                 
                 _state.value = _state.value.copy(
                     extractedAmount = amount,
-                    extractedMerchant = merchant
+                    extractedMerchant = merchant,
+                    errorMessage = null
                 )
             } else {
                 _state.value = _state.value.copy(
@@ -181,8 +195,13 @@ Respond with only the regex pattern:
 
     fun savePattern() {
         val currentState = _state.value
+        val patternToSave = if (currentState.manualPattern.isNotBlank()) {
+            currentState.manualPattern
+        } else {
+            currentState.generatedPattern
+        }
         
-        if (currentState.generatedPattern.isNullOrBlank()) {
+        if (patternToSave.isNullOrBlank()) {
             _state.value = currentState.copy(errorMessage = "No pattern to save")
             return
         }
@@ -198,7 +217,7 @@ Respond with only the regex pattern:
             try {
                 val pattern = RegexPattern(
                     packageName = currentState.packageName,
-                    pattern = currentState.generatedPattern,
+                    pattern = patternToSave,
                     isActive = currentState.isActive
                 )
 
@@ -209,7 +228,6 @@ Respond with only the regex pattern:
                     successMessage = "Pattern saved successfully!"
                 )
 
-                // Clear form after 2 seconds
                 kotlinx.coroutines.delay(2000)
                 clearInput()
             } catch (e: Exception) {

@@ -52,15 +52,16 @@ graph TD
 - **Room Database:** Local persistent storage for transactions, categories, regex patterns, and whitelisted apps.
 - **Retrofit API:** Handles communication with OpenRouter for AI regex generation.
 
-## Transaction Capture Sequence
+## Transaction Capture Sequence (The "Inbox" Pattern)
 
 1.  **Banking App** sends a notification.
 2.  **TransactionNotificationListener** intercepts the notification based on whitelisted package names.
-3.  **Regex Patterns** are applied to the notification text to extract `amount` and `merchant`.
-4.  **Action Overlay** is triggered via a broadcast intent.
-5.  **User Interacts** with the overlay to confirm or edit details and select a category.
-6.  **Transaction** is persisted to the Room database.
-7.  **Home Screen** updates automatically via reactive Flow.
+3.  **Raw Capture:** The notification text and metadata are immediately saved to the `raw_notifications` table. This ensures the data is captured even if processing fails.
+4.  **Extraction:** Regex patterns are applied to the text to extract `amount` and `merchant`.
+5.  **Action Overlay:** If a match is found, the overlay is triggered via a broadcast intent.
+6.  **User Interacts:** The user confirms/edits details and selects a category.
+7.  **Persistence:** The finalized transaction is saved to the `transactions` table, and the corresponding `raw_notification` is marked as processed or deleted.
+8.  **Inbox:** If no regex match is found, or if the overlay is dismissed without saving, the entry remains in the "Notification Inbox" on the Home Screen for manual processing.
 
 ## Database Schema
 
@@ -68,3 +69,6 @@ graph TD
 - **Category:** `id`, `name`, `iconName`, `colorHex`, `isDefault`.
 - **RegexPattern:** `id`, `packageName`, `pattern`, `isActive`, `lastUsed`, `successCount`.
 - **WhitelistedApp:** `packageName`, `appName`, `isEnabled`, `addedAt`.
+- **RawNotification:** `id`, `packageName`, `text`, `timestamp`, `isProcessed`.
+- **AiProvider:** `id`, `name`, `baseUrl`, `apiKey`, `defaultModel`, `jobType` (e.g., REGEX_GEN).
+
