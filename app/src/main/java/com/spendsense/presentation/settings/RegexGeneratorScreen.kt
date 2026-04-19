@@ -24,8 +24,7 @@ fun RegexGeneratorScreen(
     onNavigateBack: () -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
-    var apiKey by remember { mutableStateOf("") }
-    var showApiKeyDialog by remember { mutableStateOf(false) }
+    var showProviderSelector by remember { mutableStateOf(false) }
 
     // Pre-fill initial text if provided
     LaunchedEffect(initialNotificationText) {
@@ -74,6 +73,73 @@ fun RegexGeneratorScreen(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
+                }
+            }
+
+            // Provider Selection
+            Card {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "AI Provider",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    if (state.providers.isEmpty()) {
+                        Text(
+                            "No AI providers configured. Please add one in Settings.",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    } else {
+                        Box {
+                            OutlinedCard(
+                                onClick = { showProviderSelector = true },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column {
+                                        Text(
+                                            state.selectedProvider?.name ?: "Select Provider",
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                        state.selectedProvider?.let {
+                                            Text(it.defaultModel, style = MaterialTheme.typography.bodySmall)
+                                        }
+                                    }
+                                    Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                                }
+                            }
+                            
+                            DropdownMenu(
+                                expanded = showProviderSelector,
+                                onDismissRequest = { showProviderSelector = false },
+                                modifier = Modifier.fillMaxWidth(0.9f)
+                            ) {
+                                state.providers.forEach { provider ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Column {
+                                                Text(provider.name)
+                                                Text(provider.defaultModel, style = MaterialTheme.typography.labelSmall)
+                                            }
+                                        },
+                                        onClick = {
+                                            viewModel.onProviderSelected(provider)
+                                            showProviderSelector = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -140,9 +206,9 @@ fun RegexGeneratorScreen(
 
             // Generate Button
             Button(
-                onClick = { showApiKeyDialog = true },
+                onClick = { viewModel.generateRegex() },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = state.notificationText.isNotBlank() && !state.isGenerating
+                enabled = state.notificationText.isNotBlank() && !state.isGenerating && state.selectedProvider != null
             ) {
                 if (state.isGenerating) {
                     CircularProgressIndicator(
@@ -314,43 +380,6 @@ fun RegexGeneratorScreen(
                 }
             }
         }
-    }
-
-    // API Key Dialog
-    if (showApiKeyDialog) {
-        AlertDialog(
-            onDismissRequest = { showApiKeyDialog = false },
-            title = { Text("Enter OpenRouter API Key") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Your API key is required to generate regex patterns using AI.")
-                    OutlinedTextField(
-                        value = apiKey,
-                        onValueChange = { apiKey = it },
-                        label = { Text("API Key") },
-                        placeholder = { Text("sk-or-v1-...") },
-                        singleLine = true
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (apiKey.isNotBlank()) {
-                            showApiKeyDialog = false
-                            viewModel.generateRegex(apiKey)
-                        }
-                    }
-                ) {
-                    Text("Generate")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showApiKeyDialog = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
     }
 }
 

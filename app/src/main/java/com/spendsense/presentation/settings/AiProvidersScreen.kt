@@ -48,7 +48,9 @@ fun AiProvidersScreen(
             items(state.providers) { provider ->
                 AiProviderItem(
                     provider = provider,
-                    onDelete = { viewModel.deleteProvider(provider) }
+                    hasKey = state.providerKeyStatuses[provider.id] ?: false,
+                    onDelete = { viewModel.deleteProvider(provider) },
+                    onEditKey = { viewModel.onEditProvider(provider) }
                 )
             }
         }
@@ -65,12 +67,24 @@ fun AiProvidersScreen(
             onSave = viewModel::saveProvider
         )
     }
+
+    if (state.showKeyDialog && state.editingProvider != null) {
+        EditKeyDialog(
+            provider = state.editingProvider!!,
+            apiKey = state.apiKey,
+            onApiKeyChange = viewModel::onApiKeyChange,
+            onDismiss = { viewModel.onEditProvider(null) },
+            onSave = { viewModel.updateApiKeyForProvider(state.editingProvider!!, state.apiKey) }
+        )
+    }
 }
 
 @Composable
 fun AiProviderItem(
     provider: AiProviderEntity,
-    onDelete: () -> Unit
+    hasKey: Boolean,
+    onDelete: () -> Unit,
+    onEditKey: () -> Unit
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -82,12 +96,63 @@ fun AiProviderItem(
                 Text(provider.name, style = MaterialTheme.typography.titleMedium)
                 Text(provider.defaultModel, style = MaterialTheme.typography.bodySmall)
                 Text("Job: ${provider.jobType}", style = MaterialTheme.typography.labelSmall)
+                
+                Spacer(modifier = Modifier.height(4.dp))
+                
+                val isFree = provider.baseUrl.contains("opencode", ignoreCase = true)
+                val statusText = when {
+                    hasKey -> "Key Set"
+                    isFree -> "Free Provider (No Key Needed)"
+                    else -> "No Key"
+                }
+                val statusColor = when {
+                    hasKey -> MaterialTheme.colorScheme.primary
+                    isFree -> MaterialTheme.colorScheme.secondary
+                    else -> MaterialTheme.colorScheme.error
+                }
+                Text(
+                    statusText,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = statusColor
+                )
             }
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+            Row {
+                IconButton(onClick = onEditKey) {
+                    Icon(Icons.Default.VpnKey, contentDescription = "Edit Key")
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                }
             }
         }
     }
+}
+
+@Composable
+fun EditKeyDialog(
+    provider: AiProviderEntity,
+    apiKey: String,
+    onApiKeyChange: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onSave: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Update API Key for ${provider.name}") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Enter the new API key for this provider.", style = MaterialTheme.typography.bodyMedium)
+                OutlinedTextField(
+                    value = apiKey,
+                    onValueChange = onApiKeyChange,
+                    label = { Text("API Key") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = { Button(onClick = onSave) { Text("Update") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
 }
 
 @Composable

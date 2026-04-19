@@ -2,7 +2,9 @@ package com.spendsense.presentation.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.spendsense.data.local.SecurePreferences
 import com.spendsense.data.local.dao.AiProviderDao
+import com.spendsense.data.local.entity.AiProviderEntity
 import com.spendsense.data.remote.ChatCompletionApi
 import com.spendsense.data.remote.DynamicBaseUrlInterceptor
 import com.spendsense.data.remote.model.Message
@@ -21,11 +23,30 @@ class RegexGeneratorViewModel @Inject constructor(
     private val chatCompletionApi: ChatCompletionApi,
     private val dynamicBaseUrlInterceptor: DynamicBaseUrlInterceptor,
     private val regexPatternRepository: RegexPatternRepository,
-    private val aiProviderDao: AiProviderDao
+    private val aiProviderDao: AiProviderDao,
+    private val securePreferences: SecurePreferences
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(RegexGeneratorState())
     val state: StateFlow<RegexGeneratorState> = _state.asStateFlow()
+
+    init {
+        loadProviders()
+    }
+
+    private fun loadProviders() {
+        viewModelScope.launch {
+            val providers = aiProviderDao.getAllProviders()
+            _state.value = _state.value.copy(
+                providers = providers,
+                selectedProvider = providers.firstOrNull()
+            )
+        }
+    }
+
+    fun onProviderSelected(provider: AiProviderEntity) {
+        _state.value = _state.value.copy(selectedProvider = provider)
+    }
 
     fun updateNotificationText(text: String) {
         _state.value = _state.value.copy(
@@ -66,34 +87,46 @@ class RegexGeneratorViewModel @Inject constructor(
         testPattern(currentState.manualPattern, currentState.notificationText)
     }
 
-    fun generateRegex(apiKey: String) {
-        val notificationText = _state.value.notificationText
+    fun generateRegex() {
+        val currentState = _state.value
+        val notificationText = currentState.notificationText
         if (notificationText.isBlank()) {
-            _state.value = _state.value.copy(errorMessage = "Please enter notification text")
+            _state.value = currentState.copy(errorMessage = "Please enter notification text")
             return
         }
 
-        // For now, still use the passed apiKey if provided, otherwise we would fetch from aiProviderDao
-        // In the future, we will fetch the selected provider from the DB.
+        val provider = currentState.selectedProvider
+        if (provider == null) {
+            _state.value = currentState.copy(errorMessage = "Please select an AI provider")
+            return
+        }
+
+        val apiKey = securePreferences.getApiKey(provider.id)
+        val isFreeProvider = provider.baseUrl.contains("opencode", ignoreCase = true)
         
-        _state.value = _state.value.copy(
+        if (apiKey.isNullOrBlank() && !isFreeProvider) {
+            _state.value = currentState.copy(errorMessage = "API key not found for ${provider.name}. Please add it in AI Providers settings.")
+            return
+        }
+        
+        _state.value = currentState.copy(
             isGenerating = true,
             errorMessage = null,
             generatedPattern = null
         )
 
-        // Set the base URL for OpenRouter (default for now)
+        // Set the base URL for the selected provider
         dynamicBaseUrlInterceptor.setBaseUrl(
-            url = "https://openrouter.ai/api/v1/",
-            key = apiKey,
-            isOpenRouter = true
+            url = provider.baseUrl,
+            key = apiKey ?: "", // Use empty string for free providers
+            isOpenRouter = provider.name.contains("OpenRouter", ignoreCase = true)
         )
 
         viewModelScope.launch {
             try {
                 val prompt = buildPrompt(notificationText)
                 val request = OpenRouterRequest(
-                    model = "meta-llama/llama-3.2-3b-instruct:free",
+                    model = provider.defaultModel,
                     messages = listOf(
                         Message(role = "user", content = prompt)
                     )

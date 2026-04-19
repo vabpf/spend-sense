@@ -131,22 +131,22 @@ fun HomeScreen(
                     ) { transaction ->
                         val category = categories.find { it.id == transaction.categoryId }
                         
-                        val dismissState = rememberDismissState(
+                        val dismissState = rememberSwipeToDismissBoxState(
                             confirmValueChange = {
-                                if (it == DismissValue.DismissedToEnd || it == DismissValue.DismissedToStart) {
+                                if (it == SwipeToDismissBoxValue.StartToEnd || it == SwipeToDismissBoxValue.EndToStart) {
                                     viewModel.deleteTransaction(transaction)
                                     true
                                 } else false
                             }
                         )
 
-                        SwipeToDismiss(
+                        SwipeToDismissBox(
                             state = dismissState,
-                            background = {
+                            backgroundContent = {
                                 val color = when (dismissState.dismissDirection) {
-                                    DismissDirection.StartToEnd -> Color.Red
-                                    DismissDirection.EndToStart -> Color.Red
-                                    null -> Color.Transparent
+                                    SwipeToDismissBoxValue.StartToEnd -> Color.Red
+                                    SwipeToDismissBoxValue.EndToStart -> Color.Red
+                                    SwipeToDismissBoxValue.Settled -> Color.Transparent
                                 }
                                 Box(
                                     modifier = Modifier
@@ -163,7 +163,7 @@ fun HomeScreen(
                                     )
                                 }
                             },
-                            dismissContent = {
+                            content = {
                                 TransactionItem(
                                     transaction = transaction,
                                     category = category,

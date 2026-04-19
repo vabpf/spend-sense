@@ -18,6 +18,9 @@ interface AiProviderDao {
     @Query("SELECT * FROM ai_providers")
     fun getAllProvidersFlow(): Flow<List<AiProviderEntity>>
 
+    @Query("SELECT * FROM ai_providers")
+    suspend fun getAllProviders(): List<AiProviderEntity>
+
     @Query("SELECT * FROM ai_providers WHERE jobType = :jobType LIMIT 1")
     suspend fun getProviderForJob(jobType: String): AiProviderEntity?
 }
