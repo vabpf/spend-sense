@@ -61,3 +61,4 @@ vcs.xml
 # OS-specific files
 .DS_Store
 Thumbs.db
+.worktrees/
