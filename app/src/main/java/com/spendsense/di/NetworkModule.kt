@@ -1,6 +1,7 @@
 package com.spendsense.di
 
-import com.spendsense.data.remote.OpenRouterApi
+import com.spendsense.data.remote.ChatCompletionApi
+import com.spendsense.data.remote.DynamicBaseUrlInterceptor
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -18,12 +19,15 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(): OkHttpClient {
+    fun provideOkHttpClient(
+        dynamicBaseUrlInterceptor: DynamicBaseUrlInterceptor
+    ): OkHttpClient {
         val loggingInterceptor = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
         }
 
         return OkHttpClient.Builder()
+            .addInterceptor(dynamicBaseUrlInterceptor)
             .addInterceptor(loggingInterceptor)
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
@@ -35,7 +39,7 @@ object NetworkModule {
     @Singleton
     fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
         return Retrofit.Builder()
-            .baseUrl("https://openrouter.ai/api/v1/")
+            .baseUrl("https://openrouter.ai/api/v1/") // Default base URL
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
@@ -43,7 +47,7 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOpenRouterApi(retrofit: Retrofit): OpenRouterApi {
-        return retrofit.create(OpenRouterApi::class.java)
+    fun provideChatCompletionApi(retrofit: Retrofit): ChatCompletionApi {
+        return retrofit.create(ChatCompletionApi::class.java)
     }
 }
