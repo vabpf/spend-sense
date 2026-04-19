@@ -3,7 +3,8 @@ package com.spendsense.presentation.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.spendsense.data.local.dao.AiProviderDao
-import com.spendsense.data.remote.OpenRouterApi
+import com.spendsense.data.remote.ChatCompletionApi
+import com.spendsense.data.remote.DynamicBaseUrlInterceptor
 import com.spendsense.data.remote.model.Message
 import com.spendsense.data.remote.model.OpenRouterRequest
 import com.spendsense.domain.model.RegexPattern
@@ -17,7 +18,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class RegexGeneratorViewModel @Inject constructor(
-    private val openRouterApi: OpenRouterApi,
+    private val chatCompletionApi: ChatCompletionApi,
+    private val dynamicBaseUrlInterceptor: DynamicBaseUrlInterceptor,
     private val regexPatternRepository: RegexPatternRepository,
     private val aiProviderDao: AiProviderDao
 ) : ViewModel() {
@@ -80,6 +82,13 @@ class RegexGeneratorViewModel @Inject constructor(
             generatedPattern = null
         )
 
+        // Set the base URL for OpenRouter (default for now)
+        dynamicBaseUrlInterceptor.setBaseUrl(
+            url = "https://openrouter.ai/api/v1/",
+            key = apiKey,
+            isOpenRouter = true
+        )
+
         viewModelScope.launch {
             try {
                 val prompt = buildPrompt(notificationText)
@@ -90,10 +99,7 @@ class RegexGeneratorViewModel @Inject constructor(
                     )
                 )
 
-                val response = openRouterApi.generateCompletion(
-                    authorization = "Bearer $apiKey",
-                    referer = "https://spendsense.app",
-                    appTitle = "SpendSense",
+                val response = chatCompletionApi.generateCompletion(
                     request = request
                 )
 
