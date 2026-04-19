@@ -66,6 +66,7 @@ class ActionOverlayService : Service(), ViewModelStoreOwner, LifecycleOwner, Sav
 
     private lateinit var windowManager: WindowManager
     private var overlayView: ComposeView? = null
+    private var currentOverlayViewModel: ActionOverlayViewModel? = null
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     
     override val viewModelStore: ViewModelStore = ViewModelStore()
@@ -128,6 +129,7 @@ class ActionOverlayService : Service(), ViewModelStoreOwner, LifecycleOwner, Sav
         removeOverlay()
 
         val viewModel = viewModelFactory.get()
+        currentOverlayViewModel = viewModel
         viewModel.initialize(amount, merchant, packageName, appName)
 
         // Create ComposeView
@@ -229,6 +231,7 @@ class ActionOverlayService : Service(), ViewModelStoreOwner, LifecycleOwner, Sav
             Log.e(TAG, "Error unregistering receiver", e)
         }
         serviceScope.cancel()
+        currentOverlayViewModel?.dispose()
         viewModelStore.clear()
         Log.d(TAG, "ActionOverlayService destroyed")
     }

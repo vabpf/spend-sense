@@ -1,23 +1,25 @@
 package com.spendsense.presentation.overlay
 
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.spendsense.domain.model.Category
 import com.spendsense.domain.model.Transaction
 import com.spendsense.domain.repository.CategoryRepository
 import com.spendsense.domain.repository.TransactionRepository
-import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-@HiltViewModel
 class ActionOverlayViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository,
     private val categoryRepository: CategoryRepository
-) : ViewModel() {
+) {
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     private val _state = MutableStateFlow(OverlayState())
     val state: StateFlow<OverlayState> = _state.asStateFlow()
@@ -40,7 +42,7 @@ class ActionOverlayViewModel @Inject constructor(
     }
 
     private fun loadCategories() {
-        viewModelScope.launch {
+        scope.launch {
             categoryRepository.getAllCategories().collect { categories ->
                 _categories.value = categories
             }
@@ -84,7 +86,7 @@ class ActionOverlayViewModel @Inject constructor(
 
         _state.value = currentState.copy(isSaving = true, errorMessage = null)
 
-        viewModelScope.launch {
+        scope.launch {
             try {
                 val transaction = Transaction(
                     amount = amount,
@@ -116,5 +118,9 @@ class ActionOverlayViewModel @Inject constructor(
 
     fun clearError() {
         _state.value = _state.value.copy(errorMessage = null)
+    }
+
+    fun dispose() {
+        scope.cancel()
     }
 }

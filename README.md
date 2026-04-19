@@ -149,6 +149,8 @@ match /users/{userId}/transactions/{transactionId} {
 - **Never hardcode API keys in source**
 
 ### 3. Build & Run
+For detailed instructions on setting up your development environment and using a physical Android device, please refer to the [QUICK_START.md](QUICK_START.md) guide.
+
 ```bash
 ./gradlew assembleDebug
 ./gradlew installDebug

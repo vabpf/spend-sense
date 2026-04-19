@@ -17,6 +17,34 @@ SpendSense is a financial tracking app that automatically captures transaction d
 
 ---
 
+## Setting Up a Physical Android Device
+
+Using a physical device is recommended for testing notification interception and overlay features.
+
+### 1. Enable Developer Options
+1. Open **Settings** on your Android phone.
+2. Navigate to **About Phone**.
+3. Find **Build Number** and tap it **7 times** until you see "You are now a developer!".
+
+### 2. Enable USB Debugging
+1. Go back to **Settings** > **System** > **Developer Options**.
+2. Scroll down and toggle **USB Debugging** to ON.
+3. (Optional but recommended) Toggle **Install via USB** to ON.
+
+### 3. Connect to Computer
+1. Connect your phone via a USB cable.
+2. A prompt "Allow USB debugging?" will appear on your phone.
+3. Check "Always allow from this computer" and tap **Allow**.
+
+### 4. Verify Connection
+Run this command in your terminal:
+```bash
+adb devices
+```
+You should see your device's serial number followed by `device`.
+
+---
+
 ## Setup Steps
 
 ### 1. Clone and Open Project
@@ -27,7 +55,7 @@ cd spend-sense
 
 Open the project in Android Studio.
 
-### 2. Configure Firebase (Optional for Initial Testing)
+### 2. Configure Firebase (Optional for Initial Testing
 1. Go to [Firebase Console](https://console.firebase.google.com/)
 2. Create a new project or use existing
 3. Add an Android app with package name: `com.spendsense`
