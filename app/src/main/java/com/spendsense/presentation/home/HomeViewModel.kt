@@ -72,6 +72,21 @@ class HomeViewModel @Inject constructor(
             transactionRepository.updateTransaction(transaction)
         }
     }
+
+    fun addTransaction(amount: Double, merchant: String, categoryId: Long) {
+        viewModelScope.launch {
+            transactionRepository.insertTransaction(
+                Transaction(
+                    amount = amount,
+                    merchant = merchant,
+                    categoryId = categoryId,
+                    timestamp = System.currentTimeMillis(),
+                    sourcePackageName = "manual",
+                    sourceAppName = "Manual Add"
+                )
+            )
+        }
+    }
     
     fun deleteNotification(notification: RawNotificationEntity) {
         viewModelScope.launch {
