@@ -1,23 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">SpendSense</string>
-    <string name="ai_providers_title">AI Providers</string>
-    <string name="back">Back</string>
-    <string name="add_provider">Add Provider</string>
-    <string name="job_type">Job: %1$s</string>
-    <string name="key_set">Key Set</string>
-    <string name="free_provider">Free Provider (No Key Needed)</string>
-    <string name="no_key">No Key</string>
-    <string name="edit_key">Edit Key</string>
-    <string name="delete">Delete</string>
-    <string name="update_api_key_for">Update API Key for %1$s</string>
-    <string name="enter_new_api_key">Enter the new API key for this provider.</string>
-    <string name="api_key">API Key</string>
-    <string name="update">Update</string>
-    <string name="cancel">Cancel</string>
-    <string name="add_ai_provider">Add AI Provider</string>
-    <string name="name_hint">Name (e.g. OpenRouter)</string>
-    <string name="base_url">Base URL</string>
-    <string name="default_model">Default Model</string>
-    <string name="save">Save</string>
 </resources>

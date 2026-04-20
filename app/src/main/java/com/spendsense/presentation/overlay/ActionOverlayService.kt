@@ -107,7 +107,6 @@ class ActionOverlayService : Service(), ViewModelStoreOwner, LifecycleOwner, Sav
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(overlayReceiver, filter, RECEIVER_NOT_EXPORTED)
         } else {
-            @Suppress("UnspecifiedRegisterReceiverFlag")
             registerReceiver(overlayReceiver, filter)
         }
         
