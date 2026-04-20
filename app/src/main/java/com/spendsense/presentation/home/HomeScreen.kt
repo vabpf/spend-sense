@@ -41,6 +41,7 @@ fun HomeScreen(
     val pendingNotifications by viewModel.pendingNotifications.collectAsState()
     
     var editingTransaction by remember { mutableStateOf<Transaction?>(null) }
+    var isAddingTransaction by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -57,7 +58,7 @@ fun HomeScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { /* TODO: Manual add */ }) {
+            FloatingActionButton(onClick = { isAddingTransaction = true }) {
                 Icon(Icons.Default.Add, contentDescription = "Add Transaction")
             }
         }
@@ -121,6 +122,7 @@ fun HomeScreen(
                     }
                 }
             } else {
+                val categoryMap = remember(categories) { categories.associateBy { it.id } }
                 LazyColumn(
                     modifier = Modifier.weight(1f).fillMaxWidth(),
                     contentPadding = PaddingValues(16.dp),
@@ -130,7 +132,7 @@ fun HomeScreen(
                         items = transactions,
                         key = { it.id }
                     ) { transaction ->
-                        val category = categories.find { it.id == transaction.categoryId }
+                        val category = categoryMap[transaction.categoryId]
                         
                         val dismissState = rememberSwipeToDismissBoxState(
                             confirmValueChange = {
@@ -189,6 +191,17 @@ fun HomeScreen(
             }
         )
     }
+
+    if (isAddingTransaction) {
+        AddTransactionDialog(
+            categories = categories,
+            onDismiss = { isAddingTransaction = false },
+            onConfirm = { newTransaction ->
+                viewModel.addTransaction(newTransaction)
+                isAddingTransaction = false
+            }
+        )
+    }
 }
 
 @Composable
@@ -235,6 +248,86 @@ fun InboxItem(
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddTransactionDialog(
+    categories: List<Category>,
+    onDismiss: () -> Unit,
+    onConfirm: (Transaction) -> Unit
+) {
+    var amount by remember { mutableStateOf("") }
+    var merchant by remember { mutableStateOf("") }
+    var selectedCategoryId by remember { mutableStateOf(categories.firstOrNull()?.id ?: 0L) }
+    var notes by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add Transaction") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = amount,
+                    onValueChange = { amount = it },
+                    label = { Text("Amount") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = merchant,
+                    onValueChange = { merchant = it },
+                    label = { Text("Merchant") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = notes,
+                    onValueChange = { notes = it },
+                    label = { Text("Notes") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Text("Category", style = MaterialTheme.typography.titleSmall)
+
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    categories.forEach { category ->
+                        FilterChip(
+                            selected = category.id == selectedCategoryId,
+                            onClick = { selectedCategoryId = category.id },
+                            label = { Text(category.name) }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val amountDouble = amount.toDoubleOrNull() ?: 0.0
+                    onConfirm(Transaction(
+                        amount = amountDouble,
+                        merchant = merchant,
+                        categoryId = selectedCategoryId,
+                        timestamp = System.currentTimeMillis(),
+                        sourcePackageName = "manual",
+                        sourceAppName = "manual",
+                        notes = notes.ifBlank { null }
+                    ))
+                },
+                enabled = amount.isNotBlank() && merchant.isNotBlank()
+            ) {
+                Text("Add")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
