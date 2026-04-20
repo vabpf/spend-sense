@@ -33,4 +33,10 @@ abstract class RepositoryModule {
     abstract fun bindRegexPatternRepository(
         regexPatternRepositoryImpl: RegexPatternRepositoryImpl
     ): RegexPatternRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindWhitelistedAppRepository(
+        whitelistedAppRepositoryImpl: com.spendsense.data.repository.WhitelistedAppRepositoryImpl
+    ): com.spendsense.domain.repository.WhitelistedAppRepository
 }

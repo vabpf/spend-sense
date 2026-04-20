@@ -20,8 +20,10 @@ import com.spendsense.domain.repository.CategoryRepository
 import com.spendsense.presentation.home.HomeScreen
 import com.spendsense.presentation.overlay.ActionOverlayService
 import com.spendsense.presentation.settings.AiProvidersScreen
+import com.spendsense.presentation.settings.CategoriesScreen
 import com.spendsense.presentation.settings.RegexGeneratorScreen
 import com.spendsense.presentation.settings.SettingsScreen
+import com.spendsense.presentation.settings.WhitelistedAppsScreen
 import com.spendsense.presentation.theme.SpendSenseTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -80,6 +82,28 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onNavigateToAiProviders = {
                                     navController.navigate("ai_providers")
+                                },
+                                onNavigateToWhitelistedApps = {
+                                    navController.navigate("whitelisted_apps")
+                                },
+                                onNavigateToCategories = {
+                                    navController.navigate("categories")
+                                }
+                            )
+                        }
+
+                        composable("whitelisted_apps") {
+                            WhitelistedAppsScreen(
+                                onNavigateBack = {
+                                    navController.popBackStack()
+                                }
+                            )
+                        }
+
+                        composable("categories") {
+                            CategoriesScreen(
+                                onNavigateBack = {
+                                    navController.popBackStack()
                                 }
                             )
                         }
