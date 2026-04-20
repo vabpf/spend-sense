@@ -6,18 +6,33 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.spendsense.domain.repository.CategoryRepository
 import com.spendsense.presentation.home.HomeScreen
+import com.spendsense.presentation.charts.ChartsScreen
 import com.spendsense.presentation.categories.CategoriesScreen
 import com.spendsense.presentation.overlay.ActionOverlayService
 import com.spendsense.presentation.settings.AiProvidersScreen
@@ -46,20 +61,76 @@ class MainActivity : ComponentActivity() {
         
         setContent {
             SpendSenseTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    val navController = rememberNavController()
-                    
+                val navController = rememberNavController()
+
+                Scaffold(
+                    bottomBar = {
+                        val navBackStackEntry by navController.currentBackStackEntryAsState()
+                        val currentDestination = navBackStackEntry?.destination
+
+                        val mainScreens = listOf("home", "charts", "settings")
+
+                        if (currentDestination?.route in mainScreens) {
+                            NavigationBar {
+                                NavigationBarItem(
+                                    icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
+                                    label = { Text("Home") },
+                                    selected = currentDestination?.hierarchy?.any { it.route == "home" } == true,
+                                    onClick = {
+                                        navController.navigate("home") {
+                                            popUpTo(navController.graph.findStartDestination().id) {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    }
+                                )
+                                NavigationBarItem(
+                                    icon = { Icon(Icons.Default.BarChart, contentDescription = "Charts") },
+                                    label = { Text("Charts") },
+                                    selected = currentDestination?.hierarchy?.any { it.route == "charts" } == true,
+                                    onClick = {
+                                        navController.navigate("charts") {
+                                            popUpTo(navController.graph.findStartDestination().id) {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    }
+                                )
+                                NavigationBarItem(
+                                    icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
+                                    label = { Text("Settings") },
+                                    selected = currentDestination?.hierarchy?.any { it.route == "settings" } == true,
+                                    onClick = {
+                                        navController.navigate("settings") {
+                                            popUpTo(navController.graph.findStartDestination().id) {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                ) { innerPadding ->
                     NavHost(
                         navController = navController,
-                        startDestination = "home"
+                        startDestination = "home",
+                        modifier = Modifier.padding(innerPadding)
                     ) {
                         composable("home") {
                             HomeScreen(
                                 onNavigateToSettings = {
-                                    navController.navigate("settings")
+                                    navController.navigate("settings") {
+                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
                                 },
                                 onNavigateToRegexGenerator = { text ->
                                     val route = if (text != null) {
@@ -72,10 +143,18 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         
+                        composable("charts") {
+                            ChartsScreen()
+                        }
+
                         composable("settings") {
                             SettingsScreen(
                                 onNavigateBack = {
-                                    navController.popBackStack()
+                                    navController.navigate("home") {
+                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
                                 },
                                 onNavigateToRegexGenerator = {
                                     navController.navigate("regex_generator")
