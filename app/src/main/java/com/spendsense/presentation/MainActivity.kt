@@ -18,11 +18,13 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.spendsense.domain.repository.CategoryRepository
 import com.spendsense.presentation.home.HomeScreen
+import com.spendsense.presentation.categories.CategoriesScreen
 import com.spendsense.presentation.overlay.ActionOverlayService
 import com.spendsense.presentation.settings.AiProvidersScreen
 import com.spendsense.presentation.settings.RegexGeneratorScreen
 import com.spendsense.presentation.settings.SettingsScreen
 import com.spendsense.presentation.theme.SpendSenseTheme
+import com.spendsense.presentation.whitelistedapps.WhitelistedAppsScreen
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -80,6 +82,28 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onNavigateToAiProviders = {
                                     navController.navigate("ai_providers")
+                                },
+                                onNavigateToWhitelistedApps = {
+                                    navController.navigate("whitelisted_apps")
+                                },
+                                onNavigateToCategories = {
+                                    navController.navigate("categories")
+                                }
+                            )
+                        }
+
+                        composable("whitelisted_apps") {
+                            WhitelistedAppsScreen(
+                                onNavigateBack = {
+                                    navController.popBackStack()
+                                }
+                            )
+                        }
+
+                        composable("categories") {
+                            CategoriesScreen(
+                                onNavigateBack = {
+                                    navController.popBackStack()
                                 }
                             )
                         }
