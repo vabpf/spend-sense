@@ -72,6 +72,12 @@ class HomeViewModel @Inject constructor(
             transactionRepository.updateTransaction(transaction)
         }
     }
+
+    fun addTransaction(transaction: Transaction) {
+        viewModelScope.launch {
+            transactionRepository.insertTransaction(transaction)
+        }
+    }
     
     fun deleteNotification(notification: RawNotificationEntity) {
         viewModelScope.launch {
