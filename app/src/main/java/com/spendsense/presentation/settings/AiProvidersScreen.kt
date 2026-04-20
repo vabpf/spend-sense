@@ -9,10 +9,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.spendsense.R
 import com.spendsense.data.local.entity.AiProviderEntity
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -26,17 +24,17 @@ fun AiProvidersScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.ai_providers_title)) },
+                title = { Text("AI Providers") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { viewModel.toggleAddingProvider(true) }) {
-                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_provider))
+                Icon(Icons.Default.Add, contentDescription = "Add Provider")
             }
         }
     ) { padding ->
@@ -97,15 +95,15 @@ fun AiProviderItem(
             Column(modifier = Modifier.weight(1f)) {
                 Text(provider.name, style = MaterialTheme.typography.titleMedium)
                 Text(provider.defaultModel, style = MaterialTheme.typography.bodySmall)
-                Text(stringResource(R.string.job_type, provider.jobType), style = MaterialTheme.typography.labelSmall)
+                Text("Job: ${provider.jobType}", style = MaterialTheme.typography.labelSmall)
                 
                 Spacer(modifier = Modifier.height(4.dp))
                 
                 val isFree = provider.baseUrl.contains("opencode", ignoreCase = true)
                 val statusText = when {
-                    hasKey -> stringResource(R.string.key_set)
-                    isFree -> stringResource(R.string.free_provider)
-                    else -> stringResource(R.string.no_key)
+                    hasKey -> "Key Set"
+                    isFree -> "Free Provider (No Key Needed)"
+                    else -> "No Key"
                 }
                 val statusColor = when {
                     hasKey -> MaterialTheme.colorScheme.primary
@@ -120,10 +118,10 @@ fun AiProviderItem(
             }
             Row {
                 IconButton(onClick = onEditKey) {
-                    Icon(Icons.Default.VpnKey, contentDescription = stringResource(R.string.edit_key))
+                    Icon(Icons.Default.VpnKey, contentDescription = "Edit Key")
                 }
                 IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete), tint = MaterialTheme.colorScheme.error)
+                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
                 }
             }
         }
@@ -140,20 +138,20 @@ fun EditKeyDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.update_api_key_for, provider.name)) },
+        title = { Text("Update API Key for ${provider.name}") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(R.string.enter_new_api_key), style = MaterialTheme.typography.bodyMedium)
+                Text("Enter the new API key for this provider.", style = MaterialTheme.typography.bodyMedium)
                 OutlinedTextField(
                     value = apiKey,
                     onValueChange = onApiKeyChange,
-                    label = { Text(stringResource(R.string.api_key)) },
+                    label = { Text("API Key") },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
         },
-        confirmButton = { Button(onClick = onSave) { Text(stringResource(R.string.update)) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } }
+        confirmButton = { Button(onClick = onSave) { Text("Update") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }
 
@@ -169,19 +167,19 @@ fun AddProviderDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.add_ai_provider)) },
+        title = { Text("Add AI Provider") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = state.name, onValueChange = onNameChange, label = { Text(stringResource(R.string.name_hint)) }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = state.baseUrl, onValueChange = onBaseUrlChange, label = { Text(stringResource(R.string.base_url)) }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = state.apiKey, onValueChange = onApiKeyChange, label = { Text(stringResource(R.string.api_key)) }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = state.defaultModel, onValueChange = onModelChange, label = { Text(stringResource(R.string.default_model)) }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = state.name, onValueChange = onNameChange, label = { Text("Name (e.g. OpenRouter)") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = state.baseUrl, onValueChange = onBaseUrlChange, label = { Text("Base URL") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = state.apiKey, onValueChange = onApiKeyChange, label = { Text("API Key") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = state.defaultModel, onValueChange = onModelChange, label = { Text("Default Model") }, modifier = Modifier.fillMaxWidth())
                 if (state.errorMessage != null) {
                     Text(state.errorMessage, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
             }
         },
-        confirmButton = { Button(onClick = onSave) { Text(stringResource(R.string.save)) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } }
+        confirmButton = { Button(onClick = onSave) { Text("Save") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }
