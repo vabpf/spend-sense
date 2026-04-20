@@ -20,7 +20,9 @@ import androidx.compose.ui.unit.dp
 fun SettingsScreen(
     onNavigateBack: () -> Unit = {},
     onNavigateToRegexGenerator: () -> Unit = {},
-    onNavigateToAiProviders: () -> Unit = {}
+    onNavigateToAiProviders: () -> Unit = {},
+    onNavigateToWhitelistedApps: () -> Unit = {},
+    onNavigateToCategories: () -> Unit = {}
 ) {
 
     val context = LocalContext.current
@@ -110,7 +112,7 @@ fun SettingsScreen(
                         icon = Icons.Default.Apps,
                         title = "Whitelisted Apps",
                         description = "Manage apps to monitor",
-                        onClick = { /* TODO */ }
+                        onClick = onNavigateToWhitelistedApps
                     )
                     
                     Divider()
@@ -119,7 +121,7 @@ fun SettingsScreen(
                         icon = Icons.Default.Category,
                         title = "Categories",
                         description = "Manage expense categories",
-                        onClick = { /* TODO */ }
+                        onClick = onNavigateToCategories
                     )
                 }
             }
