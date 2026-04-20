@@ -40,6 +40,7 @@ fun HomeScreen(
     val pendingNotifications by viewModel.pendingNotifications.collectAsState()
     
     var editingTransaction by remember { mutableStateOf<Transaction?>(null) }
+    var isAddingTransaction by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -56,7 +57,7 @@ fun HomeScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { /* TODO: Manual add */ }) {
+            FloatingActionButton(onClick = { isAddingTransaction = true }) {
                 Icon(Icons.Default.Add, contentDescription = "Add Transaction")
             }
         }
@@ -185,6 +186,17 @@ fun HomeScreen(
             onConfirm = { updatedTransaction ->
                 viewModel.updateTransaction(updatedTransaction)
                 editingTransaction = null
+            }
+        )
+    }
+
+    if (isAddingTransaction) {
+        AddTransactionDialog(
+            categories = categories,
+            onDismiss = { isAddingTransaction = false },
+            onConfirm = { amount, merchant, categoryId ->
+                viewModel.addTransaction(amount, merchant, categoryId)
+                isAddingTransaction = false
             }
         )
     }
