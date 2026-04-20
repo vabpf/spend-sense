@@ -27,6 +27,7 @@ import com.spendsense.domain.model.Transaction
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
+import java.lang.ThreadLocal
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -463,12 +464,22 @@ fun TransactionItem(
     }
 }
 
+private val currencyFormatter = object : ThreadLocal<NumberFormat>() {
+    override fun initialValue(): NumberFormat {
+        return NumberFormat.getCurrencyInstance(Locale.US)
+    }
+}
+
+private val dateFormatter = object : ThreadLocal<SimpleDateFormat>() {
+    override fun initialValue(): SimpleDateFormat {
+        return SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
+    }
+}
+
 private fun formatCurrency(amount: Double): String {
-    val formatter = NumberFormat.getCurrencyInstance(Locale.US)
-    return formatter.format(amount)
+    return currencyFormatter.get()!!.format(amount)
 }
 
 private fun formatDate(timestamp: Long): String {
-    val sdf = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
-    return sdf.format(Date(timestamp))
+    return dateFormatter.get()!!.format(Date(timestamp))
 }
