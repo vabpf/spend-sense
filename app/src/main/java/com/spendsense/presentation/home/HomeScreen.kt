@@ -120,6 +120,7 @@ fun HomeScreen(
                     }
                 }
             } else {
+                val categoryMap = remember(categories) { categories.associateBy { it.id } }
                 LazyColumn(
                     modifier = Modifier.weight(1f).fillMaxWidth(),
                     contentPadding = PaddingValues(16.dp),
@@ -129,7 +130,7 @@ fun HomeScreen(
                         items = transactions,
                         key = { it.id }
                     ) { transaction ->
-                        val category = categories.find { it.id == transaction.categoryId }
+                        val category = categoryMap[transaction.categoryId]
                         
                         val dismissState = rememberSwipeToDismissBoxState(
                             confirmValueChange = {
