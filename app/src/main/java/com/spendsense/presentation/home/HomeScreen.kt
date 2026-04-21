@@ -50,9 +50,6 @@ fun HomeScreen(
                     IconButton(onClick = { onNavigateToRegexGenerator(null) }) {
                         Icon(Icons.Default.AutoAwesome, contentDescription = "Regex Generator")
                     }
-                    IconButton(onClick = onNavigateToSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
-                    }
                 }
             )
         },
