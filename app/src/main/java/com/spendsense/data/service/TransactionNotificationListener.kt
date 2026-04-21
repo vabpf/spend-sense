@@ -82,8 +82,6 @@ class TransactionNotificationListener : NotificationListenerService() {
             return
         }
 
-        Log.d(TAG, "Notification text: $notificationText")
-
         // Save to raw_notifications first
         val rawId = rawNotificationDao.insert(
             com.spendsense.data.local.entity.RawNotificationEntity(
@@ -117,8 +115,6 @@ class TransactionNotificationListener : NotificationListenerService() {
                         val amount = parseAmount(amountStr)
                         
                         if (amount > 0) {
-                            Log.d(TAG, "Match found! Amount: $amount, Merchant: $merchant")
-                            
                             // Increment success count
                             regexPatternDao.incrementSuccessCount(
                                 patternEntity.id,
@@ -163,7 +159,7 @@ class TransactionNotificationListener : NotificationListenerService() {
             val cleanedStr = amountStr.replace(Regex("[^0-9.]"), "")
             cleanedStr.toDoubleOrNull() ?: 0.0
         } catch (e: Exception) {
-            Log.e(TAG, "Error parsing amount: $amountStr", e)
+            Log.e(TAG, "Error parsing amount", e)
             0.0
         }
     }
