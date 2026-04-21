@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.spendsense.domain.model.Category
+import com.spendsense.presentation.theme.GlassSurface
 import com.spendsense.presentation.util.availableColors
 import com.spendsense.presentation.util.availableIcons
 import com.spendsense.presentation.util.getCategoryIcon
@@ -33,9 +34,13 @@ fun CategoriesScreen(
     val state by viewModel.state.collectAsState()
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { Text("Categories") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = GlassSurface.copy(alpha = 0.5f)
+                ),
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
@@ -44,7 +49,10 @@ fun CategoriesScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { viewModel.showAddEditDialog(null) }) {
+            FloatingActionButton(
+                onClick = { viewModel.showAddEditDialog(null) },
+                containerColor = GlassSurface.copy(alpha = 0.75f)
+            ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Category")
             }
         }
@@ -83,6 +91,10 @@ fun CategoryItem(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = GlassSurface.copy(alpha = 0.58f),
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ),
         onClick = onEdit
     ) {
         Row(
@@ -138,6 +150,7 @@ fun AddEditCategoryDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = GlassSurface.copy(alpha = 0.9f),
         title = { Text(if (initialCategory != null) "Edit Category" else "Add Category") },
         text = {
             Column(
