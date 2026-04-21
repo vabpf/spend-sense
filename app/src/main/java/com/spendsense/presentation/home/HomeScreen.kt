@@ -24,6 +24,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.spendsense.data.local.entity.RawNotificationEntity
 import com.spendsense.domain.model.Category
 import com.spendsense.domain.model.Transaction
+import com.spendsense.presentation.theme.GlassSurface
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
@@ -38,14 +39,19 @@ fun HomeScreen(
     val transactions by viewModel.transactions.collectAsState()
     val categories by viewModel.categories.collectAsState()
     val pendingNotifications by viewModel.pendingNotifications.collectAsState()
+    val defaultCurrency by viewModel.defaultCurrency.collectAsState()
     
     var editingTransaction by remember { mutableStateOf<Transaction?>(null) }
     var isAddingTransaction by remember { mutableStateOf(false) }
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { Text("SpendSense") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = GlassSurface.copy(alpha = 0.5f)
+                ),
                 actions = {
                     IconButton(onClick = { onNavigateToRegexGenerator(null) }) {
                         Icon(Icons.Default.AutoAwesome, contentDescription = "Regex Generator")
@@ -54,7 +60,10 @@ fun HomeScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { isAddingTransaction = true }) {
+            FloatingActionButton(
+                onClick = { isAddingTransaction = true },
+                containerColor = GlassSurface.copy(alpha = 0.75f)
+            ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Transaction")
             }
         }
@@ -190,9 +199,10 @@ fun HomeScreen(
     if (isAddingTransaction) {
         AddTransactionDialog(
             categories = categories,
+            defaultCurrency = defaultCurrency,
             onDismiss = { isAddingTransaction = false },
-            onConfirm = { amount, merchant, categoryId ->
-                viewModel.addTransaction(amount, merchant, categoryId)
+            onConfirm = { amount, currency, merchant, categoryId ->
+                viewModel.addTransaction(amount, currency, merchant, categoryId)
                 isAddingTransaction = false
             }
         )
@@ -208,7 +218,7 @@ fun InboxItem(
     Card(
         modifier = Modifier.width(280.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer
+            containerColor = GlassSurface.copy(alpha = 0.62f)
         )
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -260,6 +270,7 @@ fun EditTransactionDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = GlassSurface.copy(alpha = 0.9f),
         title = { Text("Edit Transaction") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -331,7 +342,11 @@ fun TransactionItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = GlassSurface.copy(alpha = 0.58f),
+            contentColor = MaterialTheme.colorScheme.onSurface
+        )
     ) {
         Row(
             modifier = Modifier
@@ -370,7 +385,7 @@ fun TransactionItem(
             }
             
             Text(
-                text = formatCurrency(transaction.amount),
+                text = formatCurrency(transaction.amount, transaction.currencyCode),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.error
@@ -379,9 +394,16 @@ fun TransactionItem(
     }
 }
 
-private fun formatCurrency(amount: Double): String {
-    val formatter = NumberFormat.getCurrencyInstance(Locale.US)
-    return formatter.format(amount)
+private fun formatCurrency(amount: Double, currencyCode: String = "USD"): String {
+    return try {
+        val currency = java.util.Currency.getInstance(currencyCode)
+        val formatter = NumberFormat.getCurrencyInstance().apply {
+            this.currency = currency
+        }
+        formatter.format(amount)
+    } catch (e: Exception) {
+        "$$amount"
+    }
 }
 
 private fun formatDate(timestamp: Long): String {
