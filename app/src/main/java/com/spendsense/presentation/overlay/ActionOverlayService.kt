@@ -443,24 +443,3 @@ fun CategoryItem(
     }
 }
 
-@Composable
-fun getCategoryIcon(iconName: String): ImageVector {
-    return when (iconName) {
-        "Restaurant" -> Icons.Default.Restaurant
-        "DirectionsCar" -> Icons.Default.DirectionsCar
-        "ShoppingCart" -> Icons.Default.ShoppingCart
-        "Movie" -> Icons.Default.Movie
-        "Receipt" -> Icons.Default.Receipt
-        "LocalHospital" -> Icons.Default.LocalHospital
-        "MoreHoriz" -> Icons.Default.MoreHoriz
-        else -> Icons.Default.Category
-    }
-}
-
-fun parseColor(colorHex: String): Color {
-    return try {
-        Color(android.graphics.Color.parseColor(colorHex))
-    } catch (e: Exception) {
-        Color.Gray
-    }
-}
