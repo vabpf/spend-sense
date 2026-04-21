@@ -15,7 +15,7 @@ import com.spendsense.data.local.entity.*
         RawNotificationEntity::class,
         AiProviderEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = true
 )
 abstract class SpendSenseDatabase : RoomDatabase() {
@@ -34,9 +34,9 @@ abstract class SpendSenseDatabase : RoomDatabase() {
             override fun onCreate(db: SupportSQLiteDatabase) {
                 super.onCreate(db)
                 db.execSQL("INSERT INTO ai_providers (name, baseUrl, defaultModel, jobType, isPreset) VALUES " +
-                    "('OpenCode (MiniMax)', 'https://opencode.ai/zen/v1', 'oc/minimax-m2.5-free', 'REGEX_GEN', 1), " +
-                    "('OpenCode (Trinity)', 'https://opencode.ai/zen/v1', 'oc/trinity-large-preview-free', 'REGEX_GEN', 1), " +
-                    "('OpenCode (Nemotron)', 'https://opencode.ai/zen/v1', 'oc/nemotron-3-super-free', 'REGEX_GEN', 1), " +
+                    "('OpenCode (MiniMax)', 'https://opencode.ai/zen/v1', 'minimax-m2.5-free', 'REGEX_GEN', 1), " +
+                    "('OpenCode (Trinity)', 'https://opencode.ai/zen/v1', 'trinity-large-preview-free', 'REGEX_GEN', 1), " +
+                    "('OpenCode (Nemotron)', 'https://opencode.ai/zen/v1', 'nemotron-3-super-free', 'REGEX_GEN', 1), " +
                     "('NVIDIA NIM', 'https://integrate.api.nvidia.com/v1', 'meta/llama-3.1-8b-instruct', 'REGEX_GEN', 1), " +
                     "('Google Gemini', 'https://generativelanguage.googleapis.com/v1beta/openai/', 'gemini-1.5-flash', 'REGEX_GEN', 1)")
             }

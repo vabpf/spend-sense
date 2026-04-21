@@ -51,6 +51,7 @@ class TransactionRepositoryImpl @Inject constructor(
     private fun Transaction.toEntity() = TransactionEntity(
         id = id,
         amount = amount,
+        currencyCode = currencyCode,
         merchant = merchant,
         categoryId = categoryId,
         timestamp = timestamp,
@@ -62,6 +63,7 @@ class TransactionRepositoryImpl @Inject constructor(
     private fun TransactionEntity.toDomain() = Transaction(
         id = id,
         amount = amount,
+        currencyCode = currencyCode,
         merchant = merchant,
         categoryId = categoryId,
         timestamp = timestamp,

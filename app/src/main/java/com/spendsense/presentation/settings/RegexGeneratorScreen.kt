@@ -1,3 +1,4 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
 package com.spendsense.presentation.settings
 
 import androidx.compose.foundation.background
@@ -12,11 +13,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.spendsense.domain.model.RegexPattern
+import com.spendsense.presentation.theme.GlassSurface
+import com.spendsense.data.local.Currencies
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegexGeneratorScreen(
     viewModel: RegexGeneratorViewModel = hiltViewModel(),
@@ -24,7 +28,15 @@ fun RegexGeneratorScreen(
     onNavigateBack: () -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
+    var showTargetAppSelector by remember { mutableStateOf(false) }
     var showProviderSelector by remember { mutableStateOf(false) }
+    var showCurrencySelector by remember { mutableStateOf(false) }
+    val configuredProviders = remember(state.providers, state.providerKeyStatuses) {
+        state.providers.filter { state.providerKeyStatuses[it.id] == true }
+    }
+    val groupedProviders = remember(configuredProviders) {
+        groupProviders(configuredProviders)
+    }
 
     // Pre-fill initial text if provided
     LaunchedEffect(initialNotificationText) {
@@ -34,9 +46,13 @@ fun RegexGeneratorScreen(
     }
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { Text("AI Regex Generator") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = GlassSurface
+                ),
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
@@ -56,7 +72,7 @@ fun RegexGeneratorScreen(
             // Info Card
             Card(
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                    containerColor = GlassSurface
                 )
             ) {
                 Row(
@@ -77,20 +93,24 @@ fun RegexGeneratorScreen(
             }
 
             // Provider Selection
-            Card {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = GlassSurface
+                )
+            ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "AI Provider",
+                        text = "configure models",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
-                    
-                    if (state.providers.isEmpty()) {
+
+                    if (configuredProviders.isEmpty()) {
                         Text(
-                            "No AI providers configured. Please add one in Settings.",
+                            "No configured AI models found. Please configure a model in AI Providers first.",
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall
                         )
@@ -105,37 +125,68 @@ fun RegexGeneratorScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Column {
+                                    Column(modifier = Modifier.weight(1f)) {
                                         Text(
-                                            state.selectedProvider?.name ?: "Select Provider",
-                                            style = MaterialTheme.typography.bodyLarge
+                                            text = state.selectedProvider?.let {
+                                                "${it.name} • ${it.defaultModel}"
+                                            } ?: "Select a model"
                                         )
-                                        state.selectedProvider?.let {
-                                            Text(it.defaultModel, style = MaterialTheme.typography.bodySmall)
-                                        }
+                                        Text(
+                                            text = "Tap to configure model",
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
                                     }
                                     Icon(Icons.Default.ArrowDropDown, contentDescription = null)
                                 }
                             }
-                            
+
                             DropdownMenu(
                                 expanded = showProviderSelector,
                                 onDismissRequest = { showProviderSelector = false },
                                 modifier = Modifier.fillMaxWidth(0.9f)
                             ) {
-                                state.providers.forEach { provider ->
+                                groupedProviders.forEachIndexed { index, group ->
                                     DropdownMenuItem(
                                         text = {
-                                            Column {
-                                                Text(provider.name)
-                                                Text(provider.defaultModel, style = MaterialTheme.typography.labelSmall)
-                                            }
+                                            Text(
+                                                text = group.name,
+                                                style = MaterialTheme.typography.labelLarge,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
                                         },
-                                        onClick = {
-                                            viewModel.onProviderSelected(provider)
-                                            showProviderSelector = false
-                                        }
+                                        onClick = {},
+                                        enabled = false
                                     )
+                                    Divider()
+
+                                    group.models.forEach { model ->
+                                        val isSelected = state.selectedProvider?.id == model.id
+                                        DropdownMenuItem(
+                                            text = {
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Text(model.defaultModel)
+                                                    if (isSelected) {
+                                                        Icon(
+                                                            Icons.Default.Check,
+                                                            contentDescription = "Selected model"
+                                                        )
+                                                    }
+                                                }
+                                            },
+                                            onClick = {
+                                                viewModel.onProviderSelected(model)
+                                                showProviderSelector = false
+                                            }
+                                        )
+                                    }
+
+                                    if (index != groupedProviders.lastIndex) {
+                                        Divider()
+                                    }
                                 }
                             }
                         }
@@ -144,7 +195,11 @@ fun RegexGeneratorScreen(
             }
 
             // Input Section
-            Card {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = GlassSurface
+                )
+            ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -228,7 +283,7 @@ fun RegexGeneratorScreen(
             if (state.errorMessage != null) {
                 Card(
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
+                        containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.85f)
                     )
                 ) {
                     Row(
@@ -252,7 +307,8 @@ fun RegexGeneratorScreen(
             if (state.successMessage != null) {
                 Card(
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f),
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 ) {
                     Row(
@@ -276,7 +332,11 @@ fun RegexGeneratorScreen(
             val displayPattern = state.manualPattern.takeIf { it.isNotBlank() } ?: state.generatedPattern
             
             if (displayPattern != null) {
-                Card {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = GlassSurface
+                    )
+                ) {
                     Column(
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -337,14 +397,147 @@ fun RegexGeneratorScreen(
                             fontWeight = FontWeight.Bold
                         )
 
-                        OutlinedTextField(
-                            value = state.packageName,
-                            onValueChange = { viewModel.updatePackageName(it) },
-                            modifier = Modifier.fillMaxWidth(),
-                            label = { Text("App Package Name") },
-                            placeholder = { Text("e.g., com.example.bankapp") },
-                            leadingIcon = { Icon(Icons.Default.Apps, contentDescription = null) }
-                        )
+                        // Currency Selector
+                        Box {
+                            val selectedCurrency = Currencies.find(state.currencyCode)
+                            OutlinedCard(
+                                onClick = { showCurrencySelector = true },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column {
+                                        Text(
+                                            text = "Default Currency",
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
+                                        Text(
+                                            text = "${selectedCurrency.symbol} ${selectedCurrency.code} — ${selectedCurrency.name}",
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                    }
+                                    Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                                }
+                            }
+
+                            DropdownMenu(
+                                expanded = showCurrencySelector,
+                                onDismissRequest = { showCurrencySelector = false },
+                                modifier = Modifier.fillMaxWidth(0.9f)
+                            ) {
+                                Currencies.SUPPORTED.forEach { cur ->
+                                    DropdownMenuItem(
+                                        text = { Text("${cur.symbol} ${cur.code} — ${cur.name}") },
+                                        onClick = {
+                                            viewModel.updateCurrency(cur.code)
+                                            showCurrencySelector = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
+                        if (state.availableApps.isEmpty()) {
+                            Card(
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.85f),
+                                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Info,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                    Text(
+                                        text = "No whitelisted apps yet. Please add at least one app in Whitelisted Apps settings.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                }
+                            }
+                        } else {
+                            Box {
+                                OutlinedCard(
+                                    onClick = { showTargetAppSelector = true },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Column {
+                                            Text(
+                                                text = when (state.selectedAppPackage) {
+                                                    RegexPattern.TARGET_ALL_WHITELISTED -> "All whitelisted apps"
+                                                    "" -> "Select whitelisted app"
+                                                    else -> state.availableApps
+                                                        .firstOrNull { it.packageName == state.selectedAppPackage }
+                                                        ?.appName
+                                                        ?: state.selectedAppPackage
+                                                },
+                                                style = MaterialTheme.typography.bodyLarge
+                                            )
+                                            val subtitle = when (state.selectedAppPackage) {
+                                                RegexPattern.TARGET_ALL_WHITELISTED -> "Applies to every enabled whitelisted app"
+                                                "" -> "Choose one app or all whitelisted apps"
+                                                else -> state.selectedAppPackage
+                                            }
+                                            Text(
+                                                text = subtitle,
+                                                style = MaterialTheme.typography.bodySmall
+                                            )
+                                        }
+                                        Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                                    }
+                                }
+
+                                DropdownMenu(
+                                    expanded = showTargetAppSelector,
+                                    onDismissRequest = { showTargetAppSelector = false },
+                                    modifier = Modifier.fillMaxWidth(0.9f)
+                                ) {
+                                    DropdownMenuItem(
+                                        text = {
+                                            Column {
+                                                Text("All whitelisted apps")
+                                                Text(
+                                                    "Use this pattern for every enabled whitelisted app",
+                                                    style = MaterialTheme.typography.labelSmall
+                                                )
+                                            }
+                                        },
+                                        onClick = {
+                                            viewModel.onTargetAppSelected(RegexPattern.TARGET_ALL_WHITELISTED)
+                                            showTargetAppSelector = false
+                                        }
+                                    )
+
+                                    state.availableApps.forEach { app ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Column {
+                                                    Text(app.appName)
+                                                    Text(app.packageName, style = MaterialTheme.typography.labelSmall)
+                                                }
+                                            },
+                                            onClick = {
+                                                viewModel.onTargetAppSelected(app.packageName)
+                                                showTargetAppSelector = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -361,7 +554,7 @@ fun RegexGeneratorScreen(
                         Button(
                             onClick = { viewModel.savePattern() },
                             modifier = Modifier.fillMaxWidth(),
-                            enabled = !state.isSaving && state.packageName.isNotBlank()
+                            enabled = !state.isSaving && state.selectedAppPackage.isNotBlank() && state.availableApps.isNotEmpty()
                         ) {
                             if (state.isSaving) {
                                 CircularProgressIndicator(
@@ -391,7 +584,7 @@ fun TestResultChip(
 ) {
     Surface(
         modifier = modifier,
-        color = MaterialTheme.colorScheme.secondaryContainer,
+        color = GlassSurface,
         shape = RoundedCornerShape(8.dp)
     ) {
         Column(

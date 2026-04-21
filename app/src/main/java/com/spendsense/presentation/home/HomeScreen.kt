@@ -16,15 +16,19 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.spendsense.data.local.entity.RawNotificationEntity
 import com.spendsense.domain.model.Category
 import com.spendsense.domain.model.Transaction
 import com.spendsense.presentation.theme.GlassSurface
+import com.spendsense.presentation.util.glassEffect
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
@@ -41,6 +45,19 @@ fun HomeScreen(
     val pendingNotifications by viewModel.pendingNotifications.collectAsState()
     val defaultCurrency by viewModel.defaultCurrency.collectAsState()
     
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshDefaultCurrency()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+    
     var editingTransaction by remember { mutableStateOf<Transaction?>(null) }
     var isAddingTransaction by remember { mutableStateOf(false) }
 
@@ -50,7 +67,7 @@ fun HomeScreen(
             TopAppBar(
                 title = { Text("SpendSense") },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = GlassSurface.copy(alpha = 0.5f)
+                    containerColor = GlassSurface
                 ),
                 actions = {
                     IconButton(onClick = { onNavigateToRegexGenerator(null) }) {
@@ -62,7 +79,7 @@ fun HomeScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { isAddingTransaction = true },
-                containerColor = GlassSurface.copy(alpha = 0.75f)
+                containerColor = GlassSurface
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Transaction")
             }
@@ -218,7 +235,7 @@ fun InboxItem(
     Card(
         modifier = Modifier.width(280.dp),
         colors = CardDefaults.cardColors(
-            containerColor = GlassSurface.copy(alpha = 0.62f)
+            containerColor = GlassSurface
         )
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -270,7 +287,9 @@ fun EditTransactionDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = GlassSurface.copy(alpha = 0.9f),
+        containerColor = GlassSurface,
+        titleContentColor = MaterialTheme.colorScheme.onSurface,
+        textContentColor = MaterialTheme.colorScheme.onSurface,
         title = { Text("Edit Transaction") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -342,9 +361,15 @@ fun TransactionItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .glassEffect(
+                shape = CardDefaults.shape,
+                containerColor = GlassSurface,
+                blurRadius = 0.dp, // No blur for list items for performance
+                borderAlpha = 0.15f,
+                contentModifier = Modifier.clickable(onClick = onClick)
+            ),
         colors = CardDefaults.cardColors(
-            containerColor = GlassSurface.copy(alpha = 0.58f),
+            containerColor = Color.Transparent,
             contentColor = MaterialTheme.colorScheme.onSurface
         )
     ) {
@@ -410,3 +435,4 @@ private fun formatDate(timestamp: Long): String {
     val sdf = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
     return sdf.format(Date(timestamp))
 }
+

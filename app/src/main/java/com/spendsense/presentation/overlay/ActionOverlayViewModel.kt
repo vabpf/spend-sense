@@ -33,9 +33,10 @@ class ActionOverlayViewModel @Inject constructor(
         loadCategories()
     }
 
-    fun initialize(amount: Double, merchant: String, packageName: String, appName: String, rawNotificationId: Long) {
+    fun initialize(amount: Double, merchant: String, packageName: String, appName: String, rawNotificationId: Long, currency: String = "USD") {
         _state.value = _state.value.copy(
             amount = amount.toString(),
+            currencyCode = currency,
             merchant = merchant,
             sourcePackageName = packageName,
             sourceAppName = appName,
@@ -62,6 +63,10 @@ class ActionOverlayViewModel @Inject constructor(
 
     fun updateMerchant(merchant: String) {
         _state.value = _state.value.copy(merchant = merchant)
+    }
+
+    fun updateCurrency(currencyCode: String) {
+        _state.value = _state.value.copy(currencyCode = currencyCode)
     }
 
     fun selectCategory(categoryId: Long) {
@@ -94,6 +99,7 @@ class ActionOverlayViewModel @Inject constructor(
             try {
                 val transaction = Transaction(
                     amount = amount,
+                    currencyCode = currentState.currencyCode,
                     merchant = currentState.merchant,
                     categoryId = currentState.selectedCategoryId,
                     timestamp = System.currentTimeMillis(),

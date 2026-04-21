@@ -3,6 +3,7 @@ package com.spendsense.di
 import android.content.Context
 import androidx.room.Room
 import com.spendsense.data.local.SpendSenseDatabase
+import com.spendsense.data.local.MIGRATION_3_4
 import com.spendsense.data.local.dao.*
 import dagger.Module
 import dagger.Provides
@@ -24,7 +25,7 @@ object DatabaseModule {
             SpendSenseDatabase.DATABASE_NAME
         )
             .addCallback(SpendSenseDatabase.CALLBACK)
-            .fallbackToDestructiveMigration()
+            .addMigrations(MIGRATION_3_4)
             .build()
     }
 

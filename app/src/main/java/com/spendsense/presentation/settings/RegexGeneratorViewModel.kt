@@ -2,8 +2,10 @@ package com.spendsense.presentation.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.spendsense.data.local.AiProviderPresets
 import com.spendsense.data.local.SecurePreferences
 import com.spendsense.data.local.dao.AiProviderDao
+import com.spendsense.data.local.dao.WhitelistedAppDao
 import com.spendsense.data.local.entity.AiProviderEntity
 import com.spendsense.data.remote.ChatCompletionApi
 import com.spendsense.data.remote.DynamicBaseUrlInterceptor
@@ -24,6 +26,7 @@ class RegexGeneratorViewModel @Inject constructor(
     private val dynamicBaseUrlInterceptor: DynamicBaseUrlInterceptor,
     private val regexPatternRepository: RegexPatternRepository,
     private val aiProviderDao: AiProviderDao,
+    private val whitelistedAppDao: WhitelistedAppDao,
     private val securePreferences: SecurePreferences
 ) : ViewModel() {
 
@@ -32,20 +35,38 @@ class RegexGeneratorViewModel @Inject constructor(
 
     init {
         loadProviders()
+        loadWhitelistedApps()
+        _state.value = _state.value.copy(currencyCode = securePreferences.getDefaultCurrency())
     }
 
     private fun loadProviders() {
         viewModelScope.launch {
-            val providers = aiProviderDao.getAllProviders()
+            AiProviderPresets.ensureSeeded(aiProviderDao)
+            val providers = aiProviderDao.getAllProviders().sortedWith(
+                compareBy<AiProviderEntity>({ it.name.lowercase() }, { it.defaultModel.lowercase() })
+            )
+            val keyStatuses = providers.associate { provider ->
+                val isOpenCode = provider.baseUrl.contains("opencode", ignoreCase = true)
+                provider.id to (isOpenCode || !resolveProviderApiKey(provider).isNullOrBlank())
+            }
+            val firstConfiguredProvider = providers.firstOrNull { keyStatuses[it.id] == true }
             _state.value = _state.value.copy(
                 providers = providers,
-                selectedProvider = providers.firstOrNull()
+                providerKeyStatuses = keyStatuses,
+                selectedProvider = firstConfiguredProvider
             )
         }
     }
 
     fun onProviderSelected(provider: AiProviderEntity) {
         _state.value = _state.value.copy(selectedProvider = provider)
+    }
+
+    fun onTargetAppSelected(packageName: String) {
+        _state.value = _state.value.copy(
+            selectedAppPackage = packageName,
+            errorMessage = null
+        )
     }
 
     fun updateNotificationText(text: String) {
@@ -62,16 +83,32 @@ class RegexGeneratorViewModel @Inject constructor(
         )
     }
 
-    fun updatePackageName(packageName: String) {
-        _state.value = _state.value.copy(packageName = packageName)
-    }
-
     fun toggleActive() {
         _state.value = _state.value.copy(isActive = !_state.value.isActive)
     }
 
+    fun updateCurrency(currencyCode: String) {
+        _state.value = _state.value.copy(currencyCode = currencyCode)
+    }
+
     fun clearInput() {
-        _state.value = RegexGeneratorState()
+        val currentState = _state.value
+        _state.value = RegexGeneratorState(
+            providers = currentState.providers,
+            providerKeyStatuses = currentState.providerKeyStatuses,
+            selectedProvider = currentState.selectedProvider,
+            availableApps = currentState.availableApps
+        )
+    }
+
+    private fun loadWhitelistedApps() {
+        viewModelScope.launch {
+            val apps = whitelistedAppDao.getEnabledApps()
+                .map { RegexTargetApp(packageName = it.packageName, appName = it.appName) }
+                .sortedBy { it.appName.lowercase() }
+
+            _state.value = _state.value.copy(availableApps = apps)
+        }
     }
 
     fun testManualPattern() {
@@ -101,7 +138,7 @@ class RegexGeneratorViewModel @Inject constructor(
             return
         }
 
-        val apiKey = securePreferences.getApiKey(provider.id)
+        val apiKey = resolveProviderApiKey(provider)
         val isFreeProvider = provider.baseUrl.contains("opencode", ignoreCase = true)
         
         if (apiKey.isNullOrBlank() && !isFreeProvider) {
@@ -118,8 +155,9 @@ class RegexGeneratorViewModel @Inject constructor(
         // Set the base URL for the selected provider
         dynamicBaseUrlInterceptor.setBaseUrl(
             url = provider.baseUrl,
-            key = apiKey ?: "", // Use empty string for free providers
-            isOpenRouter = provider.name.contains("OpenRouter", ignoreCase = true)
+            key = apiKey,
+            isOpenRouter = provider.name.contains("OpenRouter", ignoreCase = true),
+            isOpenCode = provider.baseUrl.contains("opencode", ignoreCase = true)
         )
 
         viewModelScope.launch {
@@ -245,8 +283,15 @@ Respond with only the regex pattern:
             return
         }
 
-        if (currentState.packageName.isBlank()) {
-            _state.value = currentState.copy(errorMessage = "Package name is required")
+        if (currentState.availableApps.isEmpty()) {
+            _state.value = currentState.copy(
+                errorMessage = "No whitelisted apps found. Please whitelist at least one app first."
+            )
+            return
+        }
+
+        if (currentState.selectedAppPackage.isBlank()) {
+            _state.value = currentState.copy(errorMessage = "Please select an app to apply this pattern")
             return
         }
 
@@ -255,20 +300,19 @@ Respond with only the regex pattern:
         viewModelScope.launch {
             try {
                 val pattern = RegexPattern(
-                    packageName = currentState.packageName,
+                    packageName = currentState.selectedAppPackage,
                     pattern = patternToSave,
+                    currencyCode = currentState.currencyCode,
                     isActive = currentState.isActive
                 )
 
                 regexPatternRepository.insertPattern(pattern)
+                securePreferences.setDefaultCurrency(currentState.currencyCode)
 
-                _state.value = currentState.copy(
+                _state.value = _state.value.copy(
                     isSaving = false,
                     successMessage = "Pattern saved successfully!"
                 )
-
-                kotlinx.coroutines.delay(2000)
-                clearInput()
             } catch (e: Exception) {
                 _state.value = currentState.copy(
                     isSaving = false,
@@ -276,5 +320,19 @@ Respond with only the regex pattern:
                 )
             }
         }
+    }
+
+    private fun resolveProviderApiKey(provider: AiProviderEntity): String? {
+        val providerKey = buildProviderGroupKey(provider)
+        val providerLevelKey = securePreferences.getApiKeyForProviderKey(providerKey)
+        if (!providerLevelKey.isNullOrBlank()) {
+            return providerLevelKey
+        }
+
+        val legacyModelKey = securePreferences.getApiKey(provider.id)
+        if (!legacyModelKey.isNullOrBlank()) {
+            securePreferences.saveApiKeyForProviderKey(providerKey, legacyModelKey)
+        }
+        return legacyModelKey
     }
 }

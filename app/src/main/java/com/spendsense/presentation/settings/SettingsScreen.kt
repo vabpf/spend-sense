@@ -9,11 +9,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.spendsense.data.local.Currencies
+import com.spendsense.presentation.theme.GlassSurface
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -22,15 +26,21 @@ fun SettingsScreen(
     onNavigateToRegexGenerator: () -> Unit = {},
     onNavigateToAiProviders: () -> Unit = {},
     onNavigateToWhitelistedApps: () -> Unit = {},
-    onNavigateToCategories: () -> Unit = {}
+    onNavigateToCategories: () -> Unit = {},
+    viewModel: SettingsViewModel = hiltViewModel()
 ) {
-
+    val state by viewModel.state.collectAsState()
     val context = LocalContext.current
+    var showCurrencySelector by remember { mutableStateOf(false) }
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = { Text("Settings") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = GlassSurface
+                ),
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
@@ -53,7 +63,12 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.titleLarge
             )
 
-            Card {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = GlassSurface,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                )
+            ) {
                 Column {
                     SettingsItem(
                         icon = Icons.Default.Notifications,
@@ -83,11 +98,57 @@ fun SettingsScreen(
 
             // Configuration Section
             Text(
+                text = "Preferences",
+                style = MaterialTheme.typography.titleLarge
+            )
+
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = GlassSurface,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                )
+            ) {
+                Column {
+                    val selectedCurrency = Currencies.find(state.defaultCurrency)
+                    Box {
+                        SettingsItem(
+                            icon = Icons.Default.CurrencyExchange,
+                            title = "Default Currency",
+                            description = "${selectedCurrency.symbol} ${selectedCurrency.code} — ${selectedCurrency.name}",
+                            onClick = { showCurrencySelector = true }
+                        )
+
+                        DropdownMenu(
+                            expanded = showCurrencySelector,
+                            onDismissRequest = { showCurrencySelector = false },
+                            modifier = Modifier.fillMaxWidth(0.9f)
+                        ) {
+                            Currencies.SUPPORTED.forEach { cur ->
+                                DropdownMenuItem(
+                                    text = { Text("${cur.symbol} ${cur.code} — ${cur.name}") },
+                                    onClick = {
+                                        viewModel.updateDefaultCurrency(cur.code)
+                                        showCurrencySelector = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Configuration Section
+            Text(
                 text = "Configuration",
                 style = MaterialTheme.typography.titleLarge
             )
 
-            Card {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = GlassSurface,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                )
+            ) {
                 Column {
                     SettingsItem(
                         icon = Icons.Default.AutoAwesome,
@@ -132,7 +193,12 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.titleLarge
             )
 
-            Card {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = GlassSurface,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                )
+            ) {
                 Column {
                     SettingsItem(
                         icon = Icons.Default.Info,
@@ -154,6 +220,7 @@ fun SettingsItem(
     onClick: (() -> Unit)?
 ) {
     Surface(
+        color = Color.Transparent,
         onClick = onClick ?: {},
         enabled = onClick != null
     ) {

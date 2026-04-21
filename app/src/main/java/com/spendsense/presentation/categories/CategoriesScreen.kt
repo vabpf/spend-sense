@@ -39,7 +39,7 @@ fun CategoriesScreen(
             TopAppBar(
                 title = { Text("Categories") },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = GlassSurface.copy(alpha = 0.5f)
+                    containerColor = GlassSurface
                 ),
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
@@ -51,7 +51,7 @@ fun CategoriesScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { viewModel.showAddEditDialog(null) },
-                containerColor = GlassSurface.copy(alpha = 0.75f)
+                containerColor = GlassSurface
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Category")
             }
@@ -92,7 +92,7 @@ fun CategoryItem(
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = GlassSurface.copy(alpha = 0.58f),
+            containerColor = GlassSurface,
             contentColor = MaterialTheme.colorScheme.onSurface
         ),
         onClick = onEdit
@@ -150,7 +150,9 @@ fun AddEditCategoryDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = GlassSurface.copy(alpha = 0.9f),
+        containerColor = GlassSurface,
+        titleContentColor = MaterialTheme.colorScheme.onSurface,
+        textContentColor = MaterialTheme.colorScheme.onSurface,
         title = { Text(if (initialCategory != null) "Edit Category" else "Add Category") },
         text = {
             Column(
@@ -227,3 +229,4 @@ fun AddEditCategoryDialog(
         }
     )
 }
+

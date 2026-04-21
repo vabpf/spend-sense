@@ -21,8 +21,11 @@ interface RegexPatternDao {
     @Query("SELECT * FROM regex_patterns WHERE isActive = 1 ORDER BY successCount DESC")
     suspend fun getActivePatterns(): List<RegexPatternEntity>
 
-    @Query("SELECT * FROM regex_patterns WHERE packageName = :packageName AND isActive = 1")
-    suspend fun getActivePatternsForPackage(packageName: String): List<RegexPatternEntity>
+    @Query("SELECT * FROM regex_patterns WHERE (packageName = :packageName OR packageName = :allWhitelistedPackage) AND isActive = 1")
+    suspend fun getActivePatternsForPackage(
+        packageName: String,
+        allWhitelistedPackage: String
+    ): List<RegexPatternEntity>
 
     @Query("SELECT * FROM regex_patterns ORDER BY createdAt DESC")
     fun getAllFlow(): Flow<List<RegexPatternEntity>>

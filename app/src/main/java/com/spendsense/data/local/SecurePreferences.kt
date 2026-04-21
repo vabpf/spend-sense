@@ -27,11 +27,31 @@ class SecurePreferences @Inject constructor(
         prefs.edit().putString("api_key_$providerId", apiKey).apply()
     }
 
+    fun saveApiKeyForProviderKey(providerKey: String, apiKey: String) {
+        prefs.edit().putString("api_key_group_$providerKey", apiKey).apply()
+    }
+
     fun getApiKey(providerId: Long): String? {
         return prefs.getString("api_key_$providerId", null)
     }
 
+    fun getApiKeyForProviderKey(providerKey: String): String? {
+        return prefs.getString("api_key_group_$providerKey", null)
+    }
+
     fun deleteApiKey(providerId: Long) {
         prefs.edit().remove("api_key_$providerId").apply()
+    }
+
+    fun deleteApiKeyForProviderKey(providerKey: String) {
+        prefs.edit().remove("api_key_group_$providerKey").apply()
+    }
+
+    fun setDefaultCurrency(currencyCode: String) {
+        prefs.edit().putString("default_currency", currencyCode).apply()
+    }
+
+    fun getDefaultCurrency(): String {
+        return prefs.getString("default_currency", "USD") ?: "USD"
     }
 }

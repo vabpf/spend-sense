@@ -2,6 +2,7 @@ package com.spendsense.presentation.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.spendsense.data.local.SecurePreferences
 import com.spendsense.data.local.dao.RawNotificationDao
 import com.spendsense.data.local.entity.RawNotificationEntity
 import com.spendsense.domain.model.Category
@@ -19,7 +20,8 @@ import javax.inject.Inject
 class HomeViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository,
     private val categoryRepository: CategoryRepository,
-    private val rawNotificationDao: RawNotificationDao
+    private val rawNotificationDao: RawNotificationDao,
+    private val securePreferences: SecurePreferences
 ) : ViewModel() {
 
     private val _transactions = MutableStateFlow<List<Transaction>>(emptyList())
@@ -31,10 +33,18 @@ class HomeViewModel @Inject constructor(
     private val _pendingNotifications = MutableStateFlow<List<RawNotificationEntity>>(emptyList())
     val pendingNotifications: StateFlow<List<RawNotificationEntity>> = _pendingNotifications.asStateFlow()
 
+    private val _defaultCurrency = MutableStateFlow("USD")
+    val defaultCurrency: StateFlow<String> = _defaultCurrency.asStateFlow()
+
     init {
         loadTransactions()
         loadCategories()
         loadPendingNotifications()
+        refreshDefaultCurrency()
+    }
+
+    fun refreshDefaultCurrency() {
+        _defaultCurrency.value = securePreferences.getDefaultCurrency()
     }
 
     private fun loadPendingNotifications() {
@@ -73,11 +83,12 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun addTransaction(amount: Double, merchant: String, categoryId: Long) {
+    fun addTransaction(amount: Double, currencyCode: String, merchant: String, categoryId: Long) {
         viewModelScope.launch {
             transactionRepository.insertTransaction(
                 Transaction(
                     amount = amount,
+                    currencyCode = currencyCode,
                     merchant = merchant,
                     categoryId = categoryId,
                     timestamp = System.currentTimeMillis(),

@@ -1,3 +1,4 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
 package com.spendsense.presentation.home
 
 import androidx.compose.foundation.clickable
@@ -10,22 +11,29 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.spendsense.data.local.Currencies
 import com.spendsense.domain.model.Category
+import com.spendsense.presentation.theme.GlassSurface
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddTransactionDialog(
     categories: List<Category>,
+    defaultCurrency: String = "USD",
     onDismiss: () -> Unit,
-    onConfirm: (amount: Double, merchant: String, categoryId: Long) -> Unit
+    onConfirm: (amount: Double, currencyCode: String, merchant: String, categoryId: Long) -> Unit
 ) {
     var amount by remember { mutableStateOf("") }
+    var currency by remember { mutableStateOf(defaultCurrency) }
     var merchant by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf<Category?>(categories.firstOrNull()) }
-    var expanded by remember { mutableStateOf(false) }
+    var categoryExpanded by remember { mutableStateOf(false) }
+    var currencyExpanded by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = GlassSurface,
+        titleContentColor = MaterialTheme.colorScheme.onSurface,
+        textContentColor = MaterialTheme.colorScheme.onSurface,
         title = { Text("Add Transaction") },
         text = {
             Column(
@@ -36,10 +44,41 @@ fun AddTransactionDialog(
                     value = amount,
                     onValueChange = { amount = it },
                     label = { Text("Amount") },
+                    leadingIcon = { Text("${Currencies.find(currency).symbol}", style = MaterialTheme.typography.bodyMedium) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
+
+                ExposedDropdownMenuBox(
+                    expanded = currencyExpanded,
+                    onExpandedChange = { currencyExpanded = !currencyExpanded }
+                ) {
+                    OutlinedTextField(
+                        value = "${Currencies.find(currency).symbol} $currency",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Currency") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = currencyExpanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = currencyExpanded,
+                        onDismissRequest = { currencyExpanded = false }
+                    ) {
+                        Currencies.SUPPORTED.forEach { cur ->
+                            DropdownMenuItem(
+                                text = { Text("${cur.symbol} ${cur.code} — ${cur.name}") },
+                                onClick = {
+                                    currency = cur.code
+                                    currencyExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
 
                 OutlinedTextField(
                     value = merchant,
@@ -50,30 +89,30 @@ fun AddTransactionDialog(
                 )
 
                 ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = !expanded }
+                    expanded = categoryExpanded,
+                    onExpandedChange = { categoryExpanded = !categoryExpanded }
                 ) {
                     OutlinedTextField(
                         value = selectedCategory?.name ?: "Select Category",
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("Category") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .menuAnchor()
                     )
 
                     ExposedDropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
+                        expanded = categoryExpanded,
+                        onDismissRequest = { categoryExpanded = false }
                     ) {
                         categories.forEach { category ->
                             DropdownMenuItem(
                                 text = { Text(category.name) },
                                 onClick = {
                                     selectedCategory = category
-                                    expanded = false
+                                    categoryExpanded = false
                                 }
                             )
                         }
@@ -86,7 +125,7 @@ fun AddTransactionDialog(
                 onClick = {
                     val amountDouble = amount.toDoubleOrNull()
                     if (amountDouble != null && amountDouble > 0 && merchant.isNotBlank() && selectedCategory != null) {
-                        onConfirm(amountDouble, merchant, selectedCategory!!.id)
+                        onConfirm(amountDouble, currency, merchant, selectedCategory!!.id)
                     }
                 },
                 enabled = amount.toDoubleOrNull() != null && merchant.isNotBlank() && selectedCategory != null

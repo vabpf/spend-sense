@@ -9,6 +9,7 @@ import android.service.notification.StatusBarNotification
 import android.util.Log
 import com.spendsense.data.local.dao.RegexPatternDao
 import com.spendsense.data.local.dao.WhitelistedAppDao
+import com.spendsense.domain.model.RegexPattern
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import javax.inject.Inject
@@ -36,6 +37,7 @@ class TransactionNotificationListener : NotificationListenerService() {
         const val EXTRA_MERCHANT = "extra_merchant"
         const val EXTRA_PACKAGE_NAME = "extra_package_name"
         const val EXTRA_APP_NAME = "extra_app_name"
+        const val EXTRA_CURRENCY = "extra_currency"
     }
 
     override fun onCreate() {
@@ -92,7 +94,10 @@ class TransactionNotificationListener : NotificationListenerService() {
         )
 
         // Get regex patterns for this package
-        val patterns = regexPatternDao.getActivePatternsForPackage(packageName)
+        val patterns = regexPatternDao.getActivePatternsForPackage(
+            packageName = packageName,
+            allWhitelistedPackage = RegexPattern.TARGET_ALL_WHITELISTED
+        )
 
         if (patterns.isEmpty()) {
             Log.d(TAG, "No active patterns found for package: $packageName")
@@ -123,10 +128,11 @@ class TransactionNotificationListener : NotificationListenerService() {
 
                             // Get app name
                             val appName = getAppName(packageName)
+                            val currencyCode = patternEntity.currencyCode
 
                             // Trigger the Action Overlay
                             withContext(Dispatchers.Main) {
-                                showActionOverlay(amount, merchant, packageName, appName, rawId)
+                                showActionOverlay(amount, merchant, packageName, appName, rawId, currencyCode)
                             }
 
                             return // Stop after first match
@@ -179,7 +185,8 @@ class TransactionNotificationListener : NotificationListenerService() {
         merchant: String,
         packageName: String,
         appName: String,
-        rawNotificationId: Long
+        rawNotificationId: Long,
+        currency: String
     ) {
         val intent = Intent(ACTION_SHOW_OVERLAY).apply {
             setPackage(this@TransactionNotificationListener.packageName)
@@ -188,6 +195,7 @@ class TransactionNotificationListener : NotificationListenerService() {
             putExtra(EXTRA_PACKAGE_NAME, packageName)
             putExtra(EXTRA_APP_NAME, appName)
             putExtra("extra_raw_notification_id", rawNotificationId)
+            putExtra(EXTRA_CURRENCY, currency)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         sendBroadcast(intent)

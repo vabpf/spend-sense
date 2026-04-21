@@ -9,6 +9,7 @@ data class RegexPatternEntity(
     val id: Long = 0,
     val packageName: String,
     val pattern: String,
+    val currencyCode: String = "USD",
     val isActive: Boolean = true,
     val createdAt: Long = System.currentTimeMillis(),
     val lastUsed: Long? = null,

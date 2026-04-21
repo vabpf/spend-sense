@@ -35,7 +35,9 @@ class RegexPatternRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getActivePatternsForPackage(packageName: String): List<RegexPattern> {
-        return regexPatternDao.getActivePatternsForPackage(packageName).map { it.toDomain() }
+        return regexPatternDao
+            .getActivePatternsForPackage(packageName, RegexPattern.TARGET_ALL_WHITELISTED)
+            .map { it.toDomain() }
     }
 
     override fun getAllPatterns(): Flow<List<RegexPattern>> {
@@ -56,6 +58,7 @@ class RegexPatternRepositoryImpl @Inject constructor(
         id = id,
         packageName = packageName,
         pattern = pattern,
+        currencyCode = currencyCode,
         isActive = isActive
     )
 
@@ -63,6 +66,7 @@ class RegexPatternRepositoryImpl @Inject constructor(
         id = id,
         packageName = packageName,
         pattern = pattern,
+        currencyCode = currencyCode,
         isActive = isActive
     )
 }

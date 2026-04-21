@@ -2,6 +2,7 @@ package com.spendsense.presentation.overlay
 
 data class OverlayState(
     val amount: String = "",
+    val currencyCode: String = "USD",
     val merchant: String = "",
     val selectedCategoryId: Long? = null,
     val sourcePackageName: String = "",

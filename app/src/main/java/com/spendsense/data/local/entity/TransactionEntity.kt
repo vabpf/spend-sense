@@ -8,6 +8,7 @@ data class TransactionEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val amount: Double,
+    val currencyCode: String = "USD",
     val merchant: String,
     val categoryId: Long,
     val timestamp: Long,

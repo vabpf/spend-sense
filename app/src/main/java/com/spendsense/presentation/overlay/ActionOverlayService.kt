@@ -1,3 +1,4 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
 package com.spendsense.presentation.overlay
 
 import android.annotation.SuppressLint
@@ -43,7 +44,9 @@ import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.spendsense.data.service.TransactionNotificationListener
 import com.spendsense.domain.model.Category
+import com.spendsense.presentation.theme.GlassSurface
 import com.spendsense.presentation.theme.SpendSenseTheme
+import com.spendsense.presentation.util.glassEffect
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -81,8 +84,9 @@ class ActionOverlayService : Service(), ViewModelStoreOwner, LifecycleOwner, Sav
                 val packageName = intent.getStringExtra(TransactionNotificationListener.EXTRA_PACKAGE_NAME) ?: ""
                 val appName = intent.getStringExtra(TransactionNotificationListener.EXTRA_APP_NAME) ?: ""
                 val rawNotificationId = intent.getLongExtra("extra_raw_notification_id", -1L)
-                
-                showOverlay(amount, merchant, packageName, appName, rawNotificationId)
+                val currency = intent.getStringExtra(TransactionNotificationListener.EXTRA_CURRENCY) ?: "USD"
+
+                showOverlay(amount, merchant, packageName, appName, rawNotificationId, currency)
             }
 
         }
@@ -122,7 +126,7 @@ class ActionOverlayService : Service(), ViewModelStoreOwner, LifecycleOwner, Sav
         return START_STICKY
     }
 
-    private fun showOverlay(amount: Double, merchant: String, packageName: String, appName: String, rawNotificationId: Long) {
+    private fun showOverlay(amount: Double, merchant: String, packageName: String, appName: String, rawNotificationId: Long, currency: String) {
         // Check permission
         if (!canDrawOverlays()) {
             Log.e(TAG, "Cannot draw overlays - permission not granted")
@@ -134,7 +138,7 @@ class ActionOverlayService : Service(), ViewModelStoreOwner, LifecycleOwner, Sav
 
         val viewModel = viewModelFactory.get()
         currentOverlayViewModel = viewModel
-        viewModel.initialize(amount, merchant, packageName, appName, rawNotificationId)
+        viewModel.initialize(amount, merchant, packageName, appName, rawNotificationId, currency)
 
 
         // Create ComposeView
@@ -254,9 +258,15 @@ fun OverlayContent(
     Surface(
         modifier = Modifier
             .fillMaxWidth(0.9f)
+            .glassEffect(
+                shape = RoundedCornerShape(16.dp),
+                containerColor = GlassSurface.copy(alpha = 0.85f),
+                borderAlpha = 0.25f
+            )
             .padding(16.dp),
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surface,
+        color = Color.Transparent,
+        contentColor = MaterialTheme.colorScheme.onSurface,
         tonalElevation = 8.dp,
         shadowElevation = 8.dp
     ) {
@@ -281,17 +291,28 @@ fun OverlayContent(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Amount Display
-            OutlinedTextField(
-                value = state.amount,
-                onValueChange = { viewModel.updateAmount(it) },
-                label = { Text("Amount") },
-                leadingIcon = { Text("$", style = MaterialTheme.typography.titleLarge) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                isError = !state.isAmountValid && state.amount.isNotBlank(),
+            // Amount Display with Currency Selector
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                textStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
-            )
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CurrencyDropdown(
+                    selectedCurrency = state.currencyCode,
+                    onCurrencySelected = { viewModel.updateCurrency(it) },
+                    modifier = Modifier.width(100.dp)
+                )
+
+                OutlinedTextField(
+                    value = state.amount,
+                    onValueChange = { viewModel.updateAmount(it) },
+                    label = { Text("Amount") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    isError = !state.isAmountValid && state.amount.isNotBlank(),
+                    modifier = Modifier.weight(1f),
+                    textStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                )
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -401,6 +422,47 @@ fun CategoryGrid(
                 repeat(4 - rowCategories.size) {
                     Spacer(modifier = Modifier.weight(1f))
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun CurrencyDropdown(
+    selectedCurrency: String,
+    onCurrencySelected: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val currency = com.spendsense.data.local.Currencies.find(selectedCurrency)
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = !expanded },
+        modifier = modifier
+    ) {
+        OutlinedTextField(
+            value = "${currency.symbol} $selectedCurrency",
+            onValueChange = {},
+            readOnly = true,
+            textStyle = MaterialTheme.typography.bodyMedium,
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier.menuAnchor(),
+            singleLine = true
+        )
+
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            com.spendsense.data.local.Currencies.SUPPORTED.forEach { cur ->
+                DropdownMenuItem(
+                    text = { Text("${cur.symbol} ${cur.code} — ${cur.name}") },
+                    onClick = {
+                        onCurrencySelected(cur.code)
+                        expanded = false
+                    }
+                )
             }
         }
     }
