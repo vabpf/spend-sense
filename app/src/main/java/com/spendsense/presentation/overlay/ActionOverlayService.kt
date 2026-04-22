@@ -259,12 +259,12 @@ fun OverlayContent(
         modifier = Modifier
             .fillMaxWidth(0.9f)
             .glassEffect(
-                shape = RoundedCornerShape(16.dp),
+                shape = MaterialTheme.shapes.extraLarge,
                 containerColor = GlassSurface.copy(alpha = 0.85f),
                 borderAlpha = 0.25f
             )
             .padding(16.dp),
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.extraLarge,
         color = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onSurface,
         tonalElevation = 8.dp,
@@ -483,7 +483,7 @@ fun CategoryItem(
 
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(MaterialTheme.shapes.medium)
             .background(backgroundColor)
             .clickable { onSelected() }
             .padding(8.dp),

@@ -24,6 +24,7 @@ import com.spendsense.presentation.util.availableColors
 import com.spendsense.presentation.util.availableIcons
 import com.spendsense.presentation.util.getCategoryIcon
 import com.spendsense.presentation.util.parseColor
+import com.spendsense.presentation.util.SpendSenseTopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,16 +37,10 @@ fun CategoriesScreen(
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
-            TopAppBar(
-                title = { Text("Categories") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = GlassSurface
-                ),
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                }
+            SpendSenseTopBar(
+                title = "Categories",
+                onNavigationClick = onNavigateBack,
+                navigationIcon = Icons.Default.ArrowBack
             )
         },
         floatingActionButton = {
@@ -57,19 +52,27 @@ fun CategoriesScreen(
             }
         }
     ) { padding ->
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(bottom = padding.calculateBottomPadding())
         ) {
-            items(state.categories) { category ->
-                CategoryItem(
-                    category = category,
-                    onEdit = { viewModel.showAddEditDialog(category) },
-                    onDelete = { viewModel.deleteCategory(category) }
-                )
+            Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
+            Spacer(modifier = Modifier.height(72.dp))
+
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(state.categories) { category ->
+                    CategoryItem(
+                        category = category,
+                        onEdit = { viewModel.showAddEditDialog(category) },
+                        onDelete = { viewModel.deleteCategory(category) }
+                    )
+                }
             }
         }
 
@@ -91,6 +94,7 @@ fun CategoryItem(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = GlassSurface,
             contentColor = MaterialTheme.colorScheme.onSurface
@@ -106,7 +110,7 @@ fun CategoryItem(
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .clip(CircleShape)
+                    .clip(MaterialTheme.shapes.small)
                     .background(parseColor(category.colorHex)),
                 contentAlignment = Alignment.Center
             ) {
@@ -175,7 +179,7 @@ fun AddEditCategoryDialog(
                         Box(
                             modifier = Modifier
                                 .size(48.dp)
-                                .clip(CircleShape)
+                                .clip(MaterialTheme.shapes.small)
                                 .background(if (selectedIcon == iconName) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
                                 .clickable { selectedIcon = iconName },
                             contentAlignment = Alignment.Center

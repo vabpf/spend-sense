@@ -18,10 +18,13 @@ fun ChartsScreen(
     modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .padding(bottom = 100.dp),
         contentAlignment = Alignment.Center
     ) {
         Card(
+            shape = MaterialTheme.shapes.medium,
             colors = CardDefaults.cardColors(
                 containerColor = GlassSurface,
                 contentColor = MaterialTheme.colorScheme.onSurface

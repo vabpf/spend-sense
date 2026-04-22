@@ -20,19 +20,11 @@ import com.spendsense.presentation.theme.GlassSurface
 fun Modifier.glassEffect(
     shape: Shape,
     containerColor: Color = GlassSurface.copy(alpha = 0.65f),
-    blurRadius: Dp = 12.dp,
     borderWidth: Dp = 1.dp,
     borderAlpha: Float = 0.2f,
     contentModifier: Modifier = Modifier
 ): Modifier = this
     .clip(shape)
-    .then(
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            Modifier.blur(blurRadius)
-        } else {
-            Modifier
-        }
-    )
     .background(
         brush = Brush.verticalGradient(
             colors = listOf(

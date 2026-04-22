@@ -20,6 +20,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.spendsense.domain.model.RegexPattern
 import com.spendsense.presentation.theme.GlassSurface
 import com.spendsense.data.local.Currencies
+import com.spendsense.presentation.util.SpendSenseTopBar
 
 @Composable
 fun RegexGeneratorScreen(
@@ -48,29 +49,27 @@ fun RegexGeneratorScreen(
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
-            TopAppBar(
-                title = { Text("AI Regex Generator") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = GlassSurface
-                ),
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                }
+            SpendSenseTopBar(
+                title = "AI Regex Generator",
+                onNavigationClick = onNavigateBack,
+                navigationIcon = Icons.Default.ArrowBack
             )
         }
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(bottom = padding.calculateBottomPadding())
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
+            Spacer(modifier = Modifier.height(72.dp))
+
             // Info Card
             Card(
+                shape = MaterialTheme.shapes.medium,
                 colors = CardDefaults.cardColors(
                     containerColor = GlassSurface
                 )
@@ -94,6 +93,7 @@ fun RegexGeneratorScreen(
 
             // Provider Selection
             Card(
+                shape = MaterialTheme.shapes.medium,
                 colors = CardDefaults.cardColors(
                     containerColor = GlassSurface
                 )
@@ -118,6 +118,7 @@ fun RegexGeneratorScreen(
                         Box {
                             OutlinedCard(
                                 onClick = { showProviderSelector = true },
+                                shape = MaterialTheme.shapes.medium,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Row(
@@ -196,6 +197,7 @@ fun RegexGeneratorScreen(
 
             // Input Section
             Card(
+                shape = MaterialTheme.shapes.medium,
                 colors = CardDefaults.cardColors(
                     containerColor = GlassSurface
                 )
@@ -333,6 +335,7 @@ fun RegexGeneratorScreen(
             
             if (displayPattern != null) {
                 Card(
+                    shape = MaterialTheme.shapes.medium,
                     colors = CardDefaults.cardColors(
                         containerColor = GlassSurface
                     )
@@ -350,7 +353,7 @@ fun RegexGeneratorScreen(
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             color = MaterialTheme.colorScheme.surfaceVariant,
-                            shape = RoundedCornerShape(8.dp)
+                            shape = MaterialTheme.shapes.small
                         ) {
                             SelectionContainer {
                                 Text(
@@ -585,7 +588,7 @@ fun TestResultChip(
     Surface(
         modifier = modifier,
         color = GlassSurface,
-        shape = RoundedCornerShape(8.dp)
+        shape = MaterialTheme.shapes.small
     ) {
         Column(
             modifier = Modifier.padding(12.dp)

@@ -63,7 +63,8 @@ fun SpendSenseTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = Typography
+        typography = Typography,
+        shapes = AppShapes
     ) {
         androidx.compose.material3.Surface(
             color = Color.Transparent,

@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.spendsense.presentation.theme.GlassSurface
+import com.spendsense.presentation.util.SpendSenseTopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,94 +33,96 @@ fun WhitelistedAppsScreen(
         containerColor = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onBackground,
         topBar = {
-            TopAppBar(
-                title = { Text("Whitelisted Apps") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = GlassSurface
-                ),
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                }
+            SpendSenseTopBar(
+                title = "Whitelisted Apps",
+                onNavigationClick = onNavigateBack,
+                navigationIcon = Icons.Default.ArrowBack
             )
         }
     ) { padding ->
-        if (state.isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                item {
-                    Text(
-                        "Select the apps you want SpendSense to monitor for transaction notifications.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = padding.calculateBottomPadding())
+        ) {
+            Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
+            Spacer(modifier = Modifier.height(72.dp))
 
-                item {
-                    OutlinedTextField(
-                        value = state.searchQuery,
-                        onValueChange = viewModel::onSearchQueryChanged,
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Search apps") },
-                        placeholder = { Text("Search by app name or package") },
-                        singleLine = true
-                    )
+            if (state.isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
                 }
-
-                if (state.suggestedApps.isNotEmpty()) {
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     item {
                         Text(
-                            text = "Suggested Vietnam Banking Apps",
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.padding(top = 8.dp)
+                            "Select the apps you want SpendSense to monitor for transaction notifications.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 8.dp)
                         )
                     }
 
-                    items(state.suggestedApps) { app ->
+                    item {
+                        OutlinedTextField(
+                            value = state.searchQuery,
+                            onValueChange = viewModel::onSearchQueryChanged,
+                            modifier = Modifier.fillMaxWidth(),
+                            label = { Text("Search apps") },
+                            placeholder = { Text("Search by app name or package") },
+                            singleLine = true
+                        )
+                    }
+
+                    if (state.suggestedApps.isNotEmpty()) {
+                        item {
+                            Text(
+                                text = "Suggested Vietnam Banking Apps",
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+
+                        items(state.suggestedApps) { app ->
+                            AppListItem(
+                                app = app,
+                                onToggle = { isEnabled -> viewModel.toggleApp(app, isEnabled) }
+                            )
+                        }
+
+                        item {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                        }
+                    }
+
+                    item {
+                        Text(
+                            text = "All Installed Apps",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
+
+                    items(nonSuggestedFilteredApps) { app ->
                         AppListItem(
                             app = app,
                             onToggle = { isEnabled -> viewModel.toggleApp(app, isEnabled) }
                         )
                     }
 
-                    item {
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    }
-                }
-
-                item {
-                    Text(
-                        text = "All Installed Apps",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                }
-
-                items(nonSuggestedFilteredApps) { app ->
-                    AppListItem(
-                        app = app,
-                        onToggle = { isEnabled -> viewModel.toggleApp(app, isEnabled) }
-                    )
-                }
-
-                if (nonSuggestedFilteredApps.isEmpty()) {
-                    item {
-                        Text(
-                            text = "No apps match your search.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(vertical = 12.dp)
-                        )
+                    if (nonSuggestedFilteredApps.isEmpty()) {
+                        item {
+                            Text(
+                                text = "No apps match your search.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(vertical = 12.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -134,6 +137,7 @@ fun AppListItem(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = GlassSurface,
             contentColor = MaterialTheme.colorScheme.onSurface

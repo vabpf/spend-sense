@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.spendsense.data.local.entity.AiProviderEntity
 import com.spendsense.presentation.theme.GlassSurface
+import com.spendsense.presentation.util.SpendSenseTopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,16 +27,10 @@ fun AiProvidersScreen(
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
-            TopAppBar(
-                title = { Text("AI Providers") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = GlassSurface
-                ),
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                }
+            SpendSenseTopBar(
+                title = "AI Providers",
+                onNavigationClick = onNavigateBack,
+                navigationIcon = Icons.Default.ArrowBack
             )
         },
         floatingActionButton = {
@@ -47,23 +42,31 @@ fun AiProvidersScreen(
             }
         }
     ) { padding ->
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(bottom = padding.calculateBottomPadding())
         ) {
-            items(state.providerGroups) { group ->
-                ProviderGroupItem(
-                    group = group,
-                    configuredCount = group.models.count { state.providerKeyStatuses[it.id] == true },
-                    onOpen = {
-                        group.models.firstOrNull()?.let { viewModel.onEditProvider(it) }
-                    },
-                    canDelete = !group.isPreset,
-                    onDelete = { viewModel.deleteProviderGroup(group) }
-                )
+            Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
+            Spacer(modifier = Modifier.height(72.dp))
+
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(state.providerGroups) { group ->
+                    ProviderGroupItem(
+                        group = group,
+                        configuredCount = group.models.count { state.providerKeyStatuses[it.id] == true },
+                        onOpen = {
+                            group.models.firstOrNull()?.let { viewModel.onEditProvider(it) }
+                        },
+                        canDelete = !group.isPreset,
+                        onDelete = { viewModel.deleteProviderGroup(group) }
+                    )
+                }
             }
         }
     }
@@ -104,6 +107,7 @@ fun ProviderGroupItem(
     Card(
         onClick = onOpen,
         modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = GlassSurface
         )

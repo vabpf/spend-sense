@@ -74,7 +74,6 @@ class MainActivity : ComponentActivity() {
         setContent {
             SpendSenseTheme {
                 val navController = rememberNavController()
-                val navShape = RoundedCornerShape(28.dp)
 
                 Box(
                     modifier = Modifier
@@ -120,83 +119,68 @@ class MainActivity : ComponentActivity() {
                             val mainScreens = listOf("home", "charts", "settings")
 
                             if (currentDestination?.route in mainScreens) {
-                                Box(
+                                // Sharp icons/text layer
+                                NavigationBar(
+                                    containerColor = Color.Transparent,
+                                    tonalElevation = 0.dp,
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .navigationBarsPadding()
-                                        .padding(horizontal = 20.dp, vertical = 12.dp),
-                                    contentAlignment = Alignment.Center
+                                        .padding(horizontal = 20.dp)
                                 ) {
-                                    Surface(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .glassEffect(
-                                                shape = navShape,
-                                                containerColor = GlassSurface.copy(alpha = 0.58f),
-                                                borderAlpha = 0.3f
-                                            ),
-                                        shape = navShape,
-                                        color = Color.Transparent,
-                                        contentColor = MaterialTheme.colorScheme.onSurface,
-                                        tonalElevation = 14.dp,
-                                        shadowElevation = 18.dp
-                                    ) {
-                                        NavigationBar(
-                                            containerColor = Color.Transparent,
-                                            tonalElevation = 0.dp
-                                        ) {
-                                            NavigationBarItem(
-                                                icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
-                                                label = { Text("Home") },
-                                                selected = currentDestination?.hierarchy?.any { it.route == "home" } == true,
-                                                onClick = {
-                                                    navController.navigate("home") {
-                                                        popUpTo(navController.graph.findStartDestination().id) {
-                                                            saveState = true
-                                                        }
-                                                        launchSingleTop = true
-                                                        restoreState = true
+                                        NavigationBarItem(
+                                            icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
+                                            label = { Text("Home") },
+                                            selected = currentDestination?.hierarchy?.any { it.route == "home" } == true,
+                                            onClick = {
+                                                navController.navigate("home") {
+                                                    popUpTo(navController.graph.findStartDestination().id) {
+                                                        saveState = true
                                                     }
+                                                    launchSingleTop = true
+                                                    restoreState = true
                                                 }
-                                            )
-                                            NavigationBarItem(
-                                                icon = { Icon(Icons.Default.BarChart, contentDescription = "Charts") },
-                                                label = { Text("Charts") },
-                                                selected = currentDestination?.hierarchy?.any { it.route == "charts" } == true,
-                                                onClick = {
-                                                    navController.navigate("charts") {
-                                                        popUpTo(navController.graph.findStartDestination().id) {
-                                                            saveState = true
-                                                        }
-                                                        launchSingleTop = true
-                                                        restoreState = true
+                                            }
+                                        )
+                                        NavigationBarItem(
+                                            icon = { Icon(Icons.Default.BarChart, contentDescription = "Charts") },
+                                            label = { Text("Charts") },
+                                            selected = currentDestination?.hierarchy?.any { it.route == "charts" } == true,
+                                            onClick = {
+                                                navController.navigate("charts") {
+                                                    popUpTo(navController.graph.findStartDestination().id) {
+                                                        saveState = true
                                                     }
+                                                    launchSingleTop = true
+                                                    restoreState = true
                                                 }
-                                            )
-                                            NavigationBarItem(
-                                                icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
-                                                label = { Text("Settings") },
-                                                selected = currentDestination?.hierarchy?.any { it.route == "settings" } == true,
-                                                onClick = {
-                                                    navController.navigate("settings") {
-                                                        popUpTo(navController.graph.findStartDestination().id) {
-                                                            saveState = true
-                                                        }
-                                                        launchSingleTop = true
-                                                        restoreState = true
+                                            }
+                                        )
+                                        NavigationBarItem(
+                                            icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
+                                            label = { Text("Settings") },
+                                            selected = currentDestination?.hierarchy?.any { it.route == "settings" } == true,
+                                            onClick = {
+                                                navController.navigate("settings") {
+                                                    popUpTo(navController.graph.findStartDestination().id) {
+                                                        saveState = true
                                                     }
+                                                    launchSingleTop = true
+                                                    restoreState = true
                                                 }
-                                            )
-                                        }
+                                            }
+                                        )
                                     }
                                 }
                             }
-                        }
-                    ) { innerPadding ->
+                        ) { innerPadding ->
                         NavHost(
                             navController = navController,
                             startDestination = "home",
-                            modifier = Modifier.padding(innerPadding)
+                            modifier = Modifier.padding(
+                                top = innerPadding.calculateTopPadding(),
+                                bottom = 0.dp // Allow content under bottom bar
+                            )
                         ) {
                             composable("home") {
                                 HomeScreen(

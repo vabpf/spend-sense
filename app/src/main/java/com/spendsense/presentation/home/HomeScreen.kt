@@ -28,6 +28,7 @@ import com.spendsense.data.local.entity.RawNotificationEntity
 import com.spendsense.domain.model.Category
 import com.spendsense.domain.model.Transaction
 import com.spendsense.presentation.theme.GlassSurface
+import com.spendsense.presentation.util.SpendSenseTopBar
 import com.spendsense.presentation.util.glassEffect
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -64,11 +65,8 @@ fun HomeScreen(
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
-            TopAppBar(
-                title = { Text("SpendSense") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = GlassSurface
-                ),
+            SpendSenseTopBar(
+                title = "SpendSense",
                 actions = {
                     IconButton(onClick = { onNavigateToRegexGenerator(null) }) {
                         Icon(Icons.Default.AutoAwesome, contentDescription = "Regex Generator")
@@ -88,8 +86,11 @@ fun HomeScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(bottom = padding.calculateBottomPadding())
         ) {
+            Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
+            Spacer(modifier = Modifier.height(72.dp))
+            
             if (pendingNotifications.isNotEmpty()) {
                 Text(
                     text = "Notification Inbox (${pendingNotifications.size})",
@@ -146,7 +147,7 @@ fun HomeScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier.weight(1f).fillMaxWidth(),
-                    contentPadding = PaddingValues(16.dp),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 100.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(
@@ -234,6 +235,7 @@ fun InboxItem(
 ) {
     Card(
         modifier = Modifier.width(280.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = GlassSurface
         )
@@ -362,12 +364,12 @@ fun TransactionItem(
         modifier = Modifier
             .fillMaxWidth()
             .glassEffect(
-                shape = CardDefaults.shape,
+                shape = MaterialTheme.shapes.medium,
                 containerColor = GlassSurface,
-                blurRadius = 0.dp, // No blur for list items for performance
                 borderAlpha = 0.15f,
                 contentModifier = Modifier.clickable(onClick = onClick)
             ),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = Color.Transparent,
             contentColor = MaterialTheme.colorScheme.onSurface

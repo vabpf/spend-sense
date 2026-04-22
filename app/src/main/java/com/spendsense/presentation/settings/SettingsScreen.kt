@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.spendsense.data.local.Currencies
 import com.spendsense.presentation.theme.GlassSurface
+import com.spendsense.presentation.util.SpendSenseTopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,27 +37,24 @@ fun SettingsScreen(
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
-            TopAppBar(
-                title = { Text("Settings") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = GlassSurface
-                ),
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                }
+            SpendSenseTopBar(
+                title = "Settings",
+                onNavigationClick = onNavigateBack,
+                navigationIcon = Icons.Default.ArrowBack
             )
         }
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(bottom = padding.calculateBottomPadding())
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
+                .padding(start = 16.dp, end = 16.dp, bottom = 100.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
+            Spacer(modifier = Modifier.height(72.dp))
+
             // Permissions Section
             Text(
                 text = "Permissions",
@@ -64,6 +62,7 @@ fun SettingsScreen(
             )
 
             Card(
+                shape = MaterialTheme.shapes.medium,
                 colors = CardDefaults.cardColors(
                     containerColor = GlassSurface,
                     contentColor = MaterialTheme.colorScheme.onSurface
@@ -103,6 +102,7 @@ fun SettingsScreen(
             )
 
             Card(
+                shape = MaterialTheme.shapes.medium,
                 colors = CardDefaults.cardColors(
                     containerColor = GlassSurface,
                     contentColor = MaterialTheme.colorScheme.onSurface
@@ -144,6 +144,7 @@ fun SettingsScreen(
             )
 
             Card(
+                shape = MaterialTheme.shapes.medium,
                 colors = CardDefaults.cardColors(
                     containerColor = GlassSurface,
                     contentColor = MaterialTheme.colorScheme.onSurface
@@ -194,6 +195,7 @@ fun SettingsScreen(
             )
 
             Card(
+                shape = MaterialTheme.shapes.medium,
                 colors = CardDefaults.cardColors(
                     containerColor = GlassSurface,
                     contentColor = MaterialTheme.colorScheme.onSurface
