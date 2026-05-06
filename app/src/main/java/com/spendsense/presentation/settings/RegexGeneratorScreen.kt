@@ -21,6 +21,7 @@ import com.spendsense.domain.model.RegexPattern
 import com.spendsense.presentation.theme.GlassSurface
 import com.spendsense.data.local.Currencies
 import com.spendsense.presentation.util.SpendSenseTopBar
+import com.spendsense.presentation.util.glassEffect
 
 @Composable
 fun RegexGeneratorScreen(
@@ -69,9 +70,16 @@ fun RegexGeneratorScreen(
 
             // Info Card
             Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .glassEffect(
+                        shape = MaterialTheme.shapes.large,
+                        containerColor = GlassSurface.copy(alpha = 0.8f),
+                        borderAlpha = 0.24f
+                    ),
                 shape = MaterialTheme.shapes.medium,
                 colors = CardDefaults.cardColors(
-                    containerColor = GlassSurface
+                    containerColor = Color.Transparent
                 )
             ) {
                 Row(
@@ -93,9 +101,16 @@ fun RegexGeneratorScreen(
 
             // Provider Selection
             Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .glassEffect(
+                        shape = MaterialTheme.shapes.large,
+                        containerColor = GlassSurface.copy(alpha = 0.8f),
+                        borderAlpha = 0.24f
+                    ),
                 shape = MaterialTheme.shapes.medium,
                 colors = CardDefaults.cardColors(
-                    containerColor = GlassSurface
+                    containerColor = Color.Transparent
                 )
             ) {
                 Column(
@@ -103,7 +118,7 @@ fun RegexGeneratorScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "configure models",
+                        text = "Configure Models",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -158,7 +173,7 @@ fun RegexGeneratorScreen(
                                         onClick = {},
                                         enabled = false
                                     )
-                                    Divider()
+                                    HorizontalDivider()
 
                                     group.models.forEach { model ->
                                         val isSelected = state.selectedProvider?.id == model.id
@@ -186,7 +201,7 @@ fun RegexGeneratorScreen(
                                     }
 
                                     if (index != groupedProviders.lastIndex) {
-                                        Divider()
+                                        HorizontalDivider()
                                     }
                                 }
                             }
@@ -197,9 +212,16 @@ fun RegexGeneratorScreen(
 
             // Input Section
             Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .glassEffect(
+                        shape = MaterialTheme.shapes.large,
+                        containerColor = GlassSurface.copy(alpha = 0.8f),
+                        borderAlpha = 0.24f
+                    ),
                 shape = MaterialTheme.shapes.medium,
                 colors = CardDefaults.cardColors(
-                    containerColor = GlassSurface
+                    containerColor = Color.Transparent
                 )
             ) {
                 Column(
@@ -235,7 +257,7 @@ fun RegexGeneratorScreen(
                         maxLines = 6
                     )
 
-                    Divider()
+                    HorizontalDivider()
 
                     Text(
                         text = "Regex Pattern (Manual or AI)",
@@ -366,7 +388,7 @@ fun RegexGeneratorScreen(
                         }
 
                         if (state.extractedAmount != null && state.extractedMerchant != null) {
-                            Divider()
+                            HorizontalDivider()
 
                             Text(
                                 text = "Test Results",
@@ -391,7 +413,7 @@ fun RegexGeneratorScreen(
                             }
                         }
 
-                        Divider()
+                        HorizontalDivider()
 
                         // Save Section
                         Text(

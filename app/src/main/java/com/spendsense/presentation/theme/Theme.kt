@@ -12,31 +12,54 @@ import androidx.compose.ui.platform.LocalView
 import android.os.Build
 import androidx.core.view.WindowCompat
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// CYBER-PREMIUM THEME
+// Fusion of Glassmorphism, Neo-Dark Mode, and High-Contrast Minimalism
+// ═══════════════════════════════════════════════════════════════════════════════
+
 private val DarkColorScheme = darkColorScheme(
-    primary = ElectricIndigo,
-    onPrimary = TextPrimary,
-    primaryContainer = ElectricIndigo.copy(alpha = 0.2f),
-    onPrimaryContainer = TextPrimary,
-    secondary = MintGreen,
-    onSecondary = TextPrimary,
-    secondaryContainer = MintGreen.copy(alpha = 0.15f),
-    onSecondaryContainer = TextPrimary,
-    tertiary = Amber,
-    onTertiary = TextPrimary,
-    tertiaryContainer = Amber.copy(alpha = 0.15f),
-    onTertiaryContainer = TextPrimary,
-    error = CoralRed,
-    onError = TextPrimary,
-    errorContainer = CoralRed.copy(alpha = 0.2f),
-    onErrorContainer = TextPrimary,
+    // Primary - Cyber Blue (sole action color)
+    primary = CyberBlue,
+    onPrimary = VoidBlack,
+    primaryContainer = CyberBlue.copy(alpha = 0.15f),
+    onPrimaryContainer = CyberBlue,
+
+    // Secondary - Neon Mint (positive/income)
+    secondary = NeonMint,
+    onSecondary = VoidBlack,
+    secondaryContainer = NeonMint.copy(alpha = 0.12f),
+    onSecondaryContainer = NeonMint,
+
+    // Tertiary - Neon Violets
+    tertiary = NeonViolet,
+    onTertiary = VoidBlack,
+    tertiaryContainer = NeonViolet.copy(alpha = 0.12f),
+    onTertiaryContainer = NeonViolet,
+
+    // Error - Coral Red
+    error = ErrorCoral,
+    onError = Color.White,
+    errorContainer = ErrorCoral.copy(alpha = 0.12f),
+    onErrorContainer = ErrorCoral,
+
+    // Background - Deep Charcoal
     background = DeepCharcoal,
     onBackground = TextPrimary,
+
+    // Surface layers
     surface = DarkSurface,
     onSurface = TextPrimary,
-    surfaceVariant = DarkSurface.copy(alpha = 0.7f),
+    surfaceVariant = ElevatedSurface,
     onSurfaceVariant = TextSecondary,
-    outline = TextSecondary.copy(alpha = 0.5f),
-    outlineVariant = TextSecondary.copy(alpha = 0.3f),
+
+    // Outlines & borders
+    outline = BorderSubtle,
+    outlineVariant = BorderMedium,
+
+    // Inverse for any inverted content
+    inverseSurface = TextPrimary,
+    inverseOnSurface = DeepCharcoal,
+    inversePrimary = CyberBlueDark,
 )
 
 @Composable
@@ -44,6 +67,7 @@ fun SpendSenseTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
+    // Only dark theme for Cyber-Premium aesthetic
     val colorScheme = DarkColorScheme
 
     val view = LocalView.current

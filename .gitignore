@@ -62,3 +62,4 @@ vcs.xml
 .DS_Store
 Thumbs.db
 .worktrees/
+.gitnexus

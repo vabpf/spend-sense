@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.spendsense.presentation.theme.GlassSurface
 import com.spendsense.presentation.util.SpendSenseTopBar
+import com.spendsense.presentation.util.glassEffect
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -136,10 +137,16 @@ fun AppListItem(
     onToggle: (Boolean) -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .glassEffect(
+                shape = MaterialTheme.shapes.large,
+                containerColor = GlassSurface.copy(alpha = 0.8f),
+                borderAlpha = 0.24f
+            ),
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
-            containerColor = GlassSurface,
+            containerColor = Color.Transparent,
             contentColor = MaterialTheme.colorScheme.onSurface
         )
     ) {

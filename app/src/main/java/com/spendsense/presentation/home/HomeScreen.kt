@@ -45,6 +45,7 @@ fun HomeScreen(
     val categories by viewModel.categories.collectAsState()
     val pendingNotifications by viewModel.pendingNotifications.collectAsState()
     val defaultCurrency by viewModel.defaultCurrency.collectAsState()
+    val totalSpending = remember(transactions) { transactions.sumOf { it.amount } }
     
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -77,7 +78,8 @@ fun HomeScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { isAddingTransaction = true },
-                containerColor = GlassSurface
+                containerColor = GlassSurface,
+                contentColor = MaterialTheme.colorScheme.onSurface
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Transaction")
             }
@@ -90,6 +92,14 @@ fun HomeScreen(
         ) {
             Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
             Spacer(modifier = Modifier.height(72.dp))
+
+            HomeSummaryCard(
+                totalSpending = totalSpending,
+                transactionCount = transactions.size,
+                pendingCount = pendingNotifications.size,
+                defaultCurrency = defaultCurrency,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
             
             if (pendingNotifications.isNotEmpty()) {
                 Text(
@@ -115,7 +125,7 @@ fun HomeScreen(
                     }
                 }
                 
-                Divider(modifier = Modifier.padding(vertical = 8.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp))
             }
 
             if (transactions.isEmpty()) {
@@ -150,6 +160,13 @@ fun HomeScreen(
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 100.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    item {
+                        Text(
+                            text = "Recent Transactions",
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                    }
                     items(
                         items = transactions,
                         key = { it.id }
@@ -228,6 +245,58 @@ fun HomeScreen(
 }
 
 @Composable
+private fun HomeSummaryCard(
+    totalSpending: Double,
+    transactionCount: Int,
+    pendingCount: Int,
+    defaultCurrency: String,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .glassEffect(
+                shape = MaterialTheme.shapes.large,
+                containerColor = GlassSurface.copy(alpha = 0.82f),
+                borderAlpha = 0.24f
+            ),
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "Today at a glance",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = formatCurrency(totalSpending, defaultCurrency),
+                style = MaterialTheme.typography.displayMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "$transactionCount entries",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "$pendingCount pending inbox",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun InboxItem(
     notification: RawNotificationEntity,
     onProcess: () -> Unit,
@@ -251,8 +320,8 @@ fun InboxItem(
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSecondaryContainer
                 )
-                IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
-                    Icon(Icons.Default.Close, contentDescription = "Dismiss", modifier = Modifier.size(16.dp))
+                IconButton(onClick = onDelete, modifier = Modifier.size(44.dp)) {
+                    Icon(Icons.Default.Close, contentDescription = "Dismiss", modifier = Modifier.size(18.dp))
                 }
             }
             Spacer(modifier = Modifier.height(4.dp))
@@ -437,4 +506,3 @@ private fun formatDate(timestamp: Long): String {
     val sdf = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
     return sdf.format(Date(timestamp))
 }
-

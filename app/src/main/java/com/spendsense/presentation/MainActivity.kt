@@ -20,11 +20,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -46,9 +45,10 @@ import com.spendsense.presentation.overlay.ActionOverlayService
 import com.spendsense.presentation.settings.AiProvidersScreen
 import com.spendsense.presentation.settings.RegexGeneratorScreen
 import com.spendsense.presentation.settings.SettingsScreen
+import com.spendsense.presentation.theme.CyberBlue
+import com.spendsense.presentation.theme.DeepCharcoal
 import com.spendsense.presentation.theme.GlassSurface
-import com.spendsense.presentation.theme.HoloCyan
-import com.spendsense.presentation.theme.HoloRose
+import com.spendsense.presentation.theme.NeonRose
 import com.spendsense.presentation.theme.SpendSenseTheme
 import com.spendsense.presentation.util.glassEffect
 import com.spendsense.presentation.whitelistedapps.WhitelistedAppsScreen
@@ -79,11 +79,11 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier
                         .fillMaxSize()
                         .background(
-                            brush = Brush.linearGradient(
-                                listOf(
-                                    Color(0xFF0F111A),
-                                    Color(0xFF171629),
-                                    Color(0xFF121A24)
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    DeepCharcoal,
+                                    Color(0xFF0B0B12),
+                                    Color(0xFF08080D)
                                 )
                             )
                         )
@@ -93,7 +93,7 @@ class MainActivity : ComponentActivity() {
                             .fillMaxSize()
                             .background(
                                 brush = Brush.radialGradient(
-                                    colors = listOf(HoloCyan.copy(alpha = 0.24f), Color.Transparent),
+                                    colors = listOf(CyberBlue.copy(alpha = 0.15f), Color.Transparent),
                                     radius = 900f
                                 )
                             )
@@ -103,7 +103,7 @@ class MainActivity : ComponentActivity() {
                             .fillMaxSize()
                             .background(
                                 brush = Brush.radialGradient(
-                                    colors = listOf(HoloRose.copy(alpha = 0.2f), Color.Transparent),
+                                    colors = listOf(NeonRose.copy(alpha = 0.1f), Color.Transparent),
                                     radius = 1100f
                                 )
                             )
@@ -119,19 +119,32 @@ class MainActivity : ComponentActivity() {
                             val mainScreens = listOf("home", "charts", "settings")
 
                             if (currentDestination?.route in mainScreens) {
-                                // Sharp icons/text layer
-                                NavigationBar(
-                                    containerColor = Color.Transparent,
-                                    tonalElevation = 0.dp,
+                                Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .navigationBarsPadding()
                                         .padding(horizontal = 20.dp)
+                                        .glassEffect(
+                                            shape = RoundedCornerShape(28.dp),
+                                            containerColor = GlassSurface.copy(alpha = 0.92f),
+                                            borderAlpha = 0.18f
+                                        )
                                 ) {
+                                    NavigationBar(
+                                        containerColor = Color.Transparent,
+                                        tonalElevation = 0.dp
+                                    ) {
                                         NavigationBarItem(
                                             icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
                                             label = { Text("Home") },
                                             selected = currentDestination?.hierarchy?.any { it.route == "home" } == true,
+                                            colors = NavigationBarItemDefaults.colors(
+                                                selectedIconColor = CyberBlue,
+                                                selectedTextColor = CyberBlue,
+                                                indicatorColor = CyberBlue.copy(alpha = 0.15f),
+                                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                            ),
                                             onClick = {
                                                 navController.navigate("home") {
                                                     popUpTo(navController.graph.findStartDestination().id) {
@@ -146,6 +159,13 @@ class MainActivity : ComponentActivity() {
                                             icon = { Icon(Icons.Default.BarChart, contentDescription = "Charts") },
                                             label = { Text("Charts") },
                                             selected = currentDestination?.hierarchy?.any { it.route == "charts" } == true,
+                                            colors = NavigationBarItemDefaults.colors(
+                                                selectedIconColor = CyberBlue,
+                                                selectedTextColor = CyberBlue,
+                                                indicatorColor = CyberBlue.copy(alpha = 0.15f),
+                                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                            ),
                                             onClick = {
                                                 navController.navigate("charts") {
                                                     popUpTo(navController.graph.findStartDestination().id) {
@@ -160,6 +180,13 @@ class MainActivity : ComponentActivity() {
                                             icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
                                             label = { Text("Settings") },
                                             selected = currentDestination?.hierarchy?.any { it.route == "settings" } == true,
+                                            colors = NavigationBarItemDefaults.colors(
+                                                selectedIconColor = CyberBlue,
+                                                selectedTextColor = CyberBlue,
+                                                indicatorColor = CyberBlue.copy(alpha = 0.15f),
+                                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                            ),
                                             onClick = {
                                                 navController.navigate("settings") {
                                                     popUpTo(navController.graph.findStartDestination().id) {
@@ -173,6 +200,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             }
+                        }
                         ) { innerPadding ->
                         NavHost(
                             navController = navController,

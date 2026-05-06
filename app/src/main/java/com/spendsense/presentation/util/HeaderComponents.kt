@@ -10,9 +10,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.spendsense.presentation.theme.CyberBlue
+import com.spendsense.presentation.theme.DeepCharcoal
 import com.spendsense.presentation.theme.GlassSurface
-import com.spendsense.presentation.theme.HoloCyan
-import com.spendsense.presentation.theme.HoloRose
+import com.spendsense.presentation.theme.NeonViolet
+import com.spendsense.presentation.theme.TextPrimary
 
 @Composable
 fun SpendSenseTopBar(
@@ -25,17 +27,21 @@ fun SpendSenseTopBar(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(start = 16.dp, top = 4.dp, end = 16.dp, bottom = 0.dp)
-            .glassEffect(
-                shape = MaterialTheme.shapes.medium,
-                containerColor = GlassSurface.copy(alpha = 0.8f),
-                borderAlpha = 0.3f
-            )
+            .padding(start = 16.dp, top = 8.dp, end = 16.dp)
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        GlassSurface.copy(alpha = 0.88f),
+                        GlassSurface.copy(alpha = 0.72f)
+                    )
+                )
+            ),
+        contentAlignment = Alignment.Center
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 6.dp),
+                .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -48,21 +54,31 @@ fun SpendSenseTopBar(
                     )
                 }
             } else {
-                // Cyberpunk Logo-ish icon
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
-                        .glassEffect(
-                            shape = MaterialTheme.shapes.small,
-                            containerColor = HoloCyan.copy(alpha = 0.15f),
-                            borderAlpha = 0.4f
+                        .size(34.dp)
+                        .background(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    CyberBlue.copy(alpha = 0.2f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                        .background(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.1f),
+                                    Color.Transparent
+                                )
+                            )
                         ),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "S",
+                        text = "SS",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = HoloCyan
+                        color = CyberBlue.copy(alpha = 0.95f)
                     )
                 }
                 Spacer(modifier = Modifier.width(4.dp))
@@ -71,9 +87,9 @@ fun SpendSenseTopBar(
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleLarge.copy(
-                    fontWeight = FontWeight.ExtraBold,
+                    fontWeight = FontWeight.Bold,
                     brush = Brush.linearGradient(
-                        colors = listOf(HoloCyan, HoloRose)
+                        colors = listOf(TextPrimary, TextPrimary.copy(alpha = 0.85f))
                     )
                 ),
                 modifier = Modifier.weight(1f)
@@ -84,19 +100,18 @@ fun SpendSenseTopBar(
                 content = actions
             )
         }
-        
-        // A subtle holographic line at the bottom
+
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .fillMaxWidth(0.6f)
-                .height(2.dp)
+                .fillMaxWidth(0.5f)
+                .height(1.dp)
                 .background(
                     brush = Brush.horizontalGradient(
                         colors = listOf(
                             Color.Transparent,
-                            HoloCyan.copy(alpha = 0.6f),
-                            HoloRose.copy(alpha = 0.6f),
+                            CyberBlue.copy(alpha = 0.5f),
+                            NeonViolet.copy(alpha = 0.4f),
                             Color.Transparent
                         )
                     )

@@ -25,6 +25,7 @@ import com.spendsense.presentation.util.availableIcons
 import com.spendsense.presentation.util.getCategoryIcon
 import com.spendsense.presentation.util.parseColor
 import com.spendsense.presentation.util.SpendSenseTopBar
+import com.spendsense.presentation.util.glassEffect
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,7 +47,8 @@ fun CategoriesScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { viewModel.showAddEditDialog(null) },
-                containerColor = GlassSurface
+                containerColor = GlassSurface,
+                contentColor = MaterialTheme.colorScheme.onSurface
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Category")
             }
@@ -93,10 +95,16 @@ fun CategoryItem(
     onDelete: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .glassEffect(
+                shape = MaterialTheme.shapes.large,
+                containerColor = GlassSurface.copy(alpha = 0.8f),
+                borderAlpha = 0.24f
+            ),
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
-            containerColor = GlassSurface,
+            containerColor = Color.Transparent,
             contentColor = MaterialTheme.colorScheme.onSurface
         ),
         onClick = onEdit
@@ -233,4 +241,3 @@ fun AddEditCategoryDialog(
         }
     )
 }
-

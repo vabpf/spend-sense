@@ -19,6 +19,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.spendsense.data.local.Currencies
 import com.spendsense.presentation.theme.GlassSurface
 import com.spendsense.presentation.util.SpendSenseTopBar
+import com.spendsense.presentation.util.glassEffect
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,6 +56,12 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
             Spacer(modifier = Modifier.height(72.dp))
 
+            Text(
+                text = "Customize capture, AI, and defaults",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
             // Permissions Section
             Text(
                 text = "Permissions",
@@ -62,9 +69,16 @@ fun SettingsScreen(
             )
 
             Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .glassEffect(
+                        shape = MaterialTheme.shapes.large,
+                        containerColor = GlassSurface.copy(alpha = 0.8f),
+                        borderAlpha = 0.24f
+                    ),
                 shape = MaterialTheme.shapes.medium,
                 colors = CardDefaults.cardColors(
-                    containerColor = GlassSurface,
+                    containerColor = Color.Transparent,
                     contentColor = MaterialTheme.colorScheme.onSurface
                 )
             ) {
@@ -78,7 +92,7 @@ fun SettingsScreen(
                         }
                     )
                     
-                    Divider()
+                    HorizontalDivider()
                     
                     SettingsItem(
                         icon = Icons.Default.Layers,
@@ -102,9 +116,16 @@ fun SettingsScreen(
             )
 
             Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .glassEffect(
+                        shape = MaterialTheme.shapes.large,
+                        containerColor = GlassSurface.copy(alpha = 0.8f),
+                        borderAlpha = 0.24f
+                    ),
                 shape = MaterialTheme.shapes.medium,
                 colors = CardDefaults.cardColors(
-                    containerColor = GlassSurface,
+                    containerColor = Color.Transparent,
                     contentColor = MaterialTheme.colorScheme.onSurface
                 )
             ) {
@@ -144,9 +165,16 @@ fun SettingsScreen(
             )
 
             Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .glassEffect(
+                        shape = MaterialTheme.shapes.large,
+                        containerColor = GlassSurface.copy(alpha = 0.8f),
+                        borderAlpha = 0.24f
+                    ),
                 shape = MaterialTheme.shapes.medium,
                 colors = CardDefaults.cardColors(
-                    containerColor = GlassSurface,
+                    containerColor = Color.Transparent,
                     contentColor = MaterialTheme.colorScheme.onSurface
                 )
             ) {
@@ -158,7 +186,7 @@ fun SettingsScreen(
                         onClick = onNavigateToRegexGenerator
                     )
                     
-                    Divider()
+                    HorizontalDivider()
 
                     SettingsItem(
                         icon = Icons.Default.SmartToy,
@@ -167,7 +195,7 @@ fun SettingsScreen(
                         onClick = onNavigateToAiProviders
                     )
 
-                    Divider()
+                    HorizontalDivider()
 
                     
                     SettingsItem(
@@ -177,7 +205,7 @@ fun SettingsScreen(
                         onClick = onNavigateToWhitelistedApps
                     )
                     
-                    Divider()
+                    HorizontalDivider()
                     
                     SettingsItem(
                         icon = Icons.Default.Category,
@@ -195,9 +223,16 @@ fun SettingsScreen(
             )
 
             Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .glassEffect(
+                        shape = MaterialTheme.shapes.large,
+                        containerColor = GlassSurface.copy(alpha = 0.8f),
+                        borderAlpha = 0.24f
+                    ),
                 shape = MaterialTheme.shapes.medium,
                 colors = CardDefaults.cardColors(
-                    containerColor = GlassSurface,
+                    containerColor = Color.Transparent,
                     contentColor = MaterialTheme.colorScheme.onSurface
                 )
             ) {

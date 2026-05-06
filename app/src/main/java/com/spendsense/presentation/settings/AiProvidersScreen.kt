@@ -15,6 +15,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.spendsense.data.local.entity.AiProviderEntity
 import com.spendsense.presentation.theme.GlassSurface
 import com.spendsense.presentation.util.SpendSenseTopBar
+import com.spendsense.presentation.util.glassEffect
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,7 +37,8 @@ fun AiProvidersScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { viewModel.toggleAddingProvider(true) },
-                containerColor = GlassSurface
+                containerColor = GlassSurface,
+                contentColor = MaterialTheme.colorScheme.onSurface
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Provider")
             }
@@ -106,10 +108,16 @@ fun ProviderGroupItem(
 ) {
     Card(
         onClick = onOpen,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .glassEffect(
+                shape = MaterialTheme.shapes.large,
+                containerColor = GlassSurface.copy(alpha = 0.8f),
+                borderAlpha = 0.24f
+            ),
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
-            containerColor = GlassSurface
+            containerColor = Color.Transparent
         )
     ) {
         Row(

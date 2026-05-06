@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.*
 import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
@@ -110,11 +111,12 @@ class ActionOverlayService : Service(), ViewModelStoreOwner, LifecycleOwner, Sav
         
         // Register broadcast receiver
         val filter = IntentFilter(TransactionNotificationListener.ACTION_SHOW_OVERLAY)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(overlayReceiver, filter, RECEIVER_NOT_EXPORTED)
-        } else {
-            registerReceiver(overlayReceiver, filter)
-        }
+        ContextCompat.registerReceiver(
+            this,
+            overlayReceiver,
+            filter,
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
         
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, createNotification())
@@ -257,11 +259,12 @@ fun OverlayContent(
 
     Surface(
         modifier = Modifier
-            .fillMaxWidth(0.9f)
+            .fillMaxWidth(0.94f)
             .glassEffect(
                 shape = MaterialTheme.shapes.extraLarge,
-                containerColor = GlassSurface.copy(alpha = 0.85f),
-                borderAlpha = 0.25f
+                containerColor = GlassSurface.copy(alpha = 0.9f),
+                borderAlpha = 0.28f,
+                sheenAlpha = 0.16f
             )
             .padding(16.dp),
         shape = MaterialTheme.shapes.extraLarge,
@@ -290,6 +293,14 @@ fun OverlayContent(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "Review and categorize before saving",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Amount Display with Currency Selector
             Row(
@@ -504,4 +515,3 @@ fun CategoryItem(
         )
     }
 }
-
