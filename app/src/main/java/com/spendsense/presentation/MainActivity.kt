@@ -4,26 +4,35 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -50,9 +59,12 @@ import com.spendsense.presentation.theme.DeepCharcoal
 import com.spendsense.presentation.theme.GlassSurface
 import com.spendsense.presentation.theme.NeonRose
 import com.spendsense.presentation.theme.SpendSenseTheme
+import com.spendsense.presentation.util.LocalGlassHazeState
 import com.spendsense.presentation.util.glassEffect
 import com.spendsense.presentation.whitelistedapps.WhitelistedAppsScreen
 import dagger.hilt.android.AndroidEntryPoint
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -64,6 +76,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+        )
         
         lifecycleScope.launch {
             categoryRepository.initializeDefaultCategories()
@@ -74,40 +90,43 @@ class MainActivity : ComponentActivity() {
         setContent {
             SpendSenseTheme {
                 val navController = rememberNavController()
+                val hazeState = rememberHazeState()
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    DeepCharcoal,
-                                    Color(0xFF0B0B12),
-                                    Color(0xFF08080D)
+                CompositionLocalProvider(LocalGlassHazeState provides hazeState) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .hazeSource(state = hazeState)
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        DeepCharcoal,
+                                        Color(0xFF0B0B12),
+                                        Color(0xFF08080D)
+                                    )
                                 )
                             )
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    brush = Brush.radialGradient(
+                                        colors = listOf(CyberBlue.copy(alpha = 0.15f), Color.Transparent),
+                                        radius = 900f
+                                    )
+                                )
                         )
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                brush = Brush.radialGradient(
-                                    colors = listOf(CyberBlue.copy(alpha = 0.15f), Color.Transparent),
-                                    radius = 900f
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    brush = Brush.radialGradient(
+                                        colors = listOf(NeonRose.copy(alpha = 0.1f), Color.Transparent),
+                                        radius = 1100f
+                                    )
                                 )
-                            )
-                    )
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                brush = Brush.radialGradient(
-                                    colors = listOf(NeonRose.copy(alpha = 0.1f), Color.Transparent),
-                                    radius = 1100f
-                                )
-                            )
-                    )
+                        )
 
                     Scaffold(
                         containerColor = Color.Transparent,
@@ -117,86 +136,84 @@ class MainActivity : ComponentActivity() {
                             val currentDestination = navBackStackEntry?.destination
 
                             val mainScreens = listOf("home", "charts", "settings")
+                            val navItems = listOf(
+                                Triple("home", Icons.Default.Home, "Home"),
+                                Triple("charts", Icons.Default.BarChart, "Charts"),
+                                Triple("settings", Icons.Default.Settings, "Settings")
+                            )
 
                             if (currentDestination?.route in mainScreens) {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .navigationBarsPadding()
-                                        .padding(horizontal = 20.dp)
+                                        .padding(horizontal = 28.dp, vertical = 12.dp)
+                                        .offset(y = (-12).dp)
+                                        .shadow(
+                                            elevation = 22.dp,
+                                            shape = RoundedCornerShape(999.dp),
+                                            ambientColor = Color.Black.copy(alpha = 0.25f),
+                                            spotColor = Color.Black.copy(alpha = 0.18f)
+                                        )
                                         .glassEffect(
-                                            shape = RoundedCornerShape(28.dp),
-                                            containerColor = GlassSurface.copy(alpha = 0.92f),
-                                            borderAlpha = 0.18f
+                                            shape = RoundedCornerShape(999.dp),
+                                            containerColor = GlassSurface.copy(alpha = 0.86f),
+                                            borderAlpha = 0.16f,
+                                            sheenAlpha = 0.06f,
+                                            hazeState = hazeState
                                         )
+                                        .padding(horizontal = 8.dp, vertical = 8.dp)
                                 ) {
-                                    NavigationBar(
-                                        containerColor = Color.Transparent,
-                                        tonalElevation = 0.dp
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(64.dp),
+                                        horizontalArrangement = Arrangement.SpaceEvenly,
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        NavigationBarItem(
-                                            icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
-                                            label = { Text("Home") },
-                                            selected = currentDestination?.hierarchy?.any { it.route == "home" } == true,
-                                            colors = NavigationBarItemDefaults.colors(
-                                                selectedIconColor = CyberBlue,
-                                                selectedTextColor = CyberBlue,
-                                                indicatorColor = CyberBlue.copy(alpha = 0.15f),
-                                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                            ),
-                                            onClick = {
-                                                navController.navigate("home") {
-                                                    popUpTo(navController.graph.findStartDestination().id) {
-                                                        saveState = true
+                                        navItems.forEach { (route, icon, label) ->
+                                            val selected = currentDestination?.hierarchy?.any { it.route == route } == true
+
+                                            Box(
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .clip(RoundedCornerShape(999.dp))
+                                                    .background(
+                                                        if (selected) {
+                                                            CyberBlue.copy(alpha = 0.16f)
+                                                        } else {
+                                                            Color.Transparent
+                                                        }
+                                                    )
+                                                    .clickable {
+                                                        navController.navigate(route) {
+                                                            popUpTo(navController.graph.findStartDestination().id) {
+                                                                saveState = true
+                                                            }
+                                                            launchSingleTop = true
+                                                            restoreState = true
+                                                        }
                                                     }
-                                                    launchSingleTop = true
-                                                    restoreState = true
+                                                    .padding(horizontal = 10.dp, vertical = 10.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Column(
+                                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                                                ) {
+                                                    Icon(
+                                                        icon,
+                                                        contentDescription = label,
+                                                        tint = if (selected) CyberBlue else MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                    Text(
+                                                        text = label,
+                                                        style = MaterialTheme.typography.labelMedium,
+                                                        color = if (selected) CyberBlue else MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
                                                 }
                                             }
-                                        )
-                                        NavigationBarItem(
-                                            icon = { Icon(Icons.Default.BarChart, contentDescription = "Charts") },
-                                            label = { Text("Charts") },
-                                            selected = currentDestination?.hierarchy?.any { it.route == "charts" } == true,
-                                            colors = NavigationBarItemDefaults.colors(
-                                                selectedIconColor = CyberBlue,
-                                                selectedTextColor = CyberBlue,
-                                                indicatorColor = CyberBlue.copy(alpha = 0.15f),
-                                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                            ),
-                                            onClick = {
-                                                navController.navigate("charts") {
-                                                    popUpTo(navController.graph.findStartDestination().id) {
-                                                        saveState = true
-                                                    }
-                                                    launchSingleTop = true
-                                                    restoreState = true
-                                                }
-                                            }
-                                        )
-                                        NavigationBarItem(
-                                            icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
-                                            label = { Text("Settings") },
-                                            selected = currentDestination?.hierarchy?.any { it.route == "settings" } == true,
-                                            colors = NavigationBarItemDefaults.colors(
-                                                selectedIconColor = CyberBlue,
-                                                selectedTextColor = CyberBlue,
-                                                indicatorColor = CyberBlue.copy(alpha = 0.15f),
-                                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                            ),
-                                            onClick = {
-                                                navController.navigate("settings") {
-                                                    popUpTo(navController.graph.findStartDestination().id) {
-                                                        saveState = true
-                                                    }
-                                                    launchSingleTop = true
-                                                    restoreState = true
-                                                }
-                                            }
-                                        )
+                                        }
                                     }
                                 }
                             }
@@ -301,6 +318,7 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
+                    }
                     }
                 }
             }

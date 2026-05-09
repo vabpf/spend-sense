@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -77,6 +78,7 @@ fun HomeScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
+                modifier = Modifier.offset(y = (-70).dp),
                 onClick = { isAddingTransaction = true },
                 containerColor = GlassSurface,
                 contentColor = MaterialTheme.colorScheme.onSurface

@@ -121,14 +121,18 @@ fun AddTransactionDialog(
             }
         },
         confirmButton = {
+            val amountDouble = amount.toDoubleOrNull()
+            val canSave = amountDouble != null && amountDouble > 0 && merchant.isNotBlank() && selectedCategory != null
+
             TextButton(
                 onClick = {
-                    val amountDouble = amount.toDoubleOrNull()
-                    if (amountDouble != null && amountDouble > 0 && merchant.isNotBlank() && selectedCategory != null) {
-                        onConfirm(amountDouble, currency, merchant, selectedCategory!!.id)
+                    if (canSave) {
+                        selectedCategory?.let { category ->
+                            onConfirm(amountDouble!!, currency, merchant, category.id)
+                        }
                     }
                 },
-                enabled = amount.toDoubleOrNull() != null && merchant.isNotBlank() && selectedCategory != null
+                enabled = canSave
             ) {
                 Text("Save")
             }

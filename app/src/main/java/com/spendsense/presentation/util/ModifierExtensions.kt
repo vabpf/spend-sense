@@ -2,6 +2,8 @@ package com.spendsense.presentation.util
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -13,6 +15,11 @@ import com.spendsense.presentation.theme.BorderSubtle
 import com.spendsense.presentation.theme.BorderMedium
 import com.spendsense.presentation.theme.CyberBlue
 import com.spendsense.presentation.theme.GlassSurface
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.materials.HazeMaterials
+
+val LocalGlassHazeState = compositionLocalOf<HazeState?> { null }
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // GLASSMORPHISM EFFECT UTILITIES
@@ -29,6 +36,7 @@ import com.spendsense.presentation.theme.GlassSurface
  * This creates the "frosted glass" look where elements appear as 
  * semi-transparent layers over the background with subtle rainbow highlights.
  */
+@Composable
 fun Modifier.glassEffect(
     shape: Shape,
     containerColor: Color = GlassSurface.copy(alpha = 0.75f),
@@ -36,9 +44,20 @@ fun Modifier.glassEffect(
     borderAlpha: Float = 0.15f,
     sheenAlpha: Float = 0.08f,
     prismAlpha: Float = 0.04f,
+    hazeState: HazeState? = LocalGlassHazeState.current,
     contentModifier: Modifier = Modifier
 ): Modifier = this
     .clip(shape)
+    .then(
+        if (hazeState != null) {
+            Modifier.hazeEffect(
+                state = hazeState,
+                style = HazeMaterials.thin()
+            )
+        } else {
+            Modifier
+        }
+    )
     .background(
         brush = Brush.verticalGradient(
             colors = listOf(
@@ -138,6 +157,7 @@ fun Modifier.neonGlow(
  * GLASS CARD - full glassmorphism with optional border
  * Convenience modifier combining glass + prism edge
  */
+@Composable
 fun Modifier.glassCard(
     shape: Shape,
     containerColor: Color = GlassSurface.copy(alpha = 0.82f),
