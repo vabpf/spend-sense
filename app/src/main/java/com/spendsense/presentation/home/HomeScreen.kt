@@ -92,9 +92,6 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(bottom = padding.calculateBottomPadding())
         ) {
-            Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
-            Spacer(modifier = Modifier.height(72.dp))
-
             HomeSummaryCard(
                 totalSpending = totalSpending,
                 transactionCount = transactions.size,

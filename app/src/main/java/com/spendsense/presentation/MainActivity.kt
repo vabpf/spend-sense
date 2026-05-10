@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -146,9 +145,7 @@ class MainActivity : ComponentActivity() {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .navigationBarsPadding()
                                         .padding(horizontal = 28.dp, vertical = 12.dp)
-                                        .offset(y = (-12).dp)
                                         .shadow(
                                             elevation = 22.dp,
                                             shape = RoundedCornerShape(999.dp),
@@ -222,10 +219,7 @@ class MainActivity : ComponentActivity() {
                         NavHost(
                             navController = navController,
                             startDestination = "home",
-                            modifier = Modifier.padding(
-                                top = innerPadding.calculateTopPadding(),
-                                bottom = 0.dp // Allow content under bottom bar
-                            )
+                            modifier = Modifier.hazeSource(state = hazeState)
                         ) {
                             composable("home") {
                                 HomeScreen(

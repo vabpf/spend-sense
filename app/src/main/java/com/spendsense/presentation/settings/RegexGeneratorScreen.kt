@@ -65,9 +65,6 @@ fun RegexGeneratorScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
-            Spacer(modifier = Modifier.height(72.dp))
-
             // Info Card
             Card(
                 modifier = Modifier

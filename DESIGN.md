@@ -214,9 +214,10 @@ tokens:
 
 SpendSense is a personal finance tracking Android app with a **Cyber-Premium** aesthetic—the fusion of glassmorphism, neo-dark mode, and high-contrast minimalism. The design language conveys trust, technological sophistication, and clarity for financial data.
 
-## Visual Identity
+### Visual Identity
 
 ### Color Philosophy
+
 
 **Trust Blue + Profit Green on Deep Dark**
 

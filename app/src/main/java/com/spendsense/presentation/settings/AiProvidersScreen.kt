@@ -49,9 +49,6 @@ fun AiProvidersScreen(
                 .fillMaxSize()
                 .padding(bottom = padding.calculateBottomPadding())
         ) {
-            Spacer(modifier = Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
-            Spacer(modifier = Modifier.height(72.dp))
-
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize(),

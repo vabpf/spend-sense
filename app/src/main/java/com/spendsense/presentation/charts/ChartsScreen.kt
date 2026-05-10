@@ -28,7 +28,7 @@ fun ChartsScreen(
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .padding(start = 16.dp, end = 16.dp, top = 108.dp, bottom = 120.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 120.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
