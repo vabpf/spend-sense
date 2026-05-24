@@ -45,11 +45,10 @@
             </intent-filter>
         </service>
         
-        <!-- Action Overlay Service -->
-        <service
-            android:name=".presentation.overlay.ActionOverlayService"
-            android:exported="false"
-            android:foregroundServiceType="dataSync" />
+        <!-- Transaction Save/Reject Receiver -->
+        <receiver
+            android:name=".data.service.TransactionNotificationReceiver"
+            android:exported="false" />
         
     </application>
 

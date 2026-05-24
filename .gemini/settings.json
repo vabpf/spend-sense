@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "notebooklm": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "notebooklm-mcp@latest"
+      ]
+    }
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "node /home/vab/apps/spend-sense/.gemini/statusline-bridge.js",
+    "enabled": true
+  }
+}

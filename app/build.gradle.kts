@@ -80,13 +80,14 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("dev.chrisbanes.haze:haze:1.7.2")
     implementation("dev.chrisbanes.haze:haze-materials:1.7.2")
+    implementation("io.github.fletchmckee.liquid:liquid:1.1.1")
     
     // Navigation
     implementation("androidx.navigation:navigation-compose:2.8.7")
     
     // Hilt DI
-    implementation("com.google.dagger:hilt-android:2.54")
-    ksp("com.google.dagger:hilt-android-compiler:2.54")
+    implementation("com.google.dagger:hilt-android:2.58")
+    ksp("com.google.dagger:hilt-android-compiler:2.58")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
     
     // Room

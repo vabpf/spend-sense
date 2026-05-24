@@ -3,6 +3,7 @@ package com.spendsense.presentation.whitelistedapps
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import android.graphics.drawable.Drawable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.spendsense.data.local.dao.WhitelistedAppDao
@@ -20,7 +21,8 @@ import javax.inject.Inject
 data class AppItem(
     val packageName: String,
     val appName: String,
-    val isEnabled: Boolean
+    val isEnabled: Boolean,
+    val icon: Drawable? = null
 )
 
 data class WhitelistedAppsState(
@@ -77,11 +79,13 @@ class WhitelistedAppsViewModel @Inject constructor(
                         val packageName = appInfo.packageName
                         val appName = pm.getApplicationLabel(appInfo).toString()
                         val isEnabled = dbAppsMap[packageName]?.isEnabled ?: false
+                        val icon = try { pm.getApplicationIcon(appInfo) } catch (_: Exception) { null }
 
                         AppItem(
                             packageName = packageName,
                             appName = appName,
-                            isEnabled = isEnabled
+                            isEnabled = isEnabled,
+                            icon = icon
                         )
                     }.sortedBy { it.appName }
                 }

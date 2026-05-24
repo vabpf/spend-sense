@@ -89,6 +89,26 @@ tokens:
       $value: "#0D0D12"
       $description: "Bottom edge for depth"
 
+    # Liquid Glass (API 33+)
+    liquid-refraction:
+      $value: 0.6
+      $description: "Bending of background pixels for lens effect"
+    liquid-frost:
+      $value: "4dp"
+      $description: "Blur intensity for frosted glass"
+    liquid-dispersion:
+      $value: 0.6
+      $description: "Chromatic aberration (RGB color splitting)"
+    liquid-saturation:
+      $value: 1.8
+      $description: "Saturation boost for background colors"
+    liquid-edge:
+      $value: 0.3
+      $description: "Brightness of the glass edge highlight"
+    liquid-curve:
+      $value: 0.3
+      $description: "Lens curvature (0.0 = flat, 1.0 = spherical)"
+
   typography:
     font-family:
       $value: "Sans-serif (system default)"

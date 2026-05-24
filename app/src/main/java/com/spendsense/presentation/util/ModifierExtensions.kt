@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import android.os.Build
 import com.spendsense.presentation.theme.BorderSubtle
 import com.spendsense.presentation.theme.BorderMedium
 import com.spendsense.presentation.theme.CyberBlue
@@ -18,8 +19,21 @@ import com.spendsense.presentation.theme.GlassSurface
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.materials.HazeMaterials
+import io.github.fletchmckee.liquid.LiquidState
+import io.github.fletchmckee.liquid.liquid
 
 val LocalGlassHazeState = compositionLocalOf<HazeState?> { null }
+val LocalLiquidState = compositionLocalOf<LiquidState?> { null }
+
+/**
+ * Design tokens for the Liquid Glass effect.
+ * Values sourced from DESIGN.md §"Liquid Glass (API 33+)".
+ */
+object LiquidTokens {
+    val frost = 0.2.dp
+    const val edge = 0.1f
+    val tint = Color.Black.copy(alpha = 0.2f)
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // GLASSMORPHISM EFFECT UTILITIES
@@ -32,6 +46,9 @@ val LocalGlassHazeState = compositionLocalOf<HazeState?> { null }
  * - Gradient sheen for depth
  * - Prism edge - subtle rainbow color bleeding on edges (chromatic aberration)
  * - High corner radius support
+ * - REAL LIQUID GLASS sampling on API 33+ (via Liquid library)
+ *
+ * @see [Liquid Glass Guide](docs/LIQUID_GLASS.md)
  *
  * This creates the "frosted glass" look where elements appear as 
  * semi-transparent layers over the background with subtle rainbow highlights.
@@ -45,49 +62,58 @@ fun Modifier.glassEffect(
     sheenAlpha: Float = 0.08f,
     prismAlpha: Float = 0.04f,
     hazeState: HazeState? = LocalGlassHazeState.current,
+    liquidState: LiquidState? = LocalLiquidState.current,
     contentModifier: Modifier = Modifier
-): Modifier = this
-    .clip(shape)
-    .then(
-        if (hazeState != null) {
-            Modifier.hazeEffect(
-                state = hazeState,
-                style = HazeMaterials.thin()
-            )
-        } else {
-            Modifier
-        }
-    )
-    .background(
-        brush = Brush.verticalGradient(
-            colors = listOf(
-                containerColor.copy(alpha = containerColor.alpha * 0.88f),
-                containerColor,
-                containerColor.copy(alpha = containerColor.alpha * 0.72f)
-            )
+): Modifier {
+    var modifier: Modifier = this
+
+    // Apply Liquid effect on API 33+ if state is provided
+    // IMPORTANT: liquid() should be applied early in the chain
+    // Parameters from DESIGN.md §"Liquid Glass (API 33+)" and docs/LIQUID_GLASS.md §3
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && liquidState != null) {
+        modifier = modifier
+            .liquid(
+                liquidState = liquidState
+            ) {
+                frost = LiquidTokens.frost
+                edge = LiquidTokens.edge
+                tint = LiquidTokens.tint
+                this.shape = shape
+            }
+    } else if (hazeState != null) {
+        // Fallback to Haze for older versions or if Liquid is not set up
+        modifier = modifier.hazeEffect(
+            state = hazeState,
+            style = HazeMaterials.thin()
         )
-    )
-    .background(
-        brush = Brush.radialGradient(
-            colors = listOf(
-                Color.White.copy(alpha = sheenAlpha),
-                Color.Transparent
-            )
+    }
+
+    // Clip must be AFTER liquid to ensure proper rendering
+    modifier = modifier.clip(shape)
+
+    // Glass effect: the containerColor is used as a tint/overlay, not a solid fill.
+    // Callers pass high alphas (0.82-0.9f) to express color intent, but the liquid/haze
+    // blur is what provides the frosting — so we cap the overlay alpha at 0.35f so
+    // the blur can still show through. This restores the frosted glass look.
+    val glassAlpha = containerColor.alpha.coerceAtMost(0.35f)
+    return modifier
+        .background(
+            color = containerColor.copy(alpha = glassAlpha)
         )
-    )
-    .then(contentModifier)
-    .border(
-        width = borderWidth,
-        brush = Brush.linearGradient(
-            colors = listOf(
-                Color.White.copy(alpha = borderAlpha),
-                Color.White.copy(alpha = borderAlpha * 0.6f),
-                Color.Transparent,
-                Color.White.copy(alpha = borderAlpha * 0.4f)
-            )
-        ),
-        shape = shape
-    )
+        .then(contentModifier)
+        .border(
+            width = borderWidth,
+            brush = Brush.linearGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = borderAlpha),
+                    Color.White.copy(alpha = borderAlpha * 0.6f),
+                    Color.Transparent,
+                    Color.White.copy(alpha = borderAlpha * 0.4f)
+                )
+            ),
+            shape = shape
+        )
+}
 
 /**
  * Applies a PRISM EDGE effect - subtle chromatic aberration on edges
@@ -156,6 +182,8 @@ fun Modifier.neonGlow(
 /**
  * GLASS CARD - full glassmorphism with optional border
  * Convenience modifier combining glass + prism edge
+ *
+ * @see [Liquid Glass Guide](docs/LIQUID_GLASS.md)
  */
 @Composable
 fun Modifier.glassCard(

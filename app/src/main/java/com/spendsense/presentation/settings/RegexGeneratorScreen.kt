@@ -8,7 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,9 +17,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.spendsense.domain.model.RegexPattern
 import com.spendsense.presentation.theme.GlassSurface
 import com.spendsense.data.local.Currencies
+import com.spendsense.presentation.util.GlassAlertDialog
 import com.spendsense.presentation.util.SpendSenseTopBar
 import com.spendsense.presentation.util.glassEffect
 
@@ -27,18 +27,13 @@ import com.spendsense.presentation.util.glassEffect
 fun RegexGeneratorScreen(
     viewModel: RegexGeneratorViewModel = hiltViewModel(),
     initialNotificationText: String? = null,
-    onNavigateBack: () -> Unit = {}
+    onNavigateBack: () -> Unit = {},
+    onNavigateToNotificationPatterns: () -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
     var showTargetAppSelector by remember { mutableStateOf(false) }
     var showProviderSelector by remember { mutableStateOf(false) }
     var showCurrencySelector by remember { mutableStateOf(false) }
-    val configuredProviders = remember(state.providers, state.providerKeyStatuses) {
-        state.providers.filter { state.providerKeyStatuses[it.id] == true }
-    }
-    val groupedProviders = remember(configuredProviders) {
-        groupProviders(configuredProviders)
-    }
 
     // Pre-fill initial text if provided
     LaunchedEffect(initialNotificationText) {
@@ -53,16 +48,16 @@ fun RegexGeneratorScreen(
             SpendSenseTopBar(
                 title = "AI Regex Generator",
                 onNavigationClick = onNavigateBack,
-                navigationIcon = Icons.Default.ArrowBack
+                navigationIcon = Icons.Rounded.ArrowBack
             )
         }
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = padding.calculateBottomPadding())
+                .padding(top = padding.calculateTopPadding())
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
+                .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 0.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Info Card
@@ -84,126 +79,15 @@ fun RegexGeneratorScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Icon(
-                        Icons.Default.Info,
+                        Icons.Rounded.Info,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                     Text(
-                        text = "Paste a banking notification text below, and the AI will generate a regex pattern to extract transaction details.",
+                        text = "Paste a banking notification below. The AI will classify it and generate a regex pattern.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
-                }
-            }
-
-            // Provider Selection
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .glassEffect(
-                        shape = MaterialTheme.shapes.large,
-                        containerColor = GlassSurface.copy(alpha = 0.8f),
-                        borderAlpha = 0.24f
-                    ),
-                shape = MaterialTheme.shapes.medium,
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.Transparent
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "Configure Models",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    if (configuredProviders.isEmpty()) {
-                        Text(
-                            "No configured AI models found. Please configure a model in AI Providers first.",
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    } else {
-                        Box {
-                            OutlinedCard(
-                                onClick = { showProviderSelector = true },
-                                shape = MaterialTheme.shapes.medium,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = state.selectedProvider?.let {
-                                                "${it.name} • ${it.defaultModel}"
-                                            } ?: "Select a model"
-                                        )
-                                        Text(
-                                            text = "Tap to configure model",
-                                            style = MaterialTheme.typography.labelSmall
-                                        )
-                                    }
-                                    Icon(Icons.Default.ArrowDropDown, contentDescription = null)
-                                }
-                            }
-
-                            DropdownMenu(
-                                expanded = showProviderSelector,
-                                onDismissRequest = { showProviderSelector = false },
-                                modifier = Modifier.fillMaxWidth(0.9f)
-                            ) {
-                                groupedProviders.forEachIndexed { index, group ->
-                                    DropdownMenuItem(
-                                        text = {
-                                            Text(
-                                                text = group.name,
-                                                style = MaterialTheme.typography.labelLarge,
-                                                fontWeight = FontWeight.SemiBold
-                                            )
-                                        },
-                                        onClick = {},
-                                        enabled = false
-                                    )
-                                    HorizontalDivider()
-
-                                    group.models.forEach { model ->
-                                        val isSelected = state.selectedProvider?.id == model.id
-                                        DropdownMenuItem(
-                                            text = {
-                                                Row(
-                                                    modifier = Modifier.fillMaxWidth(),
-                                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                                    verticalAlignment = Alignment.CenterVertically
-                                                ) {
-                                                    Text(model.defaultModel)
-                                                    if (isSelected) {
-                                                        Icon(
-                                                            Icons.Default.Check,
-                                                            contentDescription = "Selected model"
-                                                        )
-                                                    }
-                                                }
-                                            },
-                                            onClick = {
-                                                viewModel.onProviderSelected(model)
-                                                showProviderSelector = false
-                                            }
-                                        )
-                                    }
-
-                                    if (index != groupedProviders.lastIndex) {
-                                        HorizontalDivider()
-                                    }
-                                }
-                            }
-                        }
-                    }
                 }
             }
 
@@ -231,13 +115,13 @@ fun RegexGeneratorScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Notification Text",
+                            text = "Notification Details",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         if (state.notificationText.isNotBlank()) {
                             TextButton(onClick = { viewModel.clearInput() }) {
-                                Icon(Icons.Default.Clear, contentDescription = null)
+                                Icon(Icons.Rounded.Clear, contentDescription = null)
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text("Clear")
                             }
@@ -245,19 +129,29 @@ fun RegexGeneratorScreen(
                     }
 
                     OutlinedTextField(
+                        value = state.notificationTitle,
+                        onValueChange = { viewModel.updateNotificationTitle(it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("Transaction title from the notification") },
+                        label = { Text("Notification Title") },
+                        singleLine = true
+                    )
+
+                    OutlinedTextField(
                         value = state.notificationText,
                         onValueChange = { viewModel.updateNotificationText(it) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(min = 120.dp),
-                        placeholder = { Text("Paste your notification text here...") },
+                        placeholder = { Text("Paste the full notification body here...") },
+                        label = { Text("Notification Body") },
                         maxLines = 6
                     )
 
                     HorizontalDivider()
 
                     Text(
-                        text = "Regex Pattern (Manual or AI)",
+                        text = "Regex Pattern",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -271,7 +165,7 @@ fun RegexGeneratorScreen(
                         trailingIcon = {
                             if (state.manualPattern.isNotBlank()) {
                                 IconButton(onClick = { viewModel.testManualPattern() }) {
-                                    Icon(Icons.Default.PlayArrow, contentDescription = "Test Pattern")
+                                    Icon(Icons.Rounded.PlayArrow, contentDescription = "Test Pattern")
                                 }
                             }
                         }
@@ -279,12 +173,113 @@ fun RegexGeneratorScreen(
                 }
             }
 
+            // Model Selection
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .glassEffect(
+                        shape = MaterialTheme.shapes.large,
+                        containerColor = GlassSurface.copy(alpha = 0.8f),
+                        borderAlpha = 0.24f
+                    ),
+                shape = MaterialTheme.shapes.medium,
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.Transparent
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Select Model",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    if (state.enabledModels.isEmpty()) {
+                        Text(
+                            "No models enabled. Go to AI Providers, open a provider, and enable models.",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    } else {
+                        OutlinedCard(
+                            onClick = { showProviderSelector = true },
+                            shape = MaterialTheme.shapes.medium,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = state.selectedModel?.displayName
+                                            ?: state.selectedModel?.modelId
+                                            ?: "Select a model",
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                    Text(
+                                        text = "Tap to choose model",
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                }
+                                Icon(Icons.Rounded.ArrowDropDown, contentDescription = null)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Model Selection Dialog
+            if (showProviderSelector) {
+                GlassAlertDialog(
+                    onDismissRequest = { showProviderSelector = false },
+                    title = { Text("Select Model") },
+                    text = {
+                        Column(
+                            modifier = Modifier.verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            state.enabledModels.forEach { model ->
+                                val displayText = model.displayName ?: model.modelId
+                                val isSelected = state.selectedModel?.id == model.id
+                                Surface(
+                                    onClick = {
+                                        viewModel.onProviderSelected(model)
+                                        showProviderSelector = false
+                                    },
+                                    color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) else Color.Transparent,
+                                    shape = MaterialTheme.shapes.small
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(displayText, style = MaterialTheme.typography.bodyLarge)
+                                        if (isSelected) {
+                                            Icon(Icons.Rounded.Check, contentDescription = "Selected", tint = MaterialTheme.colorScheme.primary)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = {},
+                    dismissButton = {
+                        TextButton(onClick = { showProviderSelector = false }) { Text("Cancel") }
+                    }
+                )
+            }
 
             // Generate Button
             Button(
                 onClick = { viewModel.generateRegex() },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = state.notificationText.isNotBlank() && !state.isGenerating && state.selectedProvider != null
+                enabled = state.notificationText.isNotBlank() && !state.isGenerating && state.selectedModel != null
             ) {
                 if (state.isGenerating) {
                     CircularProgressIndicator(
@@ -294,7 +289,7 @@ fun RegexGeneratorScreen(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Generating...")
                 } else {
-                    Icon(Icons.Default.AutoAwesome, contentDescription = null)
+                    Icon(Icons.Rounded.AutoAwesome, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Generate Rule (AI)")
                 }
@@ -303,22 +298,27 @@ fun RegexGeneratorScreen(
             // Error Message
             if (state.errorMessage != null) {
                 Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.85f)
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = Color.White
                     )
                 ) {
                     Row(
                         modifier = Modifier.padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            Icons.Default.Error,
+                            Icons.Rounded.Error,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onErrorContainer
+                            tint = Color.White
                         )
                         Text(
                             text = state.errorMessage!!,
-                            color = MaterialTheme.colorScheme.onErrorContainer
+                            color = Color.White,
+                            style = MaterialTheme.typography.bodyMedium
                         )
                     }
                 }
@@ -327,23 +327,27 @@ fun RegexGeneratorScreen(
             // Success Message
             if (state.successMessage != null) {
                 Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f),
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = Color.White
                     )
                 ) {
                     Row(
                         modifier = Modifier.padding(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            Icons.Default.CheckCircle,
+                            Icons.Rounded.CheckCircle,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer
+                            tint = Color.White
                         )
                         Text(
                             text = state.successMessage!!,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                            color = Color.White,
+                            style = MaterialTheme.typography.bodyMedium
                         )
                     }
                 }
@@ -419,6 +423,14 @@ fun RegexGeneratorScreen(
                             fontWeight = FontWeight.Bold
                         )
 
+                        if (state.notificationTitle.isNotBlank()) {
+                            Text(
+                                text = "Pattern will be keyed by (app × notification title) for precise matching",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
                         // Currency Selector
                         Box {
                             val selectedCurrency = Currencies.find(state.currencyCode)
@@ -441,7 +453,7 @@ fun RegexGeneratorScreen(
                                             style = MaterialTheme.typography.bodyLarge
                                         )
                                     }
-                                    Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                                    Icon(Icons.Rounded.ArrowDropDown, contentDescription = null)
                                 }
                             }
 
@@ -474,7 +486,7 @@ fun RegexGeneratorScreen(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     Icon(
-                                        Icons.Default.Info,
+                                        Icons.Rounded.Info,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.onErrorContainer
                                     )
@@ -499,7 +511,7 @@ fun RegexGeneratorScreen(
                                         Column {
                                             Text(
                                                 text = when (state.selectedAppPackage) {
-                                                    RegexPattern.TARGET_ALL_WHITELISTED -> "All whitelisted apps"
+                                                    "__ALL_WHITELISTED__" -> "All whitelisted apps"
                                                     "" -> "Select whitelisted app"
                                                     else -> state.availableApps
                                                         .firstOrNull { it.packageName == state.selectedAppPackage }
@@ -509,7 +521,7 @@ fun RegexGeneratorScreen(
                                                 style = MaterialTheme.typography.bodyLarge
                                             )
                                             val subtitle = when (state.selectedAppPackage) {
-                                                RegexPattern.TARGET_ALL_WHITELISTED -> "Applies to every enabled whitelisted app"
+                                                "__ALL_WHITELISTED__" -> "Applies to every enabled whitelisted app"
                                                 "" -> "Choose one app or all whitelisted apps"
                                                 else -> state.selectedAppPackage
                                             }
@@ -518,7 +530,7 @@ fun RegexGeneratorScreen(
                                                 style = MaterialTheme.typography.bodySmall
                                             )
                                         }
-                                        Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                                        Icon(Icons.Rounded.ArrowDropDown, contentDescription = null)
                                     }
                                 }
 
@@ -538,7 +550,7 @@ fun RegexGeneratorScreen(
                                             }
                                         },
                                         onClick = {
-                                            viewModel.onTargetAppSelected(RegexPattern.TARGET_ALL_WHITELISTED)
+                                            viewModel.onTargetAppSelected("__ALL_WHITELISTED__")
                                             showTargetAppSelector = false
                                         }
                                     )
@@ -566,6 +578,18 @@ fun RegexGeneratorScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            Text("Transaction?")
+                            Switch(
+                                checked = state.isTransaction,
+                                onCheckedChange = { viewModel.toggleIsTransaction() }
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Text("Active")
                             Switch(
                                 checked = state.isActive,
@@ -586,14 +610,24 @@ fun RegexGeneratorScreen(
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text("Saving...")
                             } else {
-                                Icon(Icons.Default.Save, contentDescription = null)
+                                Icon(Icons.Rounded.Save, contentDescription = null)
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text("Add to Watchlist")
                             }
                         }
+
+                        OutlinedButton(
+                            onClick = onNavigateToNotificationPatterns,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Rounded.Pattern, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("View Saved Patterns")
+                        }
                     }
                 }
             }
+            Spacer(modifier = Modifier.height(40.dp))
         }
     }
 }

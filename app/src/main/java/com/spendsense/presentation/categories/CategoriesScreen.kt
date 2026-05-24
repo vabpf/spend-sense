@@ -3,23 +3,31 @@ package com.spendsense.presentation.categories
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.spendsense.domain.model.Category
 import com.spendsense.presentation.theme.GlassSurface
+import com.spendsense.presentation.util.GlassAlertDialog
 import com.spendsense.presentation.util.availableColors
 import com.spendsense.presentation.util.availableIcons
 import com.spendsense.presentation.util.getCategoryIcon
@@ -41,28 +49,30 @@ fun CategoriesScreen(
             SpendSenseTopBar(
                 title = "Categories",
                 onNavigationClick = onNavigateBack,
-                navigationIcon = Icons.Default.ArrowBack
+                navigationIcon = Icons.Rounded.ArrowBack
             )
         },
         floatingActionButton = {
             FloatingActionButton(
+                modifier = Modifier.offset(y = (-4).dp),
                 onClick = { viewModel.showAddEditDialog(null) },
                 containerColor = GlassSurface,
                 contentColor = MaterialTheme.colorScheme.onSurface
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Category")
+                Icon(Icons.Rounded.Add, contentDescription = "Add Category")
             }
         }
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = padding.calculateBottomPadding())
+                .padding(top = padding.calculateTopPadding())
         ) {
             LazyColumn(
                 modifier = Modifier
-                    .fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 0.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(state.categories) { category ->
@@ -72,6 +82,7 @@ fun CategoriesScreen(
                         onDelete = { viewModel.deleteCategory(category) }
                     )
                 }
+                item { Spacer(modifier = Modifier.height(40.dp)) }
             }
         }
 
@@ -112,19 +123,38 @@ fun CategoryItem(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val iconVector = getCategoryIcon(category.iconName)
+            val iconPainter = rememberVectorPainter(iconVector)
             Box(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(MaterialTheme.shapes.small)
-                    .background(parseColor(category.colorHex)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = getCategoryIcon(category.iconName),
-                    contentDescription = null,
-                    tint = Color.White
-                )
-            }
+                    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                    .drawWithContent {
+                        // Draw colored background (destination)
+                        drawRect(color = parseColor(category.colorHex))
+                        // Draw icon as cutout (removes destination where icon is opaque)
+                        val iconSize = size * 0.6f
+                        val offsetX = (size.width - iconSize.width) / 2f
+                        val offsetY = (size.height - iconSize.height) / 2f
+                        drawIntoCanvas { canvas ->
+                            val paint = android.graphics.Paint().apply {
+                                xfermode = android.graphics.PorterDuffXfermode(
+                                    android.graphics.PorterDuff.Mode.DST_OUT
+                                )
+                            }
+                            canvas.nativeCanvas.saveLayer(null, paint)
+                        }
+                        translate(left = offsetX, top = offsetY) {
+                            with(iconPainter) {
+                                draw(size = iconSize, colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color.Black))
+                            }
+                        }
+                        drawIntoCanvas { canvas ->
+                            canvas.nativeCanvas.restore()
+                        }
+                    }
+            )
 
             Spacer(modifier = Modifier.width(16.dp))
 
@@ -137,7 +167,7 @@ fun CategoryItem(
             if (!category.isDefault) {
                 IconButton(onClick = onDelete) {
                     Icon(
-                        Icons.Default.Delete,
+                        Icons.Rounded.Delete,
                         contentDescription = "Delete",
                         tint = MaterialTheme.colorScheme.error
                     )
@@ -157,11 +187,8 @@ fun AddEditCategoryDialog(
     var selectedIcon by remember { mutableStateOf(initialCategory?.iconName ?: availableIcons.first()) }
     var selectedColor by remember { mutableStateOf(initialCategory?.colorHex ?: availableColors.first()) }
 
-    AlertDialog(
+    GlassAlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = GlassSurface,
-        titleContentColor = MaterialTheme.colorScheme.onSurface,
-        textContentColor = MaterialTheme.colorScheme.onSurface,
         title = { Text(if (initialCategory != null) "Edit Category" else "Add Category") },
         text = {
             Column(
@@ -213,7 +240,7 @@ fun AddEditCategoryDialog(
                         ) {
                             if (selectedColor == colorHex) {
                                 Icon(
-                                    Icons.Default.Check,
+                                    Icons.Rounded.Check,
                                     contentDescription = null,
                                     tint = Color.White
                                 )

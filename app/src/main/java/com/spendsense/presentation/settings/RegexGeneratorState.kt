@@ -1,6 +1,6 @@
 package com.spendsense.presentation.settings
 
-import com.spendsense.data.local.entity.AiProviderEntity
+import com.spendsense.data.local.entity.ProviderModelEntity
 
 data class RegexTargetApp(
     val packageName: String,
@@ -8,9 +8,11 @@ data class RegexTargetApp(
 )
 
 data class RegexGeneratorState(
+    val notificationTitle: String = "",
     val notificationText: String = "",
     val manualPattern: String = "",
     val isGenerating: Boolean = false,
+    val isTransaction: Boolean = true,
 
     val generatedPattern: String? = null,
     val extractedAmount: String? = null,
@@ -23,7 +25,6 @@ data class RegexGeneratorState(
     val errorMessage: String? = null,
     val successMessage: String? = null,
 
-    val providers: List<AiProviderEntity> = emptyList(),
-    val providerKeyStatuses: Map<Long, Boolean> = emptyMap(),
-    val selectedProvider: AiProviderEntity? = null
+    val enabledModels: List<ProviderModelEntity> = emptyList(),
+    val selectedModel: ProviderModelEntity? = null
 )

@@ -25,10 +25,18 @@ class CategoriesViewModel @Inject constructor(
     private val _state = MutableStateFlow(CategoriesState())
     val state: StateFlow<CategoriesState> = _state.asStateFlow()
 
+    private val defaultCategoryOrder = listOf(
+        "Food", "Shopping", "Entertainment", "Transport", "Bills", "Health", "Other"
+    )
+
     init {
         viewModelScope.launch {
             categoryRepository.getAllCategories().collect { categories ->
-                _state.value = _state.value.copy(categories = categories)
+                val sorted = categories.sortedBy { cat ->
+                    val idx = defaultCategoryOrder.indexOfFirst { it.equals(cat.name, ignoreCase = true) }
+                    if (idx >= 0) idx else defaultCategoryOrder.size + cat.id.toInt()
+                }
+                _state.value = _state.value.copy(categories = sorted)
             }
         }
     }

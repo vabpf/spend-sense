@@ -54,4 +54,32 @@ class SecurePreferences @Inject constructor(
     fun getDefaultCurrency(): String {
         return prefs.getString("default_currency", "USD") ?: "USD"
     }
+
+    fun saveRegexInput(title: String, text: String, manualPattern: String) {
+        prefs.edit()
+            .putString("regex_title", title)
+            .putString("regex_text", text)
+            .putString("regex_manual_pattern", manualPattern)
+            .apply()
+    }
+
+    fun getRegexTitle(): String = prefs.getString("regex_title", "") ?: ""
+    fun getRegexText(): String = prefs.getString("regex_text", "") ?: ""
+    fun getRegexManualPattern(): String = prefs.getString("regex_manual_pattern", "") ?: ""
+
+    fun clearRegexInput() {
+        prefs.edit()
+            .remove("regex_title")
+            .remove("regex_text")
+            .remove("regex_manual_pattern")
+            .apply()
+    }
+
+    fun saveSelectedProviderId(providerId: Long) {
+        prefs.edit().putLong("regex_selected_provider", providerId).apply()
+    }
+
+    fun getSelectedProviderId(): Long {
+        return prefs.getLong("regex_selected_provider", -1L)
+    }
 }

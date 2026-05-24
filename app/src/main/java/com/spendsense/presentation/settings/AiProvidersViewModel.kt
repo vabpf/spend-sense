@@ -3,19 +3,22 @@ package com.spendsense.presentation.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.spendsense.data.local.AiProviderPresets
-import com.spendsense.data.local.dao.AiProviderDao
-import com.spendsense.data.local.entity.AiProviderEntity
 import com.spendsense.data.local.SecurePreferences
+import com.spendsense.data.local.dao.ProviderAccountDao
+import com.spendsense.data.local.dao.ProviderModelDao
+import com.spendsense.data.local.entity.ProviderAccountEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class AiProvidersViewModel @Inject constructor(
-    private val aiProviderDao: AiProviderDao,
+    private val accountDao: ProviderAccountDao,
+    private val modelDao: ProviderModelDao,
     private val securePreferences: SecurePreferences
 ) : ViewModel() {
 
@@ -23,61 +26,54 @@ class AiProvidersViewModel @Inject constructor(
     val state: StateFlow<AiProvidersState> = _state.asStateFlow()
 
     init {
-        seedPresetProviders()
-        loadProviders()
+        cleanDeprecatedAccounts()
+        seedPresetAccounts()
+        loadAccounts()
     }
 
-    private fun seedPresetProviders() {
+    private fun cleanDeprecatedAccounts() {
         viewModelScope.launch {
-            AiProviderPresets.ensureSeeded(aiProviderDao)
-        }
-    }
-
-    private fun loadProviders() {
-        viewModelScope.launch {
-            aiProviderDao.getAllProvidersFlow().collect { providers ->
-                val sortedProviders = providers.sortedWith(
-                    compareBy<AiProviderEntity>({ it.name.lowercase() }, { it.defaultModel.lowercase() })
-                )
-                val statuses = sortedProviders.associate { provider ->
-                    provider.id to isProviderConfigured(provider)
-                }
-                _state.value = _state.value.copy(
-                    providers = sortedProviders,
-                    providerGroups = groupProviders(sortedProviders),
-                    providerKeyStatuses = statuses
-                )
+            val oldUrls = listOf("https://api.ollama.com/v1")
+            accountDao.getAll().filter { it.baseUrl in oldUrls }.forEach {
+                accountDao.delete(it)
             }
         }
     }
 
-    private fun updateKeyStatuses() {
-        val providers = _state.value.providers
-        val statuses = providers.associate { provider ->
-            provider.id to isProviderConfigured(provider)
+    private fun seedPresetAccounts() {
+        viewModelScope.launch {
+            AiProviderPresets.ensureSeeded(accountDao)
         }
-        _state.value = _state.value.copy(providerKeyStatuses = statuses)
     }
 
-    private fun isProviderConfigured(provider: AiProviderEntity): Boolean {
-        val isOpenCode = provider.baseUrl.contains("opencode", ignoreCase = true)
-        return isOpenCode || !resolveProviderApiKey(provider).isNullOrBlank()
+    private fun loadAccounts() {
+        viewModelScope.launch {
+            combine(
+                accountDao.getAllFlow(),
+                modelDao.onModelsChanged()
+            ) { accounts, _ ->
+                accounts.map { account ->
+                    val models = modelDao.getByAccountId(account.id)
+                    val isConfigured = isAccountConfigured(account)
+                    ProviderAccountDisplay(
+                        account = account,
+                        isConfigured = isConfigured,
+                        enabledModelCount = models.count { it.isEnabled },
+                        totalModelCount = models.size,
+                        lastRefreshedAt = models.maxOfOrNull { it.lastRefreshedAt } ?: 0
+                    )
+                }
+            }.collect { displays ->
+                _state.value = _state.value.copy(accounts = displays)
+            }
+        }
     }
 
-    fun onNameChange(name: String) {
-        _state.value = _state.value.copy(name = name)
-    }
-
-    fun onBaseUrlChange(url: String) {
-        _state.value = _state.value.copy(baseUrl = url)
-    }
-
-    fun onApiKeyChange(key: String) {
-        _state.value = _state.value.copy(apiKey = key)
-    }
-
-    fun onModelChange(model: String) {
-        _state.value = _state.value.copy(defaultModel = model)
+    fun isAccountConfigured(account: ProviderAccountEntity): Boolean {
+        val isOpenCode = account.baseUrl.contains("opencode", ignoreCase = true)
+        if (isOpenCode) return true
+        val key = securePreferences.getApiKeyForProviderKey(buildProviderGroupKey(account.baseUrl))
+        return !key.isNullOrBlank()
     }
 
     fun toggleAddingProvider(show: Boolean) {
@@ -87,44 +83,9 @@ class AiProvidersViewModel @Inject constructor(
         )
     }
 
-    fun onEditProvider(provider: AiProviderEntity?) {
-        val existingKey = provider?.let { resolveProviderApiKey(it).orEmpty() }.orEmpty()
-
-        _state.value = _state.value.copy(
-            editingProvider = provider,
-            showKeyDialog = provider != null,
-            apiKey = "",
-            existingApiKeyPreview = existingKey.maskForPreview(),
-            errorMessage = null
-        )
-        if (provider != null) {
-            _state.value = _state.value.copy(
-                defaultModel = provider.defaultModel,
-                name = provider.name,
-                baseUrl = provider.baseUrl,
-                jobType = provider.jobType
-            )
-        }
-    }
-
-    fun updateApiKeyForProvider(provider: AiProviderEntity, newKey: String) {
-        val isFreeProvider = provider.baseUrl.contains("opencode", ignoreCase = true)
-        val providerKey = buildProviderGroupKey(provider)
-        val existingKey = resolveProviderApiKey(provider).orEmpty()
-        val keyToUse = if (newKey.isBlank()) existingKey else newKey
-
-        if (keyToUse.isBlank() && !isFreeProvider) {
-            _state.value = _state.value.copy(errorMessage = "API Key is required for ${provider.name}")
-            return
-        }
-
-        if (newKey.isNotBlank()) {
-            securePreferences.saveApiKeyForProviderKey(providerKey, newKey)
-        }
-
-        onEditProvider(null)
-        updateKeyStatuses()
-    }
+    fun onNameChange(name: String) { _state.value = _state.value.copy(name = name) }
+    fun onBaseUrlChange(url: String) { _state.value = _state.value.copy(baseUrl = url) }
+    fun onApiKeyChange(key: String) { _state.value = _state.value.copy(apiKey = key) }
 
     fun saveProvider() {
         val currentState = _state.value
@@ -132,85 +93,39 @@ class AiProvidersViewModel @Inject constructor(
             _state.value = currentState.copy(errorMessage = "Name is required")
             return
         }
-
-        val isFreeProvider = currentState.baseUrl.contains("opencode", ignoreCase = true)
-        if (currentState.apiKey.isBlank() && !isFreeProvider) {
+        if (currentState.apiKey.isBlank() && !currentState.baseUrl.contains("opencode", ignoreCase = true)) {
             _state.value = currentState.copy(errorMessage = "API Key is required for this provider")
             return
         }
 
         viewModelScope.launch {
-            val provider = AiProviderEntity(
+            val account = ProviderAccountEntity(
                 name = currentState.name,
                 baseUrl = currentState.baseUrl,
-                defaultModel = currentState.defaultModel,
-                jobType = currentState.jobType
+                jobType = AiProviderPresets.JOB_REGEX_GEN
             )
-            aiProviderDao.insert(provider)
+            val id = accountDao.insert(account)
             if (currentState.apiKey.isNotBlank()) {
                 securePreferences.saveApiKeyForProviderKey(
-                    buildProviderGroupKey(provider),
+                    buildProviderGroupKey(account.baseUrl),
                     currentState.apiKey
                 )
             }
-            
+
             _state.value = currentState.copy(
                 isAddingProvider = false,
                 name = "",
                 baseUrl = "https://openrouter.ai/api/v1",
                 apiKey = "",
-                defaultModel = "meta-llama/llama-3.2-3b-instruct:free",
-                errorMessage = null,
-                existingApiKeyPreview = null
+                errorMessage = null
             )
-            updateKeyStatuses()
         }
     }
 
-    fun deleteProvider(provider: AiProviderEntity) {
-        if (provider.isPreset) {
-            _state.value = _state.value.copy(errorMessage = "Preset providers cannot be deleted")
-            return
-        }
-
+    fun deleteAccount(account: ProviderAccountEntity) {
         viewModelScope.launch {
-            aiProviderDao.delete(provider)
-            securePreferences.deleteApiKeyForProviderKey(buildProviderGroupKey(provider))
-            securePreferences.deleteApiKey(provider.id)
+            accountDao.delete(account)
+            securePreferences.deleteApiKeyForProviderKey(buildProviderGroupKey(account.baseUrl))
         }
-    }
-
-    fun deleteProviderGroup(group: AiProviderGroup) {
-        if (group.isPreset) {
-            _state.value = _state.value.copy(errorMessage = "Preset providers cannot be deleted")
-            return
-        }
-
-        viewModelScope.launch {
-            group.models.forEach { provider ->
-                aiProviderDao.delete(provider)
-                securePreferences.deleteApiKey(provider.id)
-            }
-            securePreferences.deleteApiKeyForProviderKey(group.key)
-        }
-    }
-
-    private fun resolveProviderApiKey(provider: AiProviderEntity): String? {
-        val providerKey = buildProviderGroupKey(provider)
-        val providerLevelKey = securePreferences.getApiKeyForProviderKey(providerKey)
-        if (!providerLevelKey.isNullOrBlank()) {
-            return providerLevelKey
-        }
-
-        val legacyModelKey = securePreferences.getApiKey(provider.id)
-        if (!legacyModelKey.isNullOrBlank()) {
-            securePreferences.saveApiKeyForProviderKey(providerKey, legacyModelKey)
-        }
-        return legacyModelKey
-    }
-
-    private fun String.maskForPreview(): String? {
-        if (isBlank()) return null
-        return take(3) + "..."
     }
 }

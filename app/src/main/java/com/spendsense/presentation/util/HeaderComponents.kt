@@ -29,7 +29,11 @@ fun SpendSenseTopBar(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 16.dp, top = 16.dp, end = 16.dp)
+            .padding(
+                start = 16.dp,
+                top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 8.dp,
+                end = 16.dp
+            )
             .shadow(
                 elevation = 16.dp,
                 shape = barShape,

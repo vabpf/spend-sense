@@ -2,17 +2,18 @@ package com.spendsense.presentation.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.spendsense.data.local.AiProviderPresets
 import com.spendsense.data.local.SecurePreferences
-import com.spendsense.data.local.dao.AiProviderDao
+import com.spendsense.data.local.dao.NotificationPatternDao
+import com.spendsense.data.local.dao.ProviderAccountDao
+import com.spendsense.data.local.dao.ProviderModelDao
 import com.spendsense.data.local.dao.WhitelistedAppDao
-import com.spendsense.data.local.entity.AiProviderEntity
+import com.spendsense.data.local.entity.NotificationPatternEntity
+import com.spendsense.data.local.entity.ProviderAccountEntity
+import com.spendsense.data.local.entity.ProviderModelEntity
 import com.spendsense.data.remote.ChatCompletionApi
 import com.spendsense.data.remote.DynamicBaseUrlInterceptor
 import com.spendsense.data.remote.model.Message
 import com.spendsense.data.remote.model.ChatCompletionRequest
-import com.spendsense.domain.model.RegexPattern
-import com.spendsense.domain.repository.RegexPatternRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,8 +25,9 @@ import javax.inject.Inject
 class RegexGeneratorViewModel @Inject constructor(
     private val chatCompletionApi: ChatCompletionApi,
     private val dynamicBaseUrlInterceptor: DynamicBaseUrlInterceptor,
-    private val regexPatternRepository: RegexPatternRepository,
-    private val aiProviderDao: AiProviderDao,
+    private val notificationPatternDao: NotificationPatternDao,
+    private val accountDao: ProviderAccountDao,
+    private val modelDao: ProviderModelDao,
     private val whitelistedAppDao: WhitelistedAppDao,
     private val securePreferences: SecurePreferences
 ) : ViewModel() {
@@ -33,33 +35,38 @@ class RegexGeneratorViewModel @Inject constructor(
     private val _state = MutableStateFlow(RegexGeneratorState())
     val state: StateFlow<RegexGeneratorState> = _state.asStateFlow()
 
-    init {
-        loadProviders()
-        loadWhitelistedApps()
-        _state.value = _state.value.copy(currencyCode = securePreferences.getDefaultCurrency())
+    companion object {
+        private const val REFRESH_THRESHOLD_MS = 24 * 60 * 60 * 1000L
     }
 
-    private fun loadProviders() {
+    init {
+        _state.value = _state.value.copy(
+            notificationTitle = securePreferences.getRegexTitle(),
+            notificationText = securePreferences.getRegexText(),
+            manualPattern = securePreferences.getRegexManualPattern(),
+            currencyCode = securePreferences.getDefaultCurrency()
+        )
+        loadEnabledModels()
+        loadWhitelistedApps()
+    }
+
+    private fun loadEnabledModels() {
         viewModelScope.launch {
-            AiProviderPresets.ensureSeeded(aiProviderDao)
-            val providers = aiProviderDao.getAllProviders().sortedWith(
-                compareBy<AiProviderEntity>({ it.name.lowercase() }, { it.defaultModel.lowercase() })
-            )
-            val keyStatuses = providers.associate { provider ->
-                val isOpenCode = provider.baseUrl.contains("opencode", ignoreCase = true)
-                provider.id to (isOpenCode || !resolveProviderApiKey(provider).isNullOrBlank())
+            modelDao.getEnabledModelsFlow().collect { models ->
+                val savedId = securePreferences.getSelectedProviderId()
+                val savedModel = models.firstOrNull { it.id == savedId }
+                val firstModel = savedModel ?: models.firstOrNull()
+                _state.value = _state.value.copy(
+                    enabledModels = models,
+                    selectedModel = firstModel
+                )
             }
-            val firstConfiguredProvider = providers.firstOrNull { keyStatuses[it.id] == true }
-            _state.value = _state.value.copy(
-                providers = providers,
-                providerKeyStatuses = keyStatuses,
-                selectedProvider = firstConfiguredProvider
-            )
         }
     }
 
-    fun onProviderSelected(provider: AiProviderEntity) {
-        _state.value = _state.value.copy(selectedProvider = provider)
+    fun onProviderSelected(model: ProviderModelEntity) {
+        _state.value = _state.value.copy(selectedModel = model)
+        securePreferences.saveSelectedProviderId(model.id)
     }
 
     fun onTargetAppSelected(packageName: String) {
@@ -69,36 +76,36 @@ class RegexGeneratorViewModel @Inject constructor(
         )
     }
 
+    fun updateNotificationTitle(title: String) {
+        _state.value = _state.value.copy(notificationTitle = title, errorMessage = null)
+        securePreferences.saveRegexInput(title = title, text = _state.value.notificationText, manualPattern = _state.value.manualPattern)
+    }
+
     fun updateNotificationText(text: String) {
-        _state.value = _state.value.copy(
-            notificationText = text,
-            errorMessage = null
-        )
+        val s = _state.value
+        _state.value = s.copy(notificationText = text, errorMessage = null)
+        securePreferences.saveRegexInput(title = s.notificationTitle, text = text, manualPattern = s.manualPattern)
     }
 
     fun updateManualPattern(pattern: String) {
-        _state.value = _state.value.copy(
-            manualPattern = pattern,
-            errorMessage = null
-        )
+        val s = _state.value
+        _state.value = s.copy(manualPattern = pattern, errorMessage = null)
+        securePreferences.saveRegexInput(title = s.notificationTitle, text = s.notificationText, manualPattern = pattern)
     }
 
-    fun toggleActive() {
-        _state.value = _state.value.copy(isActive = !_state.value.isActive)
-    }
-
-    fun updateCurrency(currencyCode: String) {
-        _state.value = _state.value.copy(currencyCode = currencyCode)
-    }
+    fun toggleActive() { _state.value = _state.value.copy(isActive = !_state.value.isActive) }
+    fun toggleIsTransaction() { _state.value = _state.value.copy(isTransaction = !_state.value.isTransaction) }
+    fun updateCurrency(currencyCode: String) { _state.value = _state.value.copy(currencyCode = currencyCode) }
 
     fun clearInput() {
         val currentState = _state.value
         _state.value = RegexGeneratorState(
-            providers = currentState.providers,
-            providerKeyStatuses = currentState.providerKeyStatuses,
-            selectedProvider = currentState.selectedProvider,
-            availableApps = currentState.availableApps
+            enabledModels = currentState.enabledModels,
+            selectedModel = currentState.selectedModel,
+            availableApps = currentState.availableApps,
+            currencyCode = currentState.currencyCode
         )
+        securePreferences.clearRegexInput()
     }
 
     private fun loadWhitelistedApps() {
@@ -106,7 +113,6 @@ class RegexGeneratorViewModel @Inject constructor(
             val apps = whitelistedAppDao.getEnabledApps()
                 .map { RegexTargetApp(packageName = it.packageName, appName = it.appName) }
                 .sortedBy { it.appName.lowercase() }
-
             _state.value = _state.value.copy(availableApps = apps)
         }
     }
@@ -132,17 +138,9 @@ class RegexGeneratorViewModel @Inject constructor(
             return
         }
 
-        val provider = currentState.selectedProvider
-        if (provider == null) {
-            _state.value = currentState.copy(errorMessage = "Please select an AI provider")
-            return
-        }
-
-        val apiKey = resolveProviderApiKey(provider)
-        val isFreeProvider = provider.baseUrl.contains("opencode", ignoreCase = true)
-        
-        if (apiKey.isNullOrBlank() && !isFreeProvider) {
-            _state.value = currentState.copy(errorMessage = "API key not found for ${provider.name}. Please add it in AI Providers settings.")
+        val model = currentState.selectedModel
+        if (model == null) {
+            _state.value = currentState.copy(errorMessage = "Please select a model")
             return
         }
         
@@ -152,93 +150,103 @@ class RegexGeneratorViewModel @Inject constructor(
             generatedPattern = null
         )
 
-        // Set the base URL for the selected provider
-        dynamicBaseUrlInterceptor.setBaseUrl(
-            url = provider.baseUrl,
-            key = apiKey,
-            isOpenRouter = provider.name.contains("OpenRouter", ignoreCase = true),
-            isOpenCode = provider.baseUrl.contains("opencode", ignoreCase = true)
-        )
-
         viewModelScope.launch {
+            val account = accountDao.getById(model.providerAccountId)
+            if (account == null) {
+                _state.value = _state.value.copy(isGenerating = false, errorMessage = "Provider account not found for this model")
+                return@launch
+            }
+
+            val apiKey = resolveProviderApiKey(account)
+            val isFreeProvider = account.baseUrl.contains("opencode", ignoreCase = true)
+
+            if (apiKey.isNullOrBlank() && !isFreeProvider) {
+                _state.value = _state.value.copy(isGenerating = false, errorMessage = "API key not found for ${account.name}. Please add it in AI Providers settings.")
+                return@launch
+            }
+
+            dynamicBaseUrlInterceptor.setBaseUrl(
+                url = account.baseUrl,
+                key = apiKey,
+                isOpenRouter = account.name.contains("OpenRouter", ignoreCase = true),
+                isOpenCode = account.baseUrl.contains("opencode", ignoreCase = true)
+            )
+
+
             try {
-                val prompt = buildPrompt(notificationText)
+                val prompt = buildPrompt(currentState.notificationTitle, notificationText)
                 val request = ChatCompletionRequest(
-                    model = provider.defaultModel,
-                    messages = listOf(
-                        Message(role = "user", content = prompt)
-                    )
+                    model = model.modelId,
+                    messages = listOf(Message(role = "user", content = prompt))
                 )
 
-                val response = chatCompletionApi.generateCompletion(
-                    request = request
-                )
-
+                val response = chatCompletionApi.generateCompletion(request = request)
                 val generatedText = response.choices.firstOrNull()?.message?.content
                 if (generatedText != null) {
-                    val pattern = extractRegexPattern(generatedText)
-                    if (pattern != null) {
+                    val result = parseAiResponse(generatedText)
+                    if (result != null) {
                         _state.value = _state.value.copy(
                             isGenerating = false,
-                            generatedPattern = pattern,
-                            manualPattern = "" // Clear manual if AI succeeds
+                            generatedPattern = result.regex,
+                            manualPattern = "",
+                            isTransaction = result.isTransaction
                         )
-                        testPattern(pattern, notificationText)
+                        if (result.regex != null) {
+                            testPattern(result.regex, notificationText)
+                        }
                     } else {
-                        _state.value = _state.value.copy(
-                            isGenerating = false,
-                            errorMessage = "Could not extract regex pattern from response"
-                        )
+                        _state.value = _state.value.copy(isGenerating = false, errorMessage = "Could not parse AI response")
                     }
                 } else {
-                    _state.value = _state.value.copy(
-                        isGenerating = false,
-                        errorMessage = "No response from AI"
-                    )
+                    _state.value = _state.value.copy(isGenerating = false, errorMessage = "No response from AI")
                 }
             } catch (e: Exception) {
-                _state.value = _state.value.copy(
-                    isGenerating = false,
-                    errorMessage = "Error: ${e.message}"
-                )
+                _state.value = _state.value.copy(isGenerating = false, errorMessage = "Error: ${e.message}")
             }
         }
     }
 
-    private fun buildPrompt(notificationText: String): String {
+    private fun buildPrompt(title: String, text: String): String {
         return """
-You are a Regex expert. Create a Java/Kotlin compatible Regex pattern to extract transaction details from this banking notification.
+You are a transaction detection expert. Analyze this notification.
+
+Notification Title: "$title"
+Notification Text: "$text"
 
 Requirements:
-1. The Regex must have TWO named capture groups:
-   - 'amount': Captures the transaction amount (numbers with optional decimal, may include currency symbol)
-   - 'merchant': Captures the merchant/payee name
+1. Determine if this is a financial transaction notification (true) or not (false).
+2. If it IS a transaction, generate ONE Kotlin-compatible regex pattern with named capture groups:
+   - (?<amount>...) — captures the transaction amount
+   - (?<merchant>...) — captures the merchant/payee name
+3. If it is NOT a transaction, set regex to null.
 
-2. Use Java/Kotlin named group syntax: (?<groupName>pattern)
-
-3. The pattern should be flexible to match variations but precise enough to extract correct data.
-
-4. Return ONLY the regex pattern, nothing else. No explanations, no code blocks, just the raw regex string.
-
-Notification text:
-"$notificationText"
-
-Respond with only the regex pattern:
+Return ONLY valid JSON with no markdown formatting:
+{"isTransaction": true/false, "regex": "pattern or null"}
         """.trimIndent()
     }
 
-    private fun extractRegexPattern(response: String): String? {
+    private data class AiResponse(val isTransaction: Boolean, val regex: String?)
+
+    private fun parseAiResponse(response: String): AiResponse? {
+        try {
+            val json = org.json.JSONObject(response.trim())
+            val isTransaction = json.optBoolean("isTransaction", true)
+            val regex = json.optString("regex", "").takeIf { it.isNotBlank() && it != "null" }
+            return AiResponse(isTransaction, regex)
+        } catch (e: Exception) {
+            val regex = extractRegexPatternLegacy(response)
+            return AiResponse(isTransaction = regex != null, regex = regex)
+        }
+    }
+
+    private fun extractRegexPatternLegacy(response: String): String? {
         val lines = response.trim().lines()
         for (line in lines) {
             val trimmed = line.trim()
-            if (trimmed.contains("(?<amount>") && trimmed.contains("(?<merchant>")) {
-                return trimmed
-            }
+            if (trimmed.contains("(?<amount>") && trimmed.contains("(?<merchant>")) return trimmed
         }
         val trimmed = response.trim()
-        if (trimmed.contains("(?<amount>") && trimmed.contains("(?<merchant>")) {
-            return trimmed
-        }
+        if (trimmed.contains("(?<amount>") && trimmed.contains("(?<merchant>")) return trimmed
         return null
     }
 
@@ -246,52 +254,37 @@ Respond with only the regex pattern:
         try {
             val regex = Regex(pattern)
             val matchResult = regex.find(text)
-            
             if (matchResult != null) {
-                val amount = matchResult.groups["amount"]?.value
+                val rawAmount = matchResult.groups["amount"]?.value
                 val merchant = matchResult.groups["merchant"]?.value
-                
-                _state.value = _state.value.copy(
-                    extractedAmount = amount,
-                    extractedMerchant = merchant,
-                    errorMessage = null
-                )
+                val amount = rawAmount?.let { parseAmount(it) }?.toString() ?: rawAmount
+                _state.value = _state.value.copy(extractedAmount = amount, extractedMerchant = merchant, errorMessage = null)
             } else {
-                _state.value = _state.value.copy(
-                    extractedAmount = null,
-                    extractedMerchant = null,
-                    errorMessage = "Pattern does not match the notification text"
-                )
+                _state.value = _state.value.copy(extractedAmount = null, extractedMerchant = null, errorMessage = "Pattern does not match the notification text")
             }
         } catch (e: Exception) {
-            _state.value = _state.value.copy(
-                errorMessage = "Invalid regex pattern: ${e.message}"
-            )
+            _state.value = _state.value.copy(errorMessage = "Invalid regex pattern: ${e.message}")
         }
+    }
+
+    private fun parseAmount(amountStr: String): Double {
+        return try { amountStr.replace(Regex("[^0-9.]"), "").toDoubleOrNull() ?: 0.0 } catch (_: Exception) { 0.0 }
     }
 
     fun savePattern() {
         val currentState = _state.value
-        val patternToSave = if (currentState.manualPattern.isNotBlank()) {
-            currentState.manualPattern
-        } else {
-            currentState.generatedPattern
-        }
-        
-        if (patternToSave.isNullOrBlank()) {
-            _state.value = currentState.copy(errorMessage = "No pattern to save")
-            return
-        }
+        val patternToSave = if (currentState.manualPattern.isNotBlank()) currentState.manualPattern else currentState.generatedPattern
 
         if (currentState.availableApps.isEmpty()) {
-            _state.value = currentState.copy(
-                errorMessage = "No whitelisted apps found. Please whitelist at least one app first."
-            )
+            _state.value = currentState.copy(errorMessage = "No whitelisted apps found. Please whitelist at least one app first.")
             return
         }
-
         if (currentState.selectedAppPackage.isBlank()) {
             _state.value = currentState.copy(errorMessage = "Please select an app to apply this pattern")
+            return
+        }
+        if (currentState.notificationTitle.isBlank()) {
+            _state.value = currentState.copy(errorMessage = "Please enter a notification title — patterns are keyed by (app × title)")
             return
         }
 
@@ -299,40 +292,26 @@ Respond with only the regex pattern:
 
         viewModelScope.launch {
             try {
-                val pattern = RegexPattern(
-                    packageName = currentState.selectedAppPackage,
-                    pattern = patternToSave,
-                    currencyCode = currentState.currencyCode,
-                    isActive = currentState.isActive
+                notificationPatternDao.upsert(
+                    NotificationPatternEntity(
+                        packageName = currentState.selectedAppPackage,
+                        notificationTitle = currentState.notificationTitle,
+                        regex = patternToSave,
+                        currencyCode = currentState.currencyCode,
+                        isTransaction = currentState.isTransaction
+                    )
                 )
-
-                regexPatternRepository.insertPattern(pattern)
                 securePreferences.setDefaultCurrency(currentState.currencyCode)
-
-                _state.value = _state.value.copy(
-                    isSaving = false,
-                    successMessage = "Pattern saved successfully!"
-                )
+                securePreferences.clearRegexInput()
+                _state.value = _state.value.copy(isSaving = false, successMessage = "Pattern saved successfully!", notificationTitle = "", notificationText = "", manualPattern = "")
             } catch (e: Exception) {
-                _state.value = currentState.copy(
-                    isSaving = false,
-                    errorMessage = "Error saving pattern: ${e.message}"
-                )
+                _state.value = currentState.copy(isSaving = false, errorMessage = "Error saving pattern: ${e.message}")
             }
         }
     }
 
-    private fun resolveProviderApiKey(provider: AiProviderEntity): String? {
-        val providerKey = buildProviderGroupKey(provider)
-        val providerLevelKey = securePreferences.getApiKeyForProviderKey(providerKey)
-        if (!providerLevelKey.isNullOrBlank()) {
-            return providerLevelKey
-        }
-
-        val legacyModelKey = securePreferences.getApiKey(provider.id)
-        if (!legacyModelKey.isNullOrBlank()) {
-            securePreferences.saveApiKeyForProviderKey(providerKey, legacyModelKey)
-        }
-        return legacyModelKey
+    private fun resolveProviderApiKey(account: ProviderAccountEntity): String? {
+        val key = securePreferences.getApiKeyForProviderKey(buildProviderGroupKey(account.baseUrl))
+        return key
     }
 }

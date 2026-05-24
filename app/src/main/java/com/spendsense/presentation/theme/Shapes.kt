@@ -11,8 +11,8 @@ import androidx.compose.ui.unit.dp
 // ═══════════════════════════════════════════════════════════════════════════════
 
 val AppShapes = Shapes(
-    extraSmall = RoundedCornerShape(8.dp),    // Tiny elements, chips
-    small = RoundedCornerShape(12.dp),        // Buttons, small cards
+    extraSmall = RoundedCornerShape(20.dp),    // Tiny elements, chips
+    small = RoundedCornerShape(20.dp),        // Buttons, small cards, inputs
     medium = RoundedCornerShape(20.dp),      // Standard cards, inputs
     large = RoundedCornerShape(28.dp),        // Large summary cards
     extraLarge = RoundedCornerShape(36.dp)     // Bottom sheets, modals

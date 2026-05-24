@@ -1,7 +1,44 @@
+# SpendSense — Android App
+
+## Build & Install
+
+```bash
+./gradlew assembleDebug
+adb install app/build/outputs/apk/debug/app-debug.apk
+```
+Note: Adjust the `adb` path for your environment (e.g., `/mnt/d/Apps/Android/Sdk/platform-tools/adb.exe` on WSL with Windows).
+
+## Project Structure
+
+- **Platform:** Android (Kotlin, Jetpack Compose, Material 3)
+- **Architecture:** Clean Architecture with Hilt DI, Room database
+- **Modules:** Single-module Android app (`app/`)
+
+## GitNexus — Code Intelligence
+
+This project is indexed by GitNexus as **spend-sense** (1077 symbols, 2377 relationships, 73 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+
+> If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
+
+### Always Do
+
+- **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `gitnexus_impact({target: "symbolName", direction: "upstream"})` and report the blast radius to the user.
+- **MUST run `gitnexus_detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows.
+- **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
+
+### CLI
+
+| Task | Skill File |
+|------|------------|
+| Understand architecture | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
+| Blast radius analysis | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
+| Debug/tracing | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
+| Rename/refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
+
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **spend-sense** (1077 symbols, 2377 relationships, 73 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **spend-sense** (1238 symbols, 2690 relationships, 81 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

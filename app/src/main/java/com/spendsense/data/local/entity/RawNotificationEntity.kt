@@ -9,5 +9,6 @@ data class RawNotificationEntity(
     val packageName: String,
     val text: String,
     val timestamp: Long,
-    val isProcessed: Boolean = false
+    val isProcessed: Boolean = false,
+    val stalePatternId: Long? = null
 )

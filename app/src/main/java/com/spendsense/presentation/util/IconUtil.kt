@@ -1,27 +1,27 @@
 package com.spendsense.presentation.util
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 
 fun getCategoryIcon(iconName: String): ImageVector {
     return when (iconName) {
-        "Restaurant" -> Icons.Default.Restaurant
-        "DirectionsCar" -> Icons.Default.DirectionsCar
-        "ShoppingCart" -> Icons.Default.ShoppingCart
-        "Movie" -> Icons.Default.Movie
-        "Receipt" -> Icons.Default.Receipt
-        "LocalHospital" -> Icons.Default.LocalHospital
-        "MoreHoriz" -> Icons.Default.MoreHoriz
-        "Fastfood" -> Icons.Default.Fastfood
-        "Home" -> Icons.Default.Home
-        "LocalGasStation" -> Icons.Default.LocalGasStation
-        "Flight" -> Icons.Default.Flight
-        "Pets" -> Icons.Default.Pets
-        "FitnessCenter" -> Icons.Default.FitnessCenter
-        "School" -> Icons.Default.School
-        else -> Icons.Default.Category
+        "Restaurant" -> Icons.Rounded.Restaurant
+        "DirectionsCar" -> Icons.Rounded.DirectionsCar
+        "ShoppingCart" -> Icons.Rounded.ShoppingCart
+        "Movie" -> Icons.Rounded.Movie
+        "Receipt" -> Icons.Rounded.Receipt
+        "LocalHospital" -> Icons.Rounded.LocalHospital
+        "MoreHoriz" -> Icons.Rounded.MoreHoriz
+        "Fastfood" -> Icons.Rounded.Fastfood
+        "Home" -> Icons.Rounded.Home
+        "LocalGasStation" -> Icons.Rounded.LocalGasStation
+        "Flight" -> Icons.Rounded.Flight
+        "Pets" -> Icons.Rounded.Pets
+        "FitnessCenter" -> Icons.Rounded.FitnessCenter
+        "School" -> Icons.Rounded.School
+        else -> Icons.Rounded.Category
     }
 }
 

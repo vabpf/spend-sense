@@ -1,11 +1,10 @@
 @file:OptIn(ExperimentalMaterial3Api::class)
 package com.spendsense.presentation.home
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -13,7 +12,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.spendsense.data.local.Currencies
 import com.spendsense.domain.model.Category
-import com.spendsense.presentation.theme.GlassSurface
+import com.spendsense.presentation.util.GlassAlertDialog
+import com.spendsense.presentation.util.getCategoryIcon
+import com.spendsense.presentation.util.parseColor
 
 @Composable
 fun AddTransactionDialog(
@@ -26,14 +27,10 @@ fun AddTransactionDialog(
     var currency by remember { mutableStateOf(defaultCurrency) }
     var merchant by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf<Category?>(categories.firstOrNull()) }
-    var categoryExpanded by remember { mutableStateOf(false) }
     var currencyExpanded by remember { mutableStateOf(false) }
 
-    AlertDialog(
+    GlassAlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = GlassSurface,
-        titleContentColor = MaterialTheme.colorScheme.onSurface,
-        textContentColor = MaterialTheme.colorScheme.onSurface,
         title = { Text("Add Transaction") },
         text = {
             Column(
@@ -88,34 +85,27 @@ fun AddTransactionDialog(
                     singleLine = true
                 )
 
-                ExposedDropdownMenuBox(
-                    expanded = categoryExpanded,
-                    onExpandedChange = { categoryExpanded = !categoryExpanded }
-                ) {
-                    OutlinedTextField(
-                        value = selectedCategory?.name ?: "Select Category",
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Category") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor()
-                    )
+                Text("Category", style = MaterialTheme.typography.titleSmall)
 
-                    ExposedDropdownMenu(
-                        expanded = categoryExpanded,
-                        onDismissRequest = { categoryExpanded = false }
-                    ) {
-                        categories.forEach { category ->
-                            DropdownMenuItem(
-                                text = { Text(category.name) },
-                                onClick = {
-                                    selectedCategory = category
-                                    categoryExpanded = false
-                                }
-                            )
-                        }
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    categories.forEach { category ->
+                        val categoryColor = parseColor(category.colorHex)
+                        FilterChip(
+                            selected = category.id == selectedCategory?.id,
+                            onClick = { selectedCategory = category },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = getCategoryIcon(category.iconName),
+                                    contentDescription = null,
+                                    tint = categoryColor,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            label = { Text(category.name, color = categoryColor) }
+                        )
                     }
                 }
             }

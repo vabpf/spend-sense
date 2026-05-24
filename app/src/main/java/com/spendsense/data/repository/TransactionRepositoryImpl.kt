@@ -1,6 +1,8 @@
 package com.spendsense.data.repository
 
+import com.spendsense.data.local.dao.MerchantCategoryMappingDao
 import com.spendsense.data.local.dao.TransactionDao
+import com.spendsense.data.local.entity.MerchantCategoryMappingEntity
 import com.spendsense.data.local.entity.TransactionEntity
 import com.spendsense.domain.model.Transaction
 import com.spendsense.domain.repository.TransactionRepository
@@ -11,11 +13,19 @@ import javax.inject.Singleton
 
 @Singleton
 class TransactionRepositoryImpl @Inject constructor(
-    private val transactionDao: TransactionDao
+    private val transactionDao: TransactionDao,
+    private val merchantCategoryMappingDao: MerchantCategoryMappingDao
 ) : TransactionRepository {
 
     override suspend fun insertTransaction(transaction: Transaction): Long {
-        return transactionDao.insert(transaction.toEntity())
+        val id = transactionDao.insert(transaction.toEntity())
+        merchantCategoryMappingDao.upsert(
+            MerchantCategoryMappingEntity(
+                merchant = transaction.merchant.lowercase(),
+                categoryId = transaction.categoryId
+            )
+        )
+        return id
     }
 
     override suspend fun updateTransaction(transaction: Transaction) {

@@ -1,10 +1,10 @@
 package com.spendsense.di
 
 import com.spendsense.data.repository.CategoryRepositoryImpl
-import com.spendsense.data.repository.RegexPatternRepositoryImpl
+import com.spendsense.data.repository.ExchangeRateRepositoryImpl
 import com.spendsense.data.repository.TransactionRepositoryImpl
 import com.spendsense.domain.repository.CategoryRepository
-import com.spendsense.domain.repository.RegexPatternRepository
+import com.spendsense.domain.repository.ExchangeRateRepository
 import com.spendsense.domain.repository.TransactionRepository
 import dagger.Binds
 import dagger.Module
@@ -30,7 +30,7 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
-    abstract fun bindRegexPatternRepository(
-        regexPatternRepositoryImpl: RegexPatternRepositoryImpl
-    ): RegexPatternRepository
+    abstract fun bindExchangeRateRepository(
+        exchangeRateRepositoryImpl: ExchangeRateRepositoryImpl
+    ): ExchangeRateRepository
 }

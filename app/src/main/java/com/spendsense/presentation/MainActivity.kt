@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -18,19 +19,24 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.rounded.BarChart
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -45,25 +51,33 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.spendsense.data.service.TransactionNotificationListener
+import com.spendsense.domain.model.ReviewTransactionData
 import com.spendsense.domain.repository.CategoryRepository
 import com.spendsense.presentation.home.HomeScreen
 import com.spendsense.presentation.charts.ChartsScreen
 import com.spendsense.presentation.categories.CategoriesScreen
-import com.spendsense.presentation.overlay.ActionOverlayService
 import com.spendsense.presentation.settings.AiProvidersScreen
+import com.spendsense.presentation.settings.ProviderDetailScreen
 import com.spendsense.presentation.settings.RegexGeneratorScreen
 import com.spendsense.presentation.settings.SettingsScreen
+import com.spendsense.presentation.settings.NotificationPatternsScreen
 import com.spendsense.presentation.theme.CyberBlue
 import com.spendsense.presentation.theme.DeepCharcoal
 import com.spendsense.presentation.theme.GlassSurface
-import com.spendsense.presentation.theme.NeonRose
 import com.spendsense.presentation.theme.SpendSenseTheme
+import com.spendsense.R
+import com.spendsense.presentation.theme.NeonRose
 import com.spendsense.presentation.util.LocalGlassHazeState
+import com.spendsense.presentation.util.LocalLiquidState
 import com.spendsense.presentation.util.glassEffect
 import com.spendsense.presentation.whitelistedapps.WhitelistedAppsScreen
 import dagger.hilt.android.AndroidEntryPoint
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
+import io.github.fletchmckee.liquid.liquid
+import io.github.fletchmckee.liquid.liquefiable
+import io.github.fletchmckee.liquid.rememberLiquidState
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -72,6 +86,8 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var categoryRepository: CategoryRepository
+
+    private var reviewData by mutableStateOf<ReviewTransactionData?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -84,247 +100,291 @@ class MainActivity : ComponentActivity() {
             categoryRepository.initializeDefaultCategories()
         }
         
-        startActionOverlayService()
+        handleIntent(intent)
         
         setContent {
             SpendSenseTheme {
                 val navController = rememberNavController()
                 val hazeState = rememberHazeState()
+                val liquidState = rememberLiquidState()
 
-                CompositionLocalProvider(LocalGlassHazeState provides hazeState) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .hazeSource(state = hazeState)
-                            .background(
-                                brush = Brush.verticalGradient(
-                                    colors = listOf(
-                                        DeepCharcoal,
-                                        Color(0xFF0B0B12),
-                                        Color(0xFF08080D)
-                                    )
-                                )
-                            )
-                    ) {
+                CompositionLocalProvider(
+                    LocalGlassHazeState provides hazeState,
+                    LocalLiquidState provides liquidState
+                ) {
+                    // docs/LIQUID_GLASS.md §2-4: liquefiable source must be sibling, not ancestor
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        // Sibling 1: liquefiable source (pexels bg overlay ONLY — no content)
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(
-                                    brush = Brush.radialGradient(
-                                        colors = listOf(CyberBlue.copy(alpha = 0.15f), Color.Transparent),
-                                        radius = 900f
-                                    )
-                                )
-                        )
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(
-                                    brush = Brush.radialGradient(
-                                        colors = listOf(NeonRose.copy(alpha = 0.1f), Color.Transparent),
-                                        radius = 1100f
-                                    )
-                                )
-                        )
-
-                    Scaffold(
-                        containerColor = Color.Transparent,
-                        contentColor = MaterialTheme.colorScheme.onBackground,
-                        bottomBar = {
-                            val navBackStackEntry by navController.currentBackStackEntryAsState()
-                            val currentDestination = navBackStackEntry?.destination
-
-                            val mainScreens = listOf("home", "charts", "settings")
-                            val navItems = listOf(
-                                Triple("home", Icons.Default.Home, "Home"),
-                                Triple("charts", Icons.Default.BarChart, "Charts"),
-                                Triple("settings", Icons.Default.Settings, "Settings")
+                                .liquefiable(liquidState = liquidState)
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.bg_pexel),
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
                             )
 
-                            if (currentDestination?.route in mainScreens) {
-                                Box(
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = 0.30f))
+                            )
+                        }
+
+                        // Sibling 2: Content (Scaffold + NavHost) — NOT inside liquefiable
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            Scaffold(
+                                containerColor = Color.Transparent,
+                                contentColor = MaterialTheme.colorScheme.onBackground,
+                            ) { innerPadding ->
+                                NavHost(
+                                    navController = navController,
+                                    startDestination = "home"
+                                ) {
+                                    composable("home") {
+                                        HomeScreen(
+                                            reviewData = reviewData,
+                                            onReviewHandled = { reviewData = null },
+                                            onNavigateToSettings = {
+                                                navController.navigate("settings") {
+                                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                                    launchSingleTop = true
+                                                    restoreState = true
+                                                }
+                                            },
+                                            onNavigateToRegexGenerator = { text ->
+                                                val route = if (text != null) {
+                                                    "regex_generator?text=$text"
+                                                } else {
+                                                    "regex_generator"
+                                                }
+                                                navController.navigate(route)
+                                            }
+                                        )
+                                    }
+
+                                    composable("charts") {
+                                        ChartsScreen()
+                                    }
+
+                                    composable("settings") {
+                                        SettingsScreen(
+                                            onNavigateBack = {
+                                                navController.navigate("home") {
+                                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                                    launchSingleTop = true
+                                                    restoreState = true
+                                                }
+                                            },
+                                            onNavigateToRegexGenerator = {
+                                                navController.navigate("regex_generator")
+                                            },
+                                            onNavigateToAiProviders = {
+                                                navController.navigate("ai_providers")
+                                            },
+                                            onNavigateToWhitelistedApps = {
+                                                navController.navigate("whitelisted_apps")
+                                            },
+                                            onNavigateToCategories = {
+                                                navController.navigate("categories")
+                                            },
+                                            onNavigateToNotificationPatterns = {
+                                                navController.navigate("notification_patterns")
+                                            }
+                                        )
+                                    }
+
+                                    composable("whitelisted_apps") {
+                                        WhitelistedAppsScreen(
+                                            onNavigateBack = {
+                                                navController.popBackStack()
+                                            }
+                                        )
+                                    }
+
+                                    composable("categories") {
+                                        CategoriesScreen(
+                                            onNavigateBack = {
+                                                navController.popBackStack()
+                                            }
+                                        )
+                                    }
+
+                                    composable("ai_providers") {
+                                        AiProvidersScreen(
+                                            onNavigateBack = {
+                                                navController.popBackStack()
+                                            },
+                                            onNavigateToDetail = { accountId ->
+                                                navController.navigate("provider_detail/$accountId")
+                                            }
+                                        )
+                                    }
+
+                                    composable(
+                                        route = "provider_detail/{accountId}",
+                                        arguments = listOf(
+                                            navArgument("accountId") { type = NavType.LongType }
+                                        )
+                                    ) { backStackEntry ->
+                                        val accountId = backStackEntry.arguments?.getLong("accountId") ?: return@composable
+                                        ProviderDetailScreen(
+                                            accountId = accountId,
+                                            onNavigateBack = {
+                                                navController.popBackStack()
+                                            }
+                                        )
+                                    }
+
+                                    composable("notification_patterns") {
+                                        NotificationPatternsScreen(
+                                            onNavigateBack = {
+                                                navController.popBackStack()
+                                            }
+                                        )
+                                    }
+
+                                    composable(
+                                        route = "regex_generator?text={text}",
+                                        arguments = listOf(
+                                            navArgument("text") {
+                                                type = NavType.StringType
+                                                nullable = true
+                                                defaultValue = null
+                                            }
+                                        )
+                                    ) { backStackEntry ->
+                                        val text = backStackEntry.arguments?.getString("text")
+                                        RegexGeneratorScreen(
+                                            initialNotificationText = text,
+                                            onNavigateBack = {
+                                                navController.popBackStack()
+                                            },
+                                            onNavigateToNotificationPatterns = {
+                                                navController.navigate("notification_patterns")
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Sibling 2: nav bar with glass effect (separate from Scaffold)
+                        // Referenced as: GLASS_NAV_BAR (floating pill at bottom center)
+                        val navBackStackEntry by navController.currentBackStackEntryAsState()
+                        val currentDestination = navBackStackEntry?.destination
+
+                        val mainScreens = listOf("home", "charts", "settings")
+                        val navItems = listOf(
+                            Triple("home", Icons.Rounded.Home, "Home"),
+                            Triple("charts", Icons.Rounded.BarChart, "Charts"),
+                            Triple("settings", Icons.Rounded.Settings, "Settings")
+                        )
+
+                        if (currentDestination?.route in mainScreens) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 28.dp, vertical = 12.dp)
+                                    .offset(y = (-16).dp)
+                                    .shadow(
+                                        elevation = 22.dp,
+                                        shape = RoundedCornerShape(999.dp),
+                                        ambientColor = Color.Black.copy(alpha = 0.25f),
+                                        spotColor = Color.Black.copy(alpha = 0.18f)
+                                    )
+                                    .glassEffect(
+                                        shape = RoundedCornerShape(999.dp),
+                                        containerColor = GlassSurface.copy(alpha = 0.86f),
+                                        borderAlpha = 0.16f,
+                                        sheenAlpha = 0.06f,
+                                        hazeState = hazeState
+                                    )
+                                    .padding(horizontal = 8.dp, vertical = 8.dp)
+                            ) {
+                                Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 28.dp, vertical = 12.dp)
-                                        .shadow(
-                                            elevation = 22.dp,
-                                            shape = RoundedCornerShape(999.dp),
-                                            ambientColor = Color.Black.copy(alpha = 0.25f),
-                                            spotColor = Color.Black.copy(alpha = 0.18f)
-                                        )
-                                        .glassEffect(
-                                            shape = RoundedCornerShape(999.dp),
-                                            containerColor = GlassSurface.copy(alpha = 0.86f),
-                                            borderAlpha = 0.16f,
-                                            sheenAlpha = 0.06f,
-                                            hazeState = hazeState
-                                        )
-                                        .padding(horizontal = 8.dp, vertical = 8.dp)
+                                        .height(64.dp),
+                                    horizontalArrangement = Arrangement.SpaceEvenly,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(64.dp),
-                                        horizontalArrangement = Arrangement.SpaceEvenly,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        navItems.forEach { (route, icon, label) ->
-                                            val selected = currentDestination?.hierarchy?.any { it.route == route } == true
+                                    navItems.forEach { (route, icon, label) ->
+                                        val selected = currentDestination?.hierarchy?.any { it.route == route } == true
 
-                                            Box(
-                                                modifier = Modifier
-                                                    .weight(1f)
-                                                    .clip(RoundedCornerShape(999.dp))
-                                                    .background(
-                                                        if (selected) {
-                                                            CyberBlue.copy(alpha = 0.16f)
-                                                        } else {
-                                                            Color.Transparent
-                                                        }
-                                                    )
-                                                    .clickable {
-                                                        navController.navigate(route) {
-                                                            popUpTo(navController.graph.findStartDestination().id) {
-                                                                saveState = true
-                                                            }
-                                                            launchSingleTop = true
-                                                            restoreState = true
-                                                        }
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .clip(RoundedCornerShape(999.dp))
+                                                .background(
+                                                    if (selected) {
+                                                        CyberBlue.copy(alpha = 0.16f)
+                                                    } else {
+                                                        Color.Transparent
                                                     }
-                                                    .padding(horizontal = 10.dp, vertical = 10.dp),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Column(
-                                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                                                ) {
-                                                    Icon(
-                                                        icon,
-                                                        contentDescription = label,
-                                                        tint = if (selected) CyberBlue else MaterialTheme.colorScheme.onSurfaceVariant
-                                                    )
-                                                    Text(
-                                                        text = label,
-                                                        style = MaterialTheme.typography.labelMedium,
-                                                        color = if (selected) CyberBlue else MaterialTheme.colorScheme.onSurfaceVariant
-                                                    )
+                                                )
+                                                .clickable {
+                                                    navController.navigate(route) {
+                                                        popUpTo(navController.graph.findStartDestination().id) {
+                                                            saveState = true
+                                                        }
+                                                        launchSingleTop = true
+                                                        restoreState = true
+                                                    }
                                                 }
+                                                .padding(horizontal = 10.dp, vertical = 10.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Column(
+                                                horizontalAlignment = Alignment.CenterHorizontally,
+                                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                                            ) {
+                                                Icon(
+                                                    icon,
+                                                    contentDescription = label,
+                                                    tint = if (selected) CyberBlue else MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                                Text(
+                                                    text = label,
+                                                    style = MaterialTheme.typography.labelMedium,
+                                                    color = if (selected) CyberBlue else MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
                                             }
                                         }
                                     }
                                 }
                             }
                         }
-                        ) { innerPadding ->
-                        NavHost(
-                            navController = navController,
-                            startDestination = "home",
-                            modifier = Modifier.hazeSource(state = hazeState)
-                        ) {
-                            composable("home") {
-                                HomeScreen(
-                                    onNavigateToSettings = {
-                                        navController.navigate("settings") {
-                                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                            launchSingleTop = true
-                                            restoreState = true
-                                        }
-                                    },
-                                    onNavigateToRegexGenerator = { text ->
-                                        val route = if (text != null) {
-                                            "regex_generator?text=$text"
-                                        } else {
-                                            "regex_generator"
-                                        }
-                                        navController.navigate(route)
-                                    }
-                                )
-                            }
-
-                            composable("charts") {
-                                ChartsScreen()
-                            }
-
-                            composable("settings") {
-                                SettingsScreen(
-                                    onNavigateBack = {
-                                        navController.navigate("home") {
-                                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                            launchSingleTop = true
-                                            restoreState = true
-                                        }
-                                    },
-                                    onNavigateToRegexGenerator = {
-                                        navController.navigate("regex_generator")
-                                    },
-                                    onNavigateToAiProviders = {
-                                        navController.navigate("ai_providers")
-                                    },
-                                    onNavigateToWhitelistedApps = {
-                                        navController.navigate("whitelisted_apps")
-                                    },
-                                    onNavigateToCategories = {
-                                        navController.navigate("categories")
-                                    }
-                                )
-                            }
-
-                            composable("whitelisted_apps") {
-                                WhitelistedAppsScreen(
-                                    onNavigateBack = {
-                                        navController.popBackStack()
-                                    }
-                                )
-                            }
-
-                            composable("categories") {
-                                CategoriesScreen(
-                                    onNavigateBack = {
-                                        navController.popBackStack()
-                                    }
-                                )
-                            }
-
-                            composable("ai_providers") {
-                                AiProvidersScreen(
-                                    onNavigateBack = {
-                                        navController.popBackStack()
-                                    }
-                                )
-                            }
-
-                            composable(
-                                route = "regex_generator?text={text}",
-                                arguments = listOf(
-                                    navArgument("text") {
-                                        type = NavType.StringType
-                                        nullable = true
-                                        defaultValue = null
-                                    }
-                                )
-                            ) { backStackEntry ->
-                                val text = backStackEntry.arguments?.getString("text")
-                                RegexGeneratorScreen(
-                                    initialNotificationText = text,
-                                    onNavigateBack = {
-                                        navController.popBackStack()
-                                    }
-                                )
-                            }
-                        }
-                    }
                     }
                 }
             }
         }
     }
-    
-    private fun startActionOverlayService() {
-        val intent = Intent(this, ActionOverlayService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(intent)
-        } else {
-            startService(intent)
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        intent?.let {
+            if (it.hasExtra(TransactionNotificationListener.EXTRA_REVIEW_MERCHANT)) {
+                reviewData = ReviewTransactionData(
+                    amount = it.getDoubleExtra(TransactionNotificationListener.EXTRA_REVIEW_AMOUNT, 0.0),
+                    merchant = it.getStringExtra(TransactionNotificationListener.EXTRA_REVIEW_MERCHANT) ?: return,
+                    currencyCode = it.getStringExtra(TransactionNotificationListener.EXTRA_REVIEW_CURRENCY) ?: "USD",
+                    sourcePackageName = it.getStringExtra(TransactionNotificationListener.EXTRA_REVIEW_PACKAGE_NAME) ?: "",
+                    sourceAppName = it.getStringExtra(TransactionNotificationListener.EXTRA_REVIEW_APP_NAME) ?: "",
+                    rawNotificationId = it.getLongExtra(TransactionNotificationListener.EXTRA_REVIEW_RAW_NOTIFICATION_ID, -1L),
+                    suggestedCategoryId = it.getLongExtra(TransactionNotificationListener.EXTRA_REVIEW_CATEGORY_ID, -1L).let { id ->
+                        if (id > 0) id else null
+                    }
+                )
+            }
         }
     }
 }

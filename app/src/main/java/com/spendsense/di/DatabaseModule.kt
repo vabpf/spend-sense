@@ -3,7 +3,6 @@ package com.spendsense.di
 import android.content.Context
 import androidx.room.Room
 import com.spendsense.data.local.SpendSenseDatabase
-import com.spendsense.data.local.MIGRATION_3_4
 import com.spendsense.data.local.dao.*
 import dagger.Module
 import dagger.Provides
@@ -24,8 +23,6 @@ object DatabaseModule {
             SpendSenseDatabase::class.java,
             SpendSenseDatabase.DATABASE_NAME
         )
-            .addCallback(SpendSenseDatabase.CALLBACK)
-            .addMigrations(MIGRATION_3_4)
             .build()
     }
 
@@ -37,11 +34,6 @@ object DatabaseModule {
     @Provides
     fun provideCategoryDao(database: SpendSenseDatabase): CategoryDao {
         return database.categoryDao()
-    }
-
-    @Provides
-    fun provideRegexPatternDao(database: SpendSenseDatabase): RegexPatternDao {
-        return database.regexPatternDao()
     }
 
     @Provides
@@ -58,5 +50,29 @@ object DatabaseModule {
     fun provideAiProviderDao(database: SpendSenseDatabase): AiProviderDao {
         return database.aiProviderDao()
     }
-}
 
+    @Provides
+    fun provideMerchantCategoryMappingDao(database: SpendSenseDatabase): MerchantCategoryMappingDao {
+        return database.merchantCategoryMappingDao()
+    }
+
+    @Provides
+    fun provideNotificationPatternDao(database: SpendSenseDatabase): NotificationPatternDao {
+        return database.notificationPatternDao()
+    }
+
+    @Provides
+    fun provideExchangeRateDao(database: SpendSenseDatabase): ExchangeRateDao {
+        return database.exchangeRateDao()
+    }
+
+    @Provides
+    fun provideProviderAccountDao(database: SpendSenseDatabase): ProviderAccountDao {
+        return database.providerAccountDao()
+    }
+
+    @Provides
+    fun provideProviderModelDao(database: SpendSenseDatabase): ProviderModelDao {
+        return database.providerModelDao()
+    }
+}

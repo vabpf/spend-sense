@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,9 +15,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.spendsense.data.local.Currencies
 import com.spendsense.presentation.theme.GlassSurface
+import com.spendsense.presentation.util.GlassAlertDialog
 import com.spendsense.presentation.util.SpendSenseTopBar
 import com.spendsense.presentation.util.glassEffect
 
@@ -29,29 +31,22 @@ fun SettingsScreen(
     onNavigateToAiProviders: () -> Unit = {},
     onNavigateToWhitelistedApps: () -> Unit = {},
     onNavigateToCategories: () -> Unit = {},
+    onNavigateToNotificationPatterns: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
     var showCurrencySelector by remember { mutableStateOf(false) }
 
-    Scaffold(
-        containerColor = Color.Transparent,
-        topBar = {
-            SpendSenseTopBar(
-                title = "Settings",
-                onNavigationClick = onNavigateBack,
-                navigationIcon = Icons.Default.ArrowBack
-            )
-        }
-    ) { padding ->
+    Scaffold(containerColor = Color.Transparent) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = padding.calculateBottomPadding())
                 .verticalScroll(rememberScrollState())
-                .padding(start = 16.dp, end = 16.dp, bottom = 100.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(start = 16.dp, end = 16.dp)
+                .padding(top = 72.dp)
+                .padding(bottom = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(
                 text = "Customize capture, AI, and defaults",
@@ -62,7 +57,8 @@ fun SettingsScreen(
             // Permissions Section
             Text(
                 text = "Permissions",
-                style = MaterialTheme.typography.titleLarge
+                style = MaterialTheme.typography.titleLarge.copy(fontSize = 14.sp),
+                modifier = Modifier.padding(top = 12.dp)
             )
 
             Card(
@@ -81,7 +77,7 @@ fun SettingsScreen(
             ) {
                 Column {
                     SettingsItem(
-                        icon = Icons.Default.Notifications,
+                        icon = Icons.Rounded.Notifications,
                         title = "Notification Access",
                         description = "Required to read banking notifications",
                         onClick = {
@@ -92,7 +88,7 @@ fun SettingsScreen(
                     HorizontalDivider()
                     
                     SettingsItem(
-                        icon = Icons.Default.Layers,
+                        icon = Icons.Rounded.Layers,
                         title = "Display Over Other Apps",
                         description = "Required to show transaction overlay",
                         onClick = {
@@ -109,7 +105,8 @@ fun SettingsScreen(
             // Configuration Section
             Text(
                 text = "Preferences",
-                style = MaterialTheme.typography.titleLarge
+                style = MaterialTheme.typography.titleLarge.copy(fontSize = 14.sp),
+                modifier = Modifier.padding(top = 12.dp)
             )
 
             Card(
@@ -128,37 +125,20 @@ fun SettingsScreen(
             ) {
                 Column {
                     val selectedCurrency = Currencies.find(state.defaultCurrency)
-                    Box {
-                        SettingsItem(
-                            icon = Icons.Default.CurrencyExchange,
-                            title = "Default Currency",
-                            description = "${selectedCurrency.symbol} ${selectedCurrency.code} — ${selectedCurrency.name}",
-                            onClick = { showCurrencySelector = true }
-                        )
-
-                        DropdownMenu(
-                            expanded = showCurrencySelector,
-                            onDismissRequest = { showCurrencySelector = false },
-                            modifier = Modifier.fillMaxWidth(0.9f)
-                        ) {
-                            Currencies.SUPPORTED.forEach { cur ->
-                                DropdownMenuItem(
-                                    text = { Text("${cur.symbol} ${cur.code} — ${cur.name}") },
-                                    onClick = {
-                                        viewModel.updateDefaultCurrency(cur.code)
-                                        showCurrencySelector = false
-                                    }
-                                )
-                            }
-                        }
-                    }
+                    SettingsItem(
+                        icon = Icons.Rounded.CurrencyExchange,
+                        title = "Default Currency",
+                        description = "${selectedCurrency.symbol} ${selectedCurrency.code} — ${selectedCurrency.name}",
+                        onClick = { showCurrencySelector = true }
+                    )
                 }
             }
 
             // Configuration Section
             Text(
                 text = "Configuration",
-                style = MaterialTheme.typography.titleLarge
+                style = MaterialTheme.typography.titleLarge.copy(fontSize = 14.sp),
+                modifier = Modifier.padding(top = 12.dp)
             )
 
             Card(
@@ -177,16 +157,7 @@ fun SettingsScreen(
             ) {
                 Column {
                     SettingsItem(
-                        icon = Icons.Default.AutoAwesome,
-                        title = "Regex Generator",
-                        description = "Create AI-powered regex patterns",
-                        onClick = onNavigateToRegexGenerator
-                    )
-                    
-                    HorizontalDivider()
-
-                    SettingsItem(
-                        icon = Icons.Default.SmartToy,
+                        icon = Icons.Rounded.SmartToy,
                         title = "AI Providers",
                         description = "Configure AI models and API keys",
                         onClick = onNavigateToAiProviders
@@ -194,9 +165,27 @@ fun SettingsScreen(
 
                     HorizontalDivider()
 
+                    SettingsItem(
+                        icon = Icons.Rounded.AutoAwesome,
+                        title = "Regex Generator",
+                        description = "Create AI-powered regex patterns",
+                        onClick = onNavigateToRegexGenerator
+                    )
+
+                    HorizontalDivider()
+
+                    SettingsItem(
+                        icon = Icons.Rounded.Pattern,
+                        title = "Notification Patterns",
+                        description = "View and manage (app × title) pattern rules",
+                        onClick = onNavigateToNotificationPatterns
+                    )
+
+                    HorizontalDivider()
+
                     
                     SettingsItem(
-                        icon = Icons.Default.Apps,
+                        icon = Icons.Rounded.Apps,
                         title = "Whitelisted Apps",
                         description = "Manage apps to monitor",
                         onClick = onNavigateToWhitelistedApps
@@ -205,7 +194,7 @@ fun SettingsScreen(
                     HorizontalDivider()
                     
                     SettingsItem(
-                        icon = Icons.Default.Category,
+                        icon = Icons.Rounded.Category,
                         title = "Categories",
                         description = "Manage expense categories",
                         onClick = onNavigateToCategories
@@ -216,7 +205,8 @@ fun SettingsScreen(
             // About Section
             Text(
                 text = "About",
-                style = MaterialTheme.typography.titleLarge
+                style = MaterialTheme.typography.titleLarge.copy(fontSize = 14.sp),
+                modifier = Modifier.padding(top = 12.dp)
             )
 
             Card(
@@ -235,14 +225,53 @@ fun SettingsScreen(
             ) {
                 Column {
                     SettingsItem(
-                        icon = Icons.Default.Info,
+                        icon = Icons.Rounded.Info,
                         title = "Version",
                         description = "1.0.0",
                         onClick = null
                     )
                 }
             }
-        }
+
+            Spacer(modifier = Modifier.height(120.dp))
+        } // Column
+    }
+
+    if (showCurrencySelector) {
+        GlassAlertDialog(
+            onDismissRequest = { showCurrencySelector = false },
+            title = { Text("Default Currency") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Currencies.SUPPORTED.forEach { cur ->
+                        val isSelected = cur.code == state.defaultCurrency
+                        Surface(
+                            onClick = {
+                                viewModel.updateDefaultCurrency(cur.code)
+                                showCurrencySelector = false
+                            },
+                            color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) else Color.Transparent,
+                            shape = MaterialTheme.shapes.small
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("${cur.symbol} ${cur.code} — ${cur.name}", style = MaterialTheme.typography.bodyLarge)
+                                if (isSelected) {
+                                    Icon(Icons.Rounded.Check, contentDescription = "Selected", tint = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showCurrencySelector = false }) { Text("Cancel") }
+            }
+        )
     }
 }
 
@@ -283,7 +312,7 @@ fun SettingsItem(
             }
             if (onClick != null) {
                 Icon(
-                    Icons.Default.ChevronRight,
+                    Icons.Rounded.ChevronRight,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )

@@ -8,8 +8,10 @@ import com.spendsense.data.local.entity.RawNotificationEntity
 import com.spendsense.domain.model.Category
 import com.spendsense.domain.model.Transaction
 import com.spendsense.domain.repository.CategoryRepository
+import com.spendsense.domain.repository.ExchangeRateRepository
 import com.spendsense.domain.repository.TransactionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,7 +23,8 @@ class HomeViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository,
     private val categoryRepository: CategoryRepository,
     private val rawNotificationDao: RawNotificationDao,
-    private val securePreferences: SecurePreferences
+    private val securePreferences: SecurePreferences,
+    private val exchangeRateRepository: ExchangeRateRepository
 ) : ViewModel() {
 
     private val _transactions = MutableStateFlow<List<Transaction>>(emptyList())
@@ -36,6 +39,9 @@ class HomeViewModel @Inject constructor(
     private val _defaultCurrency = MutableStateFlow("USD")
     val defaultCurrency: StateFlow<String> = _defaultCurrency.asStateFlow()
 
+    private val _convertedTotal = MutableStateFlow(0.0)
+    val convertedTotal: StateFlow<Double> = _convertedTotal.asStateFlow()
+
     init {
         loadTransactions()
         loadCategories()
@@ -45,6 +51,7 @@ class HomeViewModel @Inject constructor(
 
     fun refreshDefaultCurrency() {
         _defaultCurrency.value = securePreferences.getDefaultCurrency()
+        recalculateConvertedTotal(_transactions.value)
     }
 
     private fun loadPendingNotifications() {
@@ -59,15 +66,43 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             transactionRepository.getAllTransactions().collect { transactions ->
                 _transactions.value = transactions
+                recalculateConvertedTotal(transactions)
             }
         }
     }
 
     private fun loadCategories() {
         viewModelScope.launch {
+            val defaultCategoryOrder = listOf(
+                "Food", "Shopping", "Entertainment", "Transport", "Bills", "Health", "Other"
+            )
             categoryRepository.getAllCategories().collect { categories ->
-                _categories.value = categories
+                _categories.value = categories.sortedBy { cat ->
+                    val idx = defaultCategoryOrder.indexOfFirst { it.equals(cat.name, ignoreCase = true) }
+                    if (idx >= 0) idx else defaultCategoryOrder.size + cat.id.toInt()
+                }
             }
+        }
+    }
+
+    private fun recalculateConvertedTotal(transactions: List<Transaction>) {
+        viewModelScope.launch {
+            val currency = _defaultCurrency.value
+            val deferred = transactions.map { txn ->
+                async {
+                    if (txn.currencyCode == currency) {
+                        txn.amount
+                    } else {
+                        val rate = exchangeRateRepository.getRate(
+                            from = txn.currencyCode,
+                            to = currency,
+                            dateMillis = txn.timestamp
+                        )
+                        if (rate != null) txn.amount * rate else 0.0
+                    }
+                }
+            }
+            _convertedTotal.value = deferred.sumOf { it.await() }
         }
     }
 
@@ -98,7 +133,7 @@ class HomeViewModel @Inject constructor(
             )
         }
     }
-    
+
     fun deleteNotification(notification: RawNotificationEntity) {
         viewModelScope.launch {
             rawNotificationDao.delete(notification)
@@ -108,6 +143,12 @@ class HomeViewModel @Inject constructor(
     fun markNotificationAsProcessed(notification: RawNotificationEntity) {
         viewModelScope.launch {
             rawNotificationDao.markAsProcessed(notification.id)
+        }
+    }
+
+    fun markNotificationAsProcessedById(id: Long) {
+        viewModelScope.launch {
+            rawNotificationDao.markAsProcessed(id)
         }
     }
 }
