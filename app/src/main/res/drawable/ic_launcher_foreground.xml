@@ -12,9 +12,9 @@
         android:strokeColor="#1EFFFFFF"
         android:fillColor="#00000000" />
 
-    <!-- Layer 2: Concentric scan ring styled as a razor-thin solid gradient circle -->
+    <!-- Layer 2: Concentric scan ring styled as a mathematically precise dashed gradient circle (12 segments) -->
     <path
-        android:pathData="M 100,100 m -52,0 a 52,52 0 1,1 104,0 a 52,52 0 1,1 -104,0"
+        android:pathData="M 151.65,94.01 A 52.00,52.00 0 0,1 151.65,105.99 M 147.73,120.64 A 52.00,52.00 0 0,1 141.74,131.01 M 131.01,141.74 A 52.00,52.00 0 0,1 120.64,147.73 M 105.99,151.65 A 52.00,52.00 0 0,1 94.01,151.65 M 79.36,147.73 A 52.00,52.00 0 0,1 68.99,141.74 M 58.26,131.01 A 52.00,52.00 0 0,1 52.27,120.64 M 48.35,105.99 A 52.00,52.00 0 0,1 48.35,94.01 M 52.27,79.36 A 52.00,52.00 0 0,1 58.26,68.99 M 68.99,58.26 A 52.00,52.00 0 0,1 79.36,52.27 M 94.01,48.35 A 52.00,52.00 0 0,1 105.99,48.35 M 120.64,52.27 A 52.00,52.00 0 0,1 131.01,58.26 M 141.74,68.99 A 52.00,52.00 0 0,1 147.73,79.36"
         android:strokeWidth="1.5"
         android:strokeAlpha="0.6"
         android:fillColor="#00000000">
@@ -31,43 +31,6 @@
         </aapt:attr>
     </path>
 
-    <!-- Layer 3: Vertical scanner focus line -->
-    <path
-        android:pathData="M 100,48 L 100,132"
-        android:strokeWidth="1"
-        android:strokeAlpha="0.4"
-        android:fillColor="#00000000">
-        <aapt:attr name="android:strokeColor">
-            <gradient
-                android:type="linear"
-                android:startX="0"
-                android:startY="200"
-                android:endX="200"
-                android:endY="0">
-                <item android:offset="0" android:color="#00F2FE" />
-                <item android:offset="1" android:color="#7579FF" />
-            </gradient>
-        </aapt:attr>
-    </path>
-
-    <!-- Layer 4: Horizontal scanner focus line -->
-    <path
-        android:pathData="M 48,100 L 132,100"
-        android:strokeWidth="1"
-        android:strokeAlpha="0.4"
-        android:fillColor="#00000000">
-        <aapt:attr name="android:strokeColor">
-            <gradient
-                android:type="linear"
-                android:startX="0"
-                android:startY="200"
-                android:endX="200"
-                android:endY="0">
-                <item android:offset="0" android:color="#00F2FE" />
-                <item android:offset="1" android:color="#7579FF" />
-            </gradient>
-        </aapt:attr>
-    </path>
 
     <!-- Layer 5: The 4-point Insight Beacon Compass Star -->
     <path
