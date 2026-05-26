@@ -1,0 +1,93 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+
+    <!-- Layer 1: Circular Outer Hairline backing ring -->
+    <path
+        android:pathData="M 100,100 m -62,0 a 62,62 0 1,1 124,0 a 62,62 0 1,1 -124,0"
+        android:strokeWidth="1"
+        android:strokeColor="#1EFFFFFF"
+        android:fillColor="#00000000" />
+
+    <!-- Layer 2: Concentric scan ring styled as a razor-thin solid gradient circle -->
+    <path
+        android:pathData="M 100,100 m -52,0 a 52,52 0 1,1 104,0 a 52,52 0 1,1 -104,0"
+        android:strokeWidth="1.5"
+        android:strokeAlpha="0.6"
+        android:fillColor="#00000000">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:type="linear"
+                android:startX="0"
+                android:startY="200"
+                android:endX="200"
+                android:endY="0">
+                <item android:offset="0" android:color="#00F2FE" />
+                <item android:offset="1" android:color="#7579FF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Layer 3: Vertical scanner focus line -->
+    <path
+        android:pathData="M 100,48 L 100,132"
+        android:strokeWidth="1"
+        android:strokeAlpha="0.4"
+        android:fillColor="#00000000">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:type="linear"
+                android:startX="0"
+                android:startY="200"
+                android:endX="200"
+                android:endY="0">
+                <item android:offset="0" android:color="#00F2FE" />
+                <item android:offset="1" android:color="#7579FF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Layer 4: Horizontal scanner focus line -->
+    <path
+        android:pathData="M 48,100 L 132,100"
+        android:strokeWidth="1"
+        android:strokeAlpha="0.4"
+        android:fillColor="#00000000">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:type="linear"
+                android:startX="0"
+                android:startY="200"
+                android:endX="200"
+                android:endY="0">
+                <item android:offset="0" android:color="#00F2FE" />
+                <item android:offset="1" android:color="#7579FF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Layer 5: The 4-point Insight Beacon Compass Star -->
+    <path
+        android:pathData="M 100,72 L 104,96 L 128,100 L 104,104 L 100,128 L 96,104 L 72,100 L 96,96 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="0"
+                android:startY="200"
+                android:endX="200"
+                android:endY="0">
+                <item android:offset="0" android:color="#00F2FE" />
+                <item android:offset="1" android:color="#7579FF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Layer 6: Glowing white center core of clarity -->
+    <path
+        android:pathData="M 100,100 m -5,0 a 5,5 0 1,1 10,0 a 5,5 0 1,1 -10,0"
+        android:fillColor="#FFFFFF" />
+
+</vector>
