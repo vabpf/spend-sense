@@ -1,6 +1,7 @@
 package com.spendsense.presentation.settings
 
 import com.spendsense.data.local.entity.ProviderModelEntity
+import com.spendsense.data.local.entity.ProviderAccountEntity
 
 data class RegexTargetApp(
     val packageName: String,
@@ -25,6 +26,7 @@ data class RegexGeneratorState(
     val errorMessage: String? = null,
     val successMessage: String? = null,
 
+    val providerAccounts: List<ProviderAccountEntity> = emptyList(),
     val enabledModels: List<ProviderModelEntity> = emptyList(),
     val selectedModel: ProviderModelEntity? = null
 )

@@ -14,19 +14,25 @@ Because the Android System Shell (`com.android.shell`) is a system package, it i
 
 ---
 
-## Step 1: Grant Notification Access Permission
+## Step 1: Grant Notification Access & Sensitive Data Permissions
 
 Android's `NotificationListenerService` requires explicit system-level authorization to intercept notifications.
 
 ### Option A: Via ADB (Fastest)
-Run the following terminal command to grant the permission directly to your debug build:
-```bash
-adb shell cmd notification allow_listener com.spendsense/com.spendsense.data.service.TransactionNotificationListener
-```
+1. Run the following terminal command to grant standard notification access directly to your debug build:
+   ```bash
+   adb shell cmd notification allow_listener com.spendsense/com.spendsense.data.service.TransactionNotificationListener
+   ```
+
+2. **CRITICAL FOR ANDROID 15+:** Starting in Android 15, the system aggressively redacts notification bodies (replacing them with `"Sensitive notification content hidden"` or empty strings) when read by a `NotificationListenerService`. To bypass this safety feature for debugging:
+   ```bash
+   adb shell appops set com.spendsense RECEIVE_SENSITIVE_NOTIFICATIONS allow
+   ```
 
 ### Option B: Manually on the Device
 1. Open **Settings** -> **Apps** -> **Special App Access** -> **Notification Access**.
 2. Select **SpendSense** and toggle **Allow notification access** to **ON**.
+3. If on Android 15+, search Settings for **Enhanced notifications** and verify you allow displaying sensitive content.
 
 ---
 
@@ -77,17 +83,20 @@ Now that the shell package is whitelisted, we need to instruct SpendSense on how
 
 You can now use `adb` to post custom notification texts from the system shell. Keep the SpendSense app active on your test screen to watch the integration happen in real-time.
 
+> [!IMPORTANT]
+> When executing `adb shell` from your host terminal, local shells (like Bash, Zsh, or PowerShell) strip the outer double quotes before passing them. This causes the remote Android shell to split your notification arguments incorrectly. To prevent this, you **MUST** wrap the entire command in double quotes and use single quotes inside, as shown below.
+
 ### Scenario A: Successful Extraction (Regex Matches)
 Post a notification containing a transaction that matches your regex pattern:
 ```bash
-adb shell cmd notification post -S bigtext -t "Chase Alert" "test-tag-1" "Spent 45.50 at Starbucks"
+adb shell "cmd notification post -t 'Chase Alert' test-tag-1 'Spent 45.50 at Starbucks'"
 ```
 * **Expected Result:** SpendSense intercepts the notification, extracts **$45.50** and **Starbucks**, and immediately displays the system-level overlay prompt asking you to categorize the transaction.
 
 ### Scenario B: Failed Extraction (Saved to Inbox)
 Post a notification from the whitelisted app that doesn't match the regex pattern (or has an unknown title):
 ```bash
-adb shell cmd notification post -S bigtext -t "Chase Alert" "test-tag-2" "Your monthly statement is ready"
+adb shell "cmd notification post -t 'Chase Alert' test-tag-2 'Your monthly statement is ready'"
 ```
 * **Expected Result:** Since the pattern matched the title "Chase Alert" but the body did not match the transaction regex, SpendSense captures it safely as a raw notification and puts it in the **Notification Inbox** on the Home screen for manual review.
 

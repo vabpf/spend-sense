@@ -17,7 +17,18 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.spendsense.data.local.Currencies
 import com.spendsense.data.local.entity.NotificationPatternEntity
 import com.spendsense.presentation.theme.GlassSurface
+import com.spendsense.presentation.theme.CyberBlue
 import com.spendsense.presentation.util.GlassAlertDialog
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.Brush
+import com.spendsense.presentation.util.LocalLiquidState
+import io.github.fletchmckee.liquid.rememberLiquidState
+import io.github.fletchmckee.liquid.liquefiable
 import com.spendsense.presentation.util.SpendSenseTopBar
 import com.spendsense.presentation.util.glassEffect
 
@@ -43,73 +54,145 @@ fun NotificationPatternsScreen(
     val editCurrencyCode by viewModel.editCurrencyCode.collectAsState()
     val editSelectedAppIndex by viewModel.editSelectedAppIndex.collectAsState()
 
+    val patternsLiquidState = rememberLiquidState()
+ 
     Scaffold(
         containerColor = Color.Transparent,
-        topBar = {
-            SpendSenseTopBar(
-                title = "Notification Patterns",
-                onNavigationClick = onNavigateBack,
-                navigationIcon = Icons.Rounded.ArrowBack
-            )
-        },
+        contentWindowInsets = WindowInsets(0),
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { viewModel.showAddDialog() },
-                containerColor = MaterialTheme.colorScheme.primary
-            ) {
-                Icon(Icons.Rounded.Add, contentDescription = "Add pattern")
+            CompositionLocalProvider(LocalLiquidState provides patternsLiquidState) {
+                Box(
+                    modifier = Modifier
+                        .offset(y = (-20).dp)
+                        .size(56.dp)
+                        .glassEffect(
+                            shape = FloatingActionButtonDefaults.shape,
+                            containerColor = GlassSurface.copy(alpha = 0.15f),
+                            borderAlpha = 0.25f
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = CyberBlue,
+                            shape = FloatingActionButtonDefaults.shape
+                        )
+                        .clickable { viewModel.showAddDialog() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Rounded.Add,
+                        contentDescription = "Add pattern",
+                        tint = CyberBlue,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
         }
     ) { padding ->
-        if (patterns.isEmpty()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = padding.calculateBottomPadding())
+        ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
+                    .liquefiable(patternsLiquidState)
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.padding(horizontal = 32.dp)
-                ) {
-                    Icon(
-                        Icons.Rounded.Pattern,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                    )
-                    Text(
-                        "No patterns yet",
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                    Text(
-                        "Patterns are created automatically when you save from the Regex Generator, or you can add one manually.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                Image(
+                    painter = painterResource(id = com.spendsense.R.drawable.bg_pexel),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.30f))
+                )
+ 
+                if (patterns.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.padding(
+                                start = 32.dp,
+                                end = 32.dp,
+                                top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 88.dp,
+                                bottom = 0.dp
+                            )
+                        ) {
+                            Icon(
+                                Icons.Rounded.Pattern,
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp),
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                            )
+                            Text(
+                                "No patterns yet",
+                                style = MaterialTheme.typography.titleLarge
+                            )
+                            Text(
+                                "Patterns are created automatically when you save from the Regex Generator, or you can add one manually.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize(),
+                        contentPadding = PaddingValues(
+                            start = 16.dp, 
+                            end = 16.dp, 
+                            top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 88.dp, 
+                            bottom = 120.dp
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(patterns, key = { it.id }) { pattern ->
+                            PatternItem(
+                                pattern = pattern,
+                                appNameMap = appNameMap,
+                                onEdit = { viewModel.startEdit(pattern) },
+                                onDelete = { viewModel.deletePattern(pattern.id) },
+                                onToggleTransaction = {
+                                    viewModel.updatePattern(pattern.id, pattern.regex, !pattern.isTransaction)
+                                }
+                            )
+                        }
+                        item { Spacer(modifier = Modifier.height(40.dp)) }
+                    }
                 }
             }
-        } else {
-            LazyColumn(
+ 
+            Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = padding.calculateTopPadding()),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 0.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(patterns, key = { it.id }) { pattern ->
-                    PatternItem(
-                        pattern = pattern,
-                        appNameMap = appNameMap,
-                        onEdit = { viewModel.startEdit(pattern) },
-                        onDelete = { viewModel.deletePattern(pattern.id) },
-                        onToggleTransaction = {
-                            viewModel.updatePattern(pattern.id, pattern.regex, !pattern.isTransaction)
-                        }
+                    .fillMaxWidth()
+                    .height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 96.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            0.0f to MaterialTheme.colorScheme.background,
+                            0.3f to MaterialTheme.colorScheme.background.copy(alpha = 0.9f),
+                            0.55f to MaterialTheme.colorScheme.background.copy(alpha = 0.65f),
+                            0.75f to MaterialTheme.colorScheme.background.copy(alpha = 0.25f),
+                            1.0f to Color.Transparent
+                        )
                     )
-                }
-                item { Spacer(modifier = Modifier.height(40.dp)) }
+                    .align(Alignment.TopCenter)
+            )
+ 
+            CompositionLocalProvider(LocalLiquidState provides patternsLiquidState) {
+                SpendSenseTopBar(
+                    title = "Notification Patterns",
+                    onNavigationClick = onNavigateBack,
+                    navigationIcon = Icons.Rounded.ArrowBack
+                )
             }
         }
     }

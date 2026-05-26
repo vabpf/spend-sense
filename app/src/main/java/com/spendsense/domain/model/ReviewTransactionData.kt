@@ -7,5 +7,6 @@ data class ReviewTransactionData(
     val sourcePackageName: String,
     val sourceAppName: String,
     val rawNotificationId: Long,
-    val suggestedCategoryId: Long? = null
+    val suggestedCategoryId: Long? = null,
+    val transactionId: Long? = null
 )

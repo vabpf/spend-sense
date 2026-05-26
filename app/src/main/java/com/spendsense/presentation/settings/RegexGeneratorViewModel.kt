@@ -47,6 +47,7 @@ class RegexGeneratorViewModel @Inject constructor(
             currencyCode = securePreferences.getDefaultCurrency()
         )
         loadEnabledModels()
+        loadProviderAccounts()
         loadWhitelistedApps()
     }
 
@@ -100,6 +101,7 @@ class RegexGeneratorViewModel @Inject constructor(
     fun clearInput() {
         val currentState = _state.value
         _state.value = RegexGeneratorState(
+            providerAccounts = currentState.providerAccounts,
             enabledModels = currentState.enabledModels,
             selectedModel = currentState.selectedModel,
             availableApps = currentState.availableApps,
@@ -114,6 +116,16 @@ class RegexGeneratorViewModel @Inject constructor(
                 .map { RegexTargetApp(packageName = it.packageName, appName = it.appName) }
                 .sortedBy { it.appName.lowercase() }
             _state.value = _state.value.copy(availableApps = apps)
+        }
+    }
+
+    private fun loadProviderAccounts() {
+        viewModelScope.launch {
+            accountDao.getAllFlow().collect { accounts ->
+                _state.value = _state.value.copy(
+                    providerAccounts = accounts
+                )
+            }
         }
     }
 

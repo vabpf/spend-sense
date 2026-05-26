@@ -12,7 +12,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.spendsense.presentation.theme.GlassSurface
+import com.spendsense.presentation.theme.CyberBlue
 import com.spendsense.presentation.util.GlassAlertDialog
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.Brush
+import com.spendsense.presentation.util.LocalLiquidState
+import io.github.fletchmckee.liquid.rememberLiquidState
+import io.github.fletchmckee.liquid.liquefiable
 import com.spendsense.presentation.util.SpendSenseTopBar
 import com.spendsense.presentation.util.glassEffect
 
@@ -24,46 +35,111 @@ fun AiProvidersScreen(
     onNavigateToDetail: (Long) -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
-
+    val providersLiquidState = rememberLiquidState()
+ 
     Scaffold(
         containerColor = Color.Transparent,
-        topBar = {
-            SpendSenseTopBar(
-                title = "AI Providers",
-                onNavigationClick = onNavigateBack,
-                navigationIcon = Icons.Rounded.ArrowBack
-            )
-        },
+        contentWindowInsets = WindowInsets(0),
         floatingActionButton = {
-            FloatingActionButton(
-                modifier = Modifier.offset(y = (-24).dp),
-                onClick = { viewModel.toggleAddingProvider(true) },
-                containerColor = GlassSurface,
-                contentColor = MaterialTheme.colorScheme.onSurface
-            ) {
-                Icon(Icons.Rounded.Add, contentDescription = "Add Provider")
+            CompositionLocalProvider(LocalLiquidState provides providersLiquidState) {
+                Box(
+                    modifier = Modifier
+                        .offset(y = (-24).dp)
+                        .size(56.dp)
+                        .glassEffect(
+                            shape = FloatingActionButtonDefaults.shape,
+                            containerColor = GlassSurface.copy(alpha = 0.15f),
+                            borderAlpha = 0.25f
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = CyberBlue,
+                            shape = FloatingActionButtonDefaults.shape
+                        )
+                        .clickable { viewModel.toggleAddingProvider(true) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Rounded.Add,
+                        contentDescription = "Add Provider",
+                        tint = CyberBlue,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
         }
     ) { padding ->
-        LazyColumn(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = padding.calculateTopPadding()),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 0.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(bottom = padding.calculateBottomPadding())
         ) {
-            items(state.accounts, key = { it.account.id }) { display ->
-                AccountCard(
-                    display = display,
-                    onOpen = { onNavigateToDetail(display.account.id) },
-                    onDelete = {
-                        if (!display.account.isPreset) {
-                            viewModel.deleteAccount(display.account)
-                        }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .liquefiable(providersLiquidState)
+            ) {
+                Image(
+                    painter = painterResource(id = com.spendsense.R.drawable.bg_pexel),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.30f))
+                )
+
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        start = 16.dp, 
+                        end = 16.dp, 
+                        top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 88.dp, 
+                        bottom = 120.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(state.accounts, key = { it.account.id }) { display ->
+                        AccountCard(
+                            display = display,
+                            onOpen = { onNavigateToDetail(display.account.id) },
+                            onDelete = {
+                                if (!display.account.isPreset) {
+                                    viewModel.deleteAccount(display.account)
+                                }
+                            }
+                        )
                     }
+                    item { Spacer(modifier = Modifier.height(40.dp)) }
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 96.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            0.0f to MaterialTheme.colorScheme.background,
+                            0.3f to MaterialTheme.colorScheme.background.copy(alpha = 0.9f),
+                            0.55f to MaterialTheme.colorScheme.background.copy(alpha = 0.65f),
+                            0.75f to MaterialTheme.colorScheme.background.copy(alpha = 0.25f),
+                            1.0f to Color.Transparent
+                        )
+                    )
+                    .align(Alignment.TopCenter)
+            )
+
+            CompositionLocalProvider(LocalLiquidState provides providersLiquidState) {
+                SpendSenseTopBar(
+                    title = "AI Providers",
+                    onNavigationClick = onNavigateBack,
+                    navigationIcon = Icons.Rounded.ArrowBack
                 )
             }
-            item { Spacer(modifier = Modifier.height(40.dp)) }
         }
     }
 

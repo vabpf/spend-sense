@@ -23,6 +23,7 @@ object DatabaseModule {
             SpendSenseDatabase::class.java,
             SpendSenseDatabase.DATABASE_NAME
         )
+            .fallbackToDestructiveMigration()
             .build()
     }
 

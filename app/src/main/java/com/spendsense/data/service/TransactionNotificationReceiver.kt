@@ -11,6 +11,7 @@ import com.spendsense.domain.model.Transaction
 import com.spendsense.domain.repository.TransactionRepository
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -86,8 +87,16 @@ class TransactionNotificationReceiver : BroadcastReceiver() {
 
     private fun handleReject(intent: Intent) {
         val rawNotificationId = intent.getLongExtra(EXTRA_RAW_NOTIFICATION_ID, -1L)
-        if (rawNotificationId > 0) {
-            scope.launch {
+        val transactionId = intent.getLongExtra(EXTRA_TRANSACTION_ID, -1L)
+        scope.launch {
+            if (transactionId > 0) {
+                val txn = transactionRepository.getTransactionById(transactionId)
+                if (txn != null) {
+                    transactionRepository.deleteTransaction(txn)
+                    Log.d("TransactionNotification", "Transaction ${txn.id} for ${txn.merchant} ($${txn.amount}) successfully undone/deleted")
+                }
+            }
+            if (rawNotificationId > 0) {
                 rawNotificationDao.markAsProcessed(rawNotificationId)
             }
         }
@@ -103,5 +112,6 @@ class TransactionNotificationReceiver : BroadcastReceiver() {
         const val EXTRA_APP_NAME = "extra_app_name"
         const val EXTRA_RAW_NOTIFICATION_ID = "extra_raw_notification_id"
         const val EXTRA_SUGGESTED_CATEGORY_ID = "extra_suggested_category_id"
+        const val EXTRA_TRANSACTION_ID = "extra_transaction_id"
     }
 }

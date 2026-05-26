@@ -30,9 +30,10 @@ val LocalLiquidState = compositionLocalOf<LiquidState?> { null }
  * Values sourced from DESIGN.md §"Liquid Glass (API 33+)".
  */
 object LiquidTokens {
-    val frost = 0.2.dp
+    val frost = 5.dp
     const val edge = 0.1f
     val tint = Color.Black.copy(alpha = 0.2f)
+    const val curve = 0.5f
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -78,6 +79,7 @@ fun Modifier.glassEffect(
                 frost = LiquidTokens.frost
                 edge = LiquidTokens.edge
                 tint = LiquidTokens.tint
+                curve = LiquidTokens.curve
                 this.shape = shape
             }
     } else if (hazeState != null) {

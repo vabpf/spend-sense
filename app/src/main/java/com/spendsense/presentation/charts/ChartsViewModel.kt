@@ -7,12 +7,15 @@ import com.spendsense.domain.model.Category
 import com.spendsense.domain.model.Transaction
 import com.spendsense.domain.repository.CategoryRepository
 import com.spendsense.domain.repository.TransactionRepository
+import com.spendsense.domain.repository.ExchangeRateRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
+import kotlinx.coroutines.Dispatchers
 import java.util.Calendar
 import javax.inject.Inject
 
@@ -56,7 +59,8 @@ data class ChartsDataState(
 class ChartsViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository,
     private val categoryRepository: CategoryRepository,
-    private val securePreferences: SecurePreferences
+    private val securePreferences: SecurePreferences,
+    private val exchangeRateRepository: ExchangeRateRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ChartsDataState())
@@ -71,7 +75,26 @@ class ChartsViewModel @Inject constructor(
                 transactionRepository.getAllTransactions(),
                 categoryRepository.getAllCategories()
             ) { transactions, categories ->
+                transactions to categories
+            }.collect { (transactions, categories) ->
                 val currency = securePreferences.getDefaultCurrency()
+
+                // Concurrently convert all transaction amounts to the display currency in parallel
+                val convertedTransactions = transactions.map { txn ->
+                    async(Dispatchers.IO) {
+                        val rate = if (txn.currencyCode == currency) {
+                            1.0
+                        } else {
+                            exchangeRateRepository.getRate(
+                                from = txn.currencyCode,
+                                to = currency,
+                                dateMillis = txn.timestamp
+                            ) ?: 0.0
+                        }
+                        txn.copy(amount = txn.amount * rate, currencyCode = currency)
+                    }
+                }.map { it.await() }
+
                 val categoryMap = categories.associateBy { it.id }
                 val now = Calendar.getInstance()
 
@@ -79,8 +102,8 @@ class ChartsViewModel @Inject constructor(
                 val lastMonthStart = monthStart(now, -1)
                 val sixMonthsAgoStart = monthStart(now, -5)
 
-                val thisMonthTxns = transactions.filter { it.timestamp >= thisMonthStart }
-                val lastMonthTxns = transactions.filter { it.timestamp in lastMonthStart until thisMonthStart }
+                val thisMonthTxns = convertedTransactions.filter { it.timestamp >= thisMonthStart }
+                val lastMonthTxns = convertedTransactions.filter { it.timestamp in lastMonthStart until thisMonthStart }
 
                 // ── Summary ──────────────────────────────────────────────────
                 val thisMonthTotal = thisMonthTxns.sumOf { it.amount }
@@ -136,7 +159,7 @@ class ChartsViewModel @Inject constructor(
                     val dayStart = dayCal.timeInMillis
                     val dayEnd = dayStart + 86_400_000L
                     val label = dayLabels[dayCal.get(Calendar.DAY_OF_WEEK) - 1]
-                    val total = transactions.filter { it.timestamp in dayStart until dayEnd }.sumOf { it.amount }
+                    val total = convertedTransactions.filter { it.timestamp in dayStart until dayEnd }.sumOf { it.amount }
                     DailyBar(label, total)
                 }
 
@@ -148,17 +171,17 @@ class ChartsViewModel @Inject constructor(
                     val mStart = monthStart(mCal, 0)
                     val mEnd = monthStart(mCal, 1)
                     val label = monthLabels[mCal.get(Calendar.MONTH)]
-                    val total = transactions.filter { it.timestamp in mStart until mEnd }.sumOf { it.amount }
+                    val total = convertedTransactions.filter { it.timestamp in mStart until mEnd }.sumOf { it.amount }
                     MonthlyPoint(label, total)
                 }
 
-                ChartsDataState(
+                _state.value = ChartsDataState(
                     summary = summaryState,
                     categorySlices = categorySlices,
                     dailyBars = dailyBars,
                     monthlyPoints = monthlyPoints
                 )
-            }.collect { _state.value = it }
+            }
         }
     }
 

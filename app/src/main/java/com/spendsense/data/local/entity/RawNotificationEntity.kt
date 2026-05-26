@@ -10,5 +10,6 @@ data class RawNotificationEntity(
     val text: String,
     val timestamp: Long,
     val isProcessed: Boolean = false,
-    val stalePatternId: Long? = null
+    val stalePatternId: Long? = null,
+    val title: String? = null
 )

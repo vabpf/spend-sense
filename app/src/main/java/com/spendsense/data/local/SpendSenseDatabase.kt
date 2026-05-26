@@ -18,7 +18,7 @@ import com.spendsense.data.local.entity.*
         ProviderAccountEntity::class,
         ProviderModelEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = true
 )
 abstract class SpendSenseDatabase : RoomDatabase() {

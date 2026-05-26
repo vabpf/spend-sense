@@ -87,6 +87,12 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var categoryRepository: CategoryRepository
 
+    @Inject
+    lateinit var whitelistedAppDao: com.spendsense.data.local.dao.WhitelistedAppDao
+
+    @Inject
+    lateinit var notificationPatternDao: com.spendsense.data.local.dao.NotificationPatternDao
+
     private var reviewData by mutableStateOf<ReviewTransactionData?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -98,6 +104,27 @@ class MainActivity : ComponentActivity() {
         
         lifecycleScope.launch {
             categoryRepository.initializeDefaultCategories()
+            val isDebuggable = (applicationContext.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+            if (isDebuggable) {
+                whitelistedAppDao.insert(
+                    com.spendsense.data.local.entity.WhitelistedAppEntity(
+                        packageName = "com.android.shell",
+                        appName = "Android Shell (Debug)",
+                        isEnabled = true
+                    )
+                )
+                if (notificationPatternDao.getAllForPackage("com.android.shell").isEmpty()) {
+                    notificationPatternDao.upsert(
+                        com.spendsense.data.local.entity.NotificationPatternEntity(
+                            packageName = "com.android.shell",
+                            notificationTitle = "Chase",
+                            regex = "Spent (?<amount>\\d+\\.\\d{2}) at (?<merchant>[\\w\\s\\-\\#\\.\\,\\&]+)",
+                            isTransaction = true,
+                            currencyCode = "USD"
+                        )
+                    )
+                }
+            }
         }
         
         handleIntent(intent)
@@ -107,6 +134,7 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 val hazeState = rememberHazeState()
                 val liquidState = rememberLiquidState()
+                val bottomNavLiquidState = rememberLiquidState()
 
                 CompositionLocalProvider(
                     LocalGlassHazeState provides hazeState,
@@ -114,12 +142,17 @@ class MainActivity : ComponentActivity() {
                 ) {
                     // docs/LIQUID_GLASS.md §2-4: liquefiable source must be sibling, not ancestor
                     Box(modifier = Modifier.fillMaxSize()) {
-                        // Sibling 1: liquefiable source (pexels bg overlay ONLY — no content)
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .liquefiable(liquidState = liquidState)
+                                .liquefiable(liquidState = bottomNavLiquidState)
                         ) {
+                            // Sibling 1: liquefiable source (pexels bg overlay ONLY — no content)
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .liquefiable(liquidState = liquidState)
+                            ) {
                             Image(
                                 painter = painterResource(id = R.drawable.bg_pexel),
                                 contentDescription = null,
@@ -155,9 +188,13 @@ class MainActivity : ComponentActivity() {
                                                     restoreState = true
                                                 }
                                             },
-                                            onNavigateToRegexGenerator = { text ->
-                                                val route = if (text != null) {
+                                            onNavigateToRegexGenerator = { text, title ->
+                                                val route = if (text != null && title != null) {
+                                                    "regex_generator?text=$text&title=$title"
+                                                } else if (text != null) {
                                                     "regex_generator?text=$text"
+                                                } else if (title != null) {
+                                                    "regex_generator?title=$title"
                                                 } else {
                                                     "regex_generator"
                                                 }
@@ -248,18 +285,25 @@ class MainActivity : ComponentActivity() {
                                     }
 
                                     composable(
-                                        route = "regex_generator?text={text}",
-                                        arguments = listOf(
-                                            navArgument("text") {
-                                                type = NavType.StringType
-                                                nullable = true
-                                                defaultValue = null
-                                            }
-                                        )
-                                    ) { backStackEntry ->
-                                        val text = backStackEntry.arguments?.getString("text")
-                                        RegexGeneratorScreen(
-                                            initialNotificationText = text,
+                                         route = "regex_generator?text={text}&title={title}",
+                                         arguments = listOf(
+                                             navArgument("text") {
+                                                 type = NavType.StringType
+                                                 nullable = true
+                                                 defaultValue = null
+                                             },
+                                             navArgument("title") {
+                                                 type = NavType.StringType
+                                                 nullable = true
+                                                 defaultValue = null
+                                             }
+                                         )
+                                     ) { backStackEntry ->
+                                         val text = backStackEntry.arguments?.getString("text")
+                                         val title = backStackEntry.arguments?.getString("title")
+                                         RegexGeneratorScreen(
+                                             initialNotificationText = text,
+                                             initialNotificationTitle = title,
                                             onNavigateBack = {
                                                 navController.popBackStack()
                                             },
@@ -271,6 +315,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         }
+                        } // end of bottomNavLiquefiable container Box
 
                         // Sibling 2: nav bar with glass effect (separate from Scaffold)
                         // Referenced as: GLASS_NAV_BAR (floating pill at bottom center)
@@ -285,6 +330,22 @@ class MainActivity : ComponentActivity() {
                         )
 
                         if (currentDestination?.route in mainScreens) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(120.dp)
+                                    .background(
+                                        Brush.verticalGradient(
+                                            0.0f to Color.Transparent,
+                                            0.25f to MaterialTheme.colorScheme.background.copy(alpha = 0.25f),
+                                            0.45f to MaterialTheme.colorScheme.background.copy(alpha = 0.65f),
+                                            0.7f to MaterialTheme.colorScheme.background.copy(alpha = 0.9f),
+                                            1.0f to MaterialTheme.colorScheme.background
+                                        )
+                                    )
+                                    .align(Alignment.BottomCenter)
+                            )
+
                             Box(
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)
@@ -302,7 +363,8 @@ class MainActivity : ComponentActivity() {
                                         containerColor = GlassSurface.copy(alpha = 0.86f),
                                         borderAlpha = 0.16f,
                                         sheenAlpha = 0.06f,
-                                        hazeState = hazeState
+                                        hazeState = hazeState,
+                                        liquidState = bottomNavLiquidState
                                     )
                                     .padding(horizontal = 8.dp, vertical = 8.dp)
                             ) {
@@ -381,6 +443,9 @@ class MainActivity : ComponentActivity() {
                     sourceAppName = it.getStringExtra(TransactionNotificationListener.EXTRA_REVIEW_APP_NAME) ?: "",
                     rawNotificationId = it.getLongExtra(TransactionNotificationListener.EXTRA_REVIEW_RAW_NOTIFICATION_ID, -1L),
                     suggestedCategoryId = it.getLongExtra(TransactionNotificationListener.EXTRA_REVIEW_CATEGORY_ID, -1L).let { id ->
+                        if (id > 0) id else null
+                    },
+                    transactionId = it.getLongExtra(TransactionNotificationListener.EXTRA_REVIEW_TRANSACTION_ID, -1L).let { id ->
                         if (id > 0) id else null
                     }
                 )

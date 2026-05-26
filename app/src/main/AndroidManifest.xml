@@ -5,9 +5,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     
-    <!-- System alert window (draw over apps) -->
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-    
+
     <!-- Post notifications (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     
@@ -48,7 +46,7 @@
         <!-- Transaction Save/Reject Receiver -->
         <receiver
             android:name=".data.service.TransactionNotificationReceiver"
-            android:exported="false" />
+            android:exported="true" />
         
     </application>
 

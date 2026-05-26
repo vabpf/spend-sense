@@ -20,6 +20,13 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.spendsense.presentation.theme.GlassSurface
 import com.spendsense.data.local.Currencies
 import com.spendsense.presentation.util.GlassAlertDialog
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.Brush
+import com.spendsense.presentation.util.LocalLiquidState
+import io.github.fletchmckee.liquid.rememberLiquidState
+import io.github.fletchmckee.liquid.liquefiable
 import com.spendsense.presentation.util.SpendSenseTopBar
 import com.spendsense.presentation.util.glassEffect
 
@@ -27,6 +34,7 @@ import com.spendsense.presentation.util.glassEffect
 fun RegexGeneratorScreen(
     viewModel: RegexGeneratorViewModel = hiltViewModel(),
     initialNotificationText: String? = null,
+    initialNotificationTitle: String? = null,
     onNavigateBack: () -> Unit = {},
     onNavigateToNotificationPatterns: () -> Unit = {}
 ) {
@@ -35,31 +43,56 @@ fun RegexGeneratorScreen(
     var showProviderSelector by remember { mutableStateOf(false) }
     var showCurrencySelector by remember { mutableStateOf(false) }
 
-    // Pre-fill initial text if provided
-    LaunchedEffect(initialNotificationText) {
+    // Pre-fill initial text and title if provided
+    LaunchedEffect(initialNotificationText, initialNotificationTitle) {
         if (initialNotificationText != null) {
             viewModel.updateNotificationText(initialNotificationText)
         }
+        if (initialNotificationTitle != null) {
+            viewModel.updateNotificationTitle(initialNotificationTitle)
+        }
     }
+
+    val regexLiquidState = rememberLiquidState()
 
     Scaffold(
         containerColor = Color.Transparent,
-        topBar = {
-            SpendSenseTopBar(
-                title = "AI Regex Generator",
-                onNavigationClick = onNavigateBack,
-                navigationIcon = Icons.Rounded.ArrowBack
-            )
-        }
+        contentWindowInsets = WindowInsets(0)
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = padding.calculateTopPadding())
-                .verticalScroll(rememberScrollState())
-                .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 0.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(bottom = padding.calculateBottomPadding())
         ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .liquefiable(regexLiquidState)
+            ) {
+                Image(
+                    painter = painterResource(id = com.spendsense.R.drawable.bg_pexel),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.30f))
+                )
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(
+                            start = 16.dp,
+                            end = 16.dp,
+                            top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 88.dp,
+                            bottom = 120.dp
+                        ),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
             // Info Card
             Card(
                 modifier = Modifier
@@ -239,29 +272,45 @@ fun RegexGeneratorScreen(
                     onDismissRequest = { showProviderSelector = false },
                     title = { Text("Select Model") },
                     text = {
+                        val modelsByProvider = remember(state.enabledModels) {
+                            state.enabledModels.groupBy { it.providerAccountId }
+                        }
                         Column(
                             modifier = Modifier.verticalScroll(rememberScrollState()),
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            state.enabledModels.forEach { model ->
-                                val displayText = model.displayName ?: model.modelId
-                                val isSelected = state.selectedModel?.id == model.id
-                                Surface(
-                                    onClick = {
-                                        viewModel.onProviderSelected(model)
-                                        showProviderSelector = false
-                                    },
-                                    color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) else Color.Transparent,
-                                    shape = MaterialTheme.shapes.small
-                                ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
+                            modelsByProvider.forEach { (providerId, models) ->
+                                val provider = state.providerAccounts.find { it.id == providerId }
+                                val providerName = provider?.name ?: "Unknown Provider"
+
+                                Text(
+                                    text = providerName,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(start = 12.dp, top = 12.dp, bottom = 4.dp)
+                                )
+
+                                models.forEach { model ->
+                                    val displayText = model.displayName ?: model.modelId
+                                    val isSelected = state.selectedModel?.id == model.id
+                                    Surface(
+                                        onClick = {
+                                            viewModel.onProviderSelected(model)
+                                            showProviderSelector = false
+                                        },
+                                        color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) else Color.Transparent,
+                                        shape = MaterialTheme.shapes.small
                                     ) {
-                                        Text(displayText, style = MaterialTheme.typography.bodyLarge)
-                                        if (isSelected) {
-                                            Icon(Icons.Rounded.Check, contentDescription = "Selected", tint = MaterialTheme.colorScheme.primary)
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(displayText, style = MaterialTheme.typography.bodyLarge)
+                                            if (isSelected) {
+                                                Icon(Icons.Rounded.Check, contentDescription = "Selected", tint = MaterialTheme.colorScheme.primary)
+                                            }
                                         }
                                     }
                                 }
@@ -627,9 +676,34 @@ fun RegexGeneratorScreen(
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(40.dp))
-        }
-    }
+            } // inner Column
+            } // inner liquefiable Box
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 96.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            0.0f to MaterialTheme.colorScheme.background,
+                            0.3f to MaterialTheme.colorScheme.background.copy(alpha = 0.9f),
+                            0.55f to MaterialTheme.colorScheme.background.copy(alpha = 0.65f),
+                            0.75f to MaterialTheme.colorScheme.background.copy(alpha = 0.25f),
+                            1.0f to Color.Transparent
+                        )
+                    )
+                    .align(Alignment.TopCenter)
+            )
+
+            CompositionLocalProvider(LocalLiquidState provides regexLiquidState) {
+                SpendSenseTopBar(
+                    title = "AI Regex Generator",
+                    onNavigationClick = onNavigateBack,
+                    navigationIcon = Icons.Rounded.ArrowBack
+                )
+            }
+        } // outer Box
+    } // Scaffold close
 }
 
 @Composable
