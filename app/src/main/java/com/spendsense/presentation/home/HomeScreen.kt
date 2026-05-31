@@ -51,6 +51,7 @@ import com.spendsense.presentation.util.glassEffect
 import com.spendsense.presentation.util.prismEdge
 import com.spendsense.presentation.util.parseColor
 import com.spendsense.presentation.util.bounceClickable
+import com.spendsense.presentation.util.combinedBounceClickable
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.layout.ContentScale
@@ -61,9 +62,13 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.border
 import androidx.compose.ui.layout.onGloballyPositioned
 import com.spendsense.presentation.theme.CyberBlue
+import com.spendsense.presentation.theme.NeonRose
 import com.spendsense.presentation.util.LocalLiquidState
 import io.github.fletchmckee.liquid.rememberLiquidState
 import io.github.fletchmckee.liquid.liquefiable
@@ -164,6 +169,8 @@ fun HomeScreen(
     
     var editingTransaction by remember { mutableStateOf<Transaction?>(null) }
     var isAddingTransaction by remember { mutableStateOf(false) }
+    var selectedTransactionIds by remember { mutableStateOf(emptySet<Long>()) }
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
 
     val homeLiquidState = rememberLiquidState()
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -381,6 +388,13 @@ fun HomeScreen(
                                     val revealWidthPx = with(LocalDensity.current) { revealWidth.toPx() }
                                     val revealThresholdPx = revealWidthPx * 0.4f
 
+                                    LaunchedEffect(selectedTransactionIds.isNotEmpty()) {
+                                        if (selectedTransactionIds.isNotEmpty()) {
+                                            offsetAnim.animateTo(0f)
+                                            dragOffset = 0f
+                                        }
+                                    }
+
                                     Box(
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -388,27 +402,29 @@ fun HomeScreen(
                                             .clip(MaterialTheme.shapes.medium),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxHeight()
-                                                .fillMaxWidth()
-                                                .padding(horizontal = 8.dp, vertical = 6.dp)
-                                                .background(Color.Red, MaterialTheme.shapes.medium)
-                                                .align(Alignment.Center)
-                                        ) {
-                                            Row(
+                                        if (selectedTransactionIds.isEmpty()) {
+                                            Box(
                                                 modifier = Modifier
                                                     .fillMaxHeight()
-                                                    .clip(MaterialTheme.shapes.medium)
-                                                    .clickable {
-                                                        viewModel.deleteTransaction(transaction)
-                                                        dragOffset = 0f
-                                                        scope.launch { offsetAnim.animateTo(0f) }
-                                                    }
-                                                    .padding(horizontal = 16.dp),
-                                                verticalAlignment = Alignment.CenterVertically
+                                                    .fillMaxWidth()
+                                                    .padding(horizontal = 8.dp, vertical = 6.dp)
+                                                    .background(Color.Red, MaterialTheme.shapes.medium)
+                                                    .align(Alignment.Center)
                                             ) {
-                                                Icon(Icons.Rounded.Delete, "Delete", tint = Color.White)
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxHeight()
+                                                        .clip(MaterialTheme.shapes.medium)
+                                                        .clickable {
+                                                            viewModel.deleteTransaction(transaction)
+                                                            dragOffset = 0f
+                                                            scope.launch { offsetAnim.animateTo(0f) }
+                                                        }
+                                                        .padding(horizontal = 16.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Icon(Icons.Rounded.Delete, "Delete", tint = Color.White)
+                                                }
                                             }
                                         }
 
@@ -416,36 +432,55 @@ fun HomeScreen(
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .offset { IntOffset(offsetAnim.value.roundToInt(), 0) }
-                                                .pointerInput(Unit) {
-                                                    detectHorizontalDragGestures(
-                                                        onDragEnd = {
-                                                            scope.launch {
-                                                                 if (offsetAnim.value > revealThresholdPx) {
-                                                                     offsetAnim.animateTo(
-                                                                         revealWidthPx,
-                                                                         spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessHigh)
-                                                                     )
-                                                                 } else {
-                                                                     offsetAnim.animateTo(
-                                                                         0f,
-                                                                         spring(dampingRatio = 0.35f, stiffness = Spring.StiffnessHigh)
-                                                                     )
-                                                                     dragOffset = 0f
+                                                .pointerInput(selectedTransactionIds.isEmpty()) {
+                                                    if (selectedTransactionIds.isEmpty()) {
+                                                        detectHorizontalDragGestures(
+                                                            onDragEnd = {
+                                                                scope.launch {
+                                                                     if (offsetAnim.value > revealThresholdPx) {
+                                                                         offsetAnim.animateTo(
+                                                                             revealWidthPx,
+                                                                             spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessHigh)
+                                                                         )
+                                                                     } else {
+                                                                         offsetAnim.animateTo(
+                                                                             0f,
+                                                                             spring(dampingRatio = 0.35f, stiffness = Spring.StiffnessHigh)
+                                                                         )
+                                                                         dragOffset = 0f
+                                                                     }
                                                                  }
-                                                             }
-                                                         },
-                                                        onHorizontalDrag = { change, dragAmount ->
-                                                            change.consume()
-                                                            dragOffset = (dragOffset + dragAmount).coerceIn(-revealWidthPx, revealWidthPx)
-                                                            scope.launch { offsetAnim.snapTo(dragOffset) }
-                                                        }
-                                                    )
+                                                             },
+                                                            onHorizontalDrag = { change, dragAmount ->
+                                                                change.consume()
+                                                                dragOffset = (dragOffset + dragAmount).coerceIn(-revealWidthPx, revealWidthPx)
+                                                                scope.launch { offsetAnim.snapTo(dragOffset) }
+                                                            }
+                                                        )
+                                                    }
                                                 }
                                         ) {
                                             TransactionItem(
                                                 transaction = transaction,
                                                 category = category,
-                                                onClick = { editingTransaction = transaction }
+                                                isSelected = selectedTransactionIds.contains(transaction.id),
+                                                inSelectionMode = selectedTransactionIds.isNotEmpty(),
+                                                onLongClick = {
+                                                    if (selectedTransactionIds.isEmpty()) {
+                                                        selectedTransactionIds = selectedTransactionIds + transaction.id
+                                                    }
+                                                },
+                                                onClick = {
+                                                    if (selectedTransactionIds.isNotEmpty()) {
+                                                        selectedTransactionIds = if (selectedTransactionIds.contains(transaction.id)) {
+                                                            selectedTransactionIds - transaction.id
+                                                        } else {
+                                                            selectedTransactionIds + transaction.id
+                                                        }
+                                                    } else {
+                                                        editingTransaction = transaction
+                                                    }
+                                                }
                                             )
                                         }
                                     }
@@ -603,6 +638,88 @@ fun HomeScreen(
                     )
                 }
             }
+
+            // Selection Toolbar
+            if (selectedTransactionIds.isNotEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 24.dp)
+                        .offset(y = (-100).dp)
+                        .shadow(
+                            elevation = 16.dp,
+                            shape = RoundedCornerShape(20.dp),
+                            ambientColor = Color.Black.copy(alpha = 0.25f),
+                            spotColor = Color.Black.copy(alpha = 0.18f)
+                        )
+                        .glassEffect(
+                            shape = RoundedCornerShape(20.dp),
+                            containerColor = GlassSurface.copy(alpha = 0.92f),
+                            borderAlpha = 0.20f
+                        )
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            IconButton(
+                                onClick = { selectedTransactionIds = emptySet() }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Close,
+                                    contentDescription = "Cancel selection",
+                                    tint = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                            Text(
+                                text = "${selectedTransactionIds.size} Selected",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            val allVisibleSelected = filteredTransactions.all { selectedTransactionIds.contains(it.id) }
+                            TextButton(
+                                onClick = {
+                                    selectedTransactionIds = if (allVisibleSelected) {
+                                        emptySet()
+                                    } else {
+                                        filteredTransactions.map { it.id }.toSet()
+                                    }
+                                }
+                            ) {
+                                Text(
+                                    text = if (allVisibleSelected) "Deselect All" else "Select All",
+                                    color = CyberBlue,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+
+                            IconButton(
+                                onClick = { showDeleteConfirmation = true }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Delete,
+                                    contentDescription = "Delete selected",
+                                    tint = NeonRose
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -723,6 +840,35 @@ fun HomeScreen(
                 headline = null
             )
         }
+    }
+
+    if (showDeleteConfirmation) {
+        GlassAlertDialog(
+            onDismissRequest = { showDeleteConfirmation = false },
+            title = { Text("Delete Selected") },
+            text = {
+                Text("Are you sure you want to delete the ${selectedTransactionIds.size} selected transactions? This action cannot be undone.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val selectedTxns = transactions.filter { selectedTransactionIds.contains(it.id) }
+                        selectedTxns.forEach { txn ->
+                            viewModel.deleteTransaction(txn)
+                        }
+                        selectedTransactionIds = emptySet()
+                        showDeleteConfirmation = false
+                    }
+                ) {
+                    Text("Delete", color = NeonRose)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmation = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
@@ -1194,17 +1340,36 @@ fun EditTransactionDialog(
 fun TransactionItem(
     transaction: Transaction,
     category: Category?,
+    isSelected: Boolean = false,
+    inSelectionMode: Boolean = false,
+    onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit
 ) {
+    val containerColor = if (isSelected) CyberBlue.copy(alpha = 0.20f) else GlassSurface
+    val borderAlpha = if (isSelected) 0.45f else 0.15f
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .glassEffect(
                 shape = MaterialTheme.shapes.medium,
-                containerColor = GlassSurface,
-                borderAlpha = 0.15f,
-                contentModifier = Modifier.bounceClickable(onClick = onClick)
-            ),
+                containerColor = containerColor,
+                borderAlpha = borderAlpha,
+                contentModifier = Modifier.combinedBounceClickable(
+                    onLongClick = onLongClick,
+                    onClick = onClick
+                )
+            ).let { modifier ->
+                if (isSelected) {
+                    modifier.prismEdge(
+                        shape = MaterialTheme.shapes.medium,
+                        accentColor = CyberBlue,
+                        intensity = 0.4f
+                    )
+                } else {
+                    modifier
+                }
+            },
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = Color.Transparent,
@@ -1218,6 +1383,32 @@ fun TransactionItem(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            if (inSelectionMode) {
+                Box(
+                    modifier = Modifier
+                        .padding(end = 12.dp)
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .border(
+                            width = 1.5.dp,
+                            color = if (isSelected) CyberBlue else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                            shape = CircleShape
+                        )
+                        .background(
+                            if (isSelected) CyberBlue else Color.Transparent
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isSelected) {
+                        Icon(
+                            imageVector = Icons.Rounded.Check,
+                            contentDescription = "Selected",
+                            tint = Color.Black,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,

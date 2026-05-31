@@ -24,6 +24,8 @@ import io.github.fletchmckee.liquid.liquid
 import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -247,3 +249,39 @@ fun Modifier.bounceClickable(
             onClick = onClick
         )
 }
+
+/**
+ * Interactive bounce clickable effect supporting click and long click.
+ * Compresses the element scale on press via a low-stiffness spring animation.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+fun Modifier.combinedBounceClickable(
+    enabled: Boolean = true,
+    onLongClick: (() -> Unit)? = null,
+    onClick: () -> Unit
+): Modifier = composed {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.97f else 1.0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "press_scale_spring"
+    )
+
+    this
+        .graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+        }
+        .combinedClickable(
+            enabled = enabled,
+            interactionSource = interactionSource,
+            indication = null,
+            onLongClick = onLongClick,
+            onClick = onClick
+        )
+}
+
