@@ -27,6 +27,6 @@ interface NotificationPatternDao {
     @Query("UPDATE notification_patterns SET regex = :regex, isTransaction = :isTransaction WHERE id = :id")
     suspend fun update(id: Long, regex: String?, isTransaction: Boolean)
 
-    @Query("UPDATE notification_patterns SET packageName = :packageName, notificationTitle = :notificationTitle, regex = :regex, currencyCode = :currencyCode, isTransaction = :isTransaction WHERE id = :id")
-    suspend fun updateAll(id: Long, packageName: String, notificationTitle: String, regex: String?, currencyCode: String, isTransaction: Boolean)
+    @Query("UPDATE notification_patterns SET packageName = :packageName, notificationTitle = :notificationTitle, paymentSource = :paymentSource, paymentSourceType = :paymentSourceType, regex = :regex, currencyCode = :currencyCode, isTransaction = :isTransaction WHERE id = :id")
+    suspend fun updateAll(id: Long, packageName: String, notificationTitle: String, paymentSource: String, paymentSourceType: String, regex: String?, currencyCode: String, isTransaction: Boolean)
 }

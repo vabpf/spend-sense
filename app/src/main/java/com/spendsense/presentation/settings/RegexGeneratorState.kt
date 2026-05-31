@@ -30,5 +30,9 @@ data class RegexGeneratorState(
 
     val providerAccounts: List<ProviderAccountEntity> = emptyList(),
     val enabledModels: List<ProviderModelEntity> = emptyList(),
-    val selectedModel: ProviderModelEntity? = null
+    val selectedModel: ProviderModelEntity? = null,
+    
+    val paymentSource: String = "",
+    val paymentSourceType: String = "Credit Card"
 )
+

@@ -2,6 +2,8 @@ package com.spendsense.presentation.settings
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -49,11 +51,16 @@ fun NotificationPatternsScreen(
     val newIsTransaction by viewModel.newIsTransaction.collectAsState()
     val newCurrencyCode by viewModel.newCurrencyCode.collectAsState()
     val selectedAppIndex by viewModel.selectedAppIndex.collectAsState()
+    val newPaymentSource by viewModel.newPaymentSource.collectAsState()
+    val newPaymentSourceType by viewModel.newPaymentSourceType.collectAsState()
+    
     val editTitle by viewModel.editTitle.collectAsState()
     val editRegex by viewModel.editRegex.collectAsState()
     val editIsTransaction by viewModel.editIsTransaction.collectAsState()
     val editCurrencyCode by viewModel.editCurrencyCode.collectAsState()
     val editSelectedAppIndex by viewModel.editSelectedAppIndex.collectAsState()
+    val editPaymentSource by viewModel.editPaymentSource.collectAsState()
+    val editPaymentSourceType by viewModel.editPaymentSourceType.collectAsState()
 
     val patternsLiquidState = rememberLiquidState()
  
@@ -206,11 +213,15 @@ fun NotificationPatternsScreen(
             regex = newRegex,
             isTransaction = newIsTransaction,
             currencyCode = newCurrencyCode,
+            paymentSource = newPaymentSource,
+            paymentSourceType = newPaymentSourceType,
             onDismiss = { viewModel.hideAddDialog() },
             onTitleChange = { viewModel.updateNewTitle(it) },
             onRegexChange = { viewModel.updateNewRegex(it) },
             onIsTransactionChange = { viewModel.updateNewIsTransaction(it) },
             onCurrencyCodeChange = { viewModel.updateNewCurrencyCode(it) },
+            onPaymentSourceChange = { viewModel.updateNewPaymentSource(it) },
+            onPaymentSourceTypeChange = { viewModel.updateNewPaymentSourceType(it) },
             onAppSelected = { viewModel.selectApp(it) },
             onSave = { viewModel.saveNewPattern() }
         )
@@ -224,11 +235,15 @@ fun NotificationPatternsScreen(
             regex = editRegex,
             isTransaction = editIsTransaction,
             currencyCode = editCurrencyCode,
+            paymentSource = editPaymentSource,
+            paymentSourceType = editPaymentSourceType,
             onDismiss = { viewModel.hideEditDialog() },
             onTitleChange = { viewModel.updateEditTitle(it) },
             onRegexChange = { viewModel.updateEditRegex(it) },
             onIsTransactionChange = { viewModel.updateEditIsTransaction(it) },
             onCurrencyCodeChange = { viewModel.updateEditCurrencyCode(it) },
+            onPaymentSourceChange = { viewModel.updateEditPaymentSource(it) },
+            onPaymentSourceTypeChange = { viewModel.updateEditPaymentSourceType(it) },
             onAppSelected = { viewModel.selectEditApp(it) },
             onSave = { viewModel.saveEditedPattern() }
         )
@@ -244,11 +259,15 @@ private fun AddPatternDialog(
     regex: String,
     isTransaction: Boolean,
     currencyCode: String,
+    paymentSource: String,
+    paymentSourceType: String,
     onDismiss: () -> Unit,
     onTitleChange: (String) -> Unit,
     onRegexChange: (String) -> Unit,
     onIsTransactionChange: (Boolean) -> Unit,
     onCurrencyCodeChange: (String) -> Unit,
+    onPaymentSourceChange: (String) -> Unit,
+    onPaymentSourceTypeChange: (String) -> Unit,
     onAppSelected: (Int) -> Unit,
     onSave: () -> Unit
 ) {
@@ -356,6 +375,33 @@ private fun AddPatternDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                if (isTransaction) {
+                    OutlinedTextField(
+                        value = paymentSource,
+                        onValueChange = onPaymentSourceChange,
+                        label = { Text("Payment Source Identifier") },
+                        placeholder = { Text("e.g. x1234 or account number") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Text("Payment Source Type", style = MaterialTheme.typography.titleSmall)
+
+                    val paymentSourceTypes = listOf("Credit Card", "Debit Card", "Bank Account", "Wallet", "Manual")
+                    Row(
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        paymentSourceTypes.forEach { type ->
+                            FilterChip(
+                                selected = paymentSourceType == type,
+                                onClick = { onPaymentSourceTypeChange(type) },
+                                label = { Text(type) }
+                            )
+                        }
+                    }
+                }
+
                 Box {
                     val selectedCurrency = Currencies.find(currencyCode)
                     OutlinedCard(
@@ -408,7 +454,7 @@ private fun AddPatternDialog(
         confirmButton = {
             TextButton(
                 onClick = onSave,
-                enabled = title.isNotBlank() && selectedAppIndex >= 0
+                enabled = title.isNotBlank() && selectedAppIndex >= 0 && (!isTransaction || paymentSource.isNotBlank())
             ) {
                 Text("Save")
             }
@@ -430,11 +476,15 @@ private fun EditPatternDialog(
     regex: String,
     isTransaction: Boolean,
     currencyCode: String,
+    paymentSource: String,
+    paymentSourceType: String,
     onDismiss: () -> Unit,
     onTitleChange: (String) -> Unit,
     onRegexChange: (String) -> Unit,
     onIsTransactionChange: (Boolean) -> Unit,
     onCurrencyCodeChange: (String) -> Unit,
+    onPaymentSourceChange: (String) -> Unit,
+    onPaymentSourceTypeChange: (String) -> Unit,
     onAppSelected: (Int) -> Unit,
     onSave: () -> Unit
 ) {
@@ -537,6 +587,33 @@ private fun EditPatternDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                if (isTransaction) {
+                    OutlinedTextField(
+                        value = paymentSource,
+                        onValueChange = onPaymentSourceChange,
+                        label = { Text("Payment Source Identifier") },
+                        placeholder = { Text("e.g. x1234 or account number") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Text("Payment Source Type", style = MaterialTheme.typography.titleSmall)
+
+                    val paymentSourceTypes = listOf("Credit Card", "Debit Card", "Bank Account", "Wallet", "Manual")
+                    Row(
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        paymentSourceTypes.forEach { type ->
+                            FilterChip(
+                                selected = paymentSourceType == type,
+                                onClick = { onPaymentSourceTypeChange(type) },
+                                label = { Text(type) }
+                            )
+                        }
+                    }
+                }
+
                 Box {
                     val selectedCurrency = Currencies.find(currencyCode)
                     OutlinedCard(
@@ -589,7 +666,7 @@ private fun EditPatternDialog(
         confirmButton = {
             TextButton(
                 onClick = onSave,
-                enabled = title.isNotBlank() && selectedAppIndex >= 0
+                enabled = title.isNotBlank() && selectedAppIndex >= 0 && (!isTransaction || paymentSource.isNotBlank())
             ) {
                 Text("Save")
             }
@@ -601,6 +678,7 @@ private fun EditPatternDialog(
         }
     )
 }
+
 
 @Composable
 fun PatternItem(

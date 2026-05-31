@@ -54,6 +54,12 @@ class NotificationPatternsViewModel @Inject constructor(
     private val _newCurrencyCode = MutableStateFlow("")
     val newCurrencyCode: StateFlow<String> = _newCurrencyCode.asStateFlow()
 
+    private val _newPaymentSource = MutableStateFlow("")
+    val newPaymentSource: StateFlow<String> = _newPaymentSource.asStateFlow()
+
+    private val _newPaymentSourceType = MutableStateFlow("Credit Card")
+    val newPaymentSourceType: StateFlow<String> = _newPaymentSourceType.asStateFlow()
+
     private val _selectedAppIndex = MutableStateFlow(-1)
     val selectedAppIndex: StateFlow<Int> = _selectedAppIndex.asStateFlow()
 
@@ -79,6 +85,12 @@ class NotificationPatternsViewModel @Inject constructor(
     private val _editCurrencyCode = MutableStateFlow("")
     val editCurrencyCode: StateFlow<String> = _editCurrencyCode.asStateFlow()
 
+    private val _editPaymentSource = MutableStateFlow("")
+    val editPaymentSource: StateFlow<String> = _editPaymentSource.asStateFlow()
+
+    private val _editPaymentSourceType = MutableStateFlow("Credit Card")
+    val editPaymentSourceType: StateFlow<String> = _editPaymentSourceType.asStateFlow()
+
     private val _editSelectedAppIndex = MutableStateFlow(-1)
     val editSelectedAppIndex: StateFlow<Int> = _editSelectedAppIndex.asStateFlow()
 
@@ -102,6 +114,8 @@ class NotificationPatternsViewModel @Inject constructor(
         _newTitle.value = ""
         _newRegex.value = ""
         _newIsTransaction.value = true
+        _newPaymentSource.value = ""
+        _newPaymentSourceType.value = "Credit Card"
         _selectedAppIndex.value = -1
     }
 
@@ -125,6 +139,14 @@ class NotificationPatternsViewModel @Inject constructor(
         _newCurrencyCode.value = code
     }
 
+    fun updateNewPaymentSource(source: String) {
+        _newPaymentSource.value = source
+    }
+
+    fun updateNewPaymentSourceType(type: String) {
+        _newPaymentSourceType.value = type
+    }
+
     fun selectApp(index: Int) {
         _selectedAppIndex.value = index
         if (index >= 0 && index < _availableApps.value.size) {
@@ -141,6 +163,8 @@ class NotificationPatternsViewModel @Inject constructor(
             val pattern = NotificationPatternEntity(
                 packageName = packageName,
                 notificationTitle = title,
+                paymentSource = _newPaymentSource.value.trim(),
+                paymentSourceType = _newPaymentSourceType.value.trim(),
                 regex = _newRegex.value.trim().takeIf { it.isNotBlank() },
                 currencyCode = _newCurrencyCode.value,
                 isTransaction = _newIsTransaction.value
@@ -177,6 +201,8 @@ class NotificationPatternsViewModel @Inject constructor(
         _editRegex.value = pattern.regex ?: ""
         _editIsTransaction.value = pattern.isTransaction
         _editCurrencyCode.value = pattern.currencyCode
+        _editPaymentSource.value = pattern.paymentSource
+        _editPaymentSourceType.value = pattern.paymentSourceType
         _editSelectedAppIndex.value = availableApps.value.indexOfFirst { it.packageName == pattern.packageName }
         _showEditDialog.value = true
     }
@@ -201,6 +227,14 @@ class NotificationPatternsViewModel @Inject constructor(
         _editCurrencyCode.value = code
     }
 
+    fun updateEditPaymentSource(source: String) {
+        _editPaymentSource.value = source
+    }
+
+    fun updateEditPaymentSourceType(type: String) {
+        _editPaymentSourceType.value = type
+    }
+
     fun selectEditApp(index: Int) {
         _editSelectedAppIndex.value = index
         if (index >= 0 && index < _availableApps.value.size) {
@@ -219,6 +253,8 @@ class NotificationPatternsViewModel @Inject constructor(
                 id = id,
                 packageName = packageName,
                 notificationTitle = title,
+                paymentSource = _editPaymentSource.value.trim(),
+                paymentSourceType = _editPaymentSourceType.value.trim(),
                 regex = _editRegex.value.trim().takeIf { it.isNotBlank() },
                 currencyCode = _editCurrencyCode.value,
                 isTransaction = _editIsTransaction.value
@@ -227,6 +263,8 @@ class NotificationPatternsViewModel @Inject constructor(
                 id = id,
                 packageName = packageName,
                 notificationTitle = title,
+                paymentSource = pattern.paymentSource,
+                paymentSourceType = pattern.paymentSourceType,
                 regex = pattern.regex,
                 currencyCode = pattern.currencyCode,
                 isTransaction = pattern.isTransaction

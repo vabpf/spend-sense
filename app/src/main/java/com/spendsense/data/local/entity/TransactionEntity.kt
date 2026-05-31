@@ -16,5 +16,7 @@ data class TransactionEntity(
     val sourceAppName: String,
     val notes: String? = null,
     val isSynced: Boolean = false,
-    val firestoreId: String? = null
+    val firestoreId: String? = null,
+    val paymentSource: String = "Manual",
+    val paymentSourceType: String = "Manual"
 )

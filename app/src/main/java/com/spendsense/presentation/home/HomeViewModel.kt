@@ -118,7 +118,14 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun addTransaction(amount: Double, currencyCode: String, merchant: String, categoryId: Long) {
+    fun addTransaction(
+        amount: Double,
+        currencyCode: String,
+        merchant: String,
+        categoryId: Long,
+        paymentSource: String = "Manual",
+        paymentSourceType: String = "Manual"
+    ) {
         viewModelScope.launch {
             transactionRepository.insertTransaction(
                 Transaction(
@@ -128,7 +135,9 @@ class HomeViewModel @Inject constructor(
                     categoryId = categoryId,
                     timestamp = System.currentTimeMillis(),
                     sourcePackageName = "manual",
-                    sourceAppName = "Manual Add"
+                    sourceAppName = "Manual Add",
+                    paymentSource = paymentSource,
+                    paymentSourceType = paymentSourceType
                 )
             )
         }

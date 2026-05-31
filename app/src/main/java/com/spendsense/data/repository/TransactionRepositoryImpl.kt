@@ -67,7 +67,9 @@ class TransactionRepositoryImpl @Inject constructor(
         timestamp = timestamp,
         sourcePackageName = sourcePackageName,
         sourceAppName = sourceAppName,
-        notes = notes
+        notes = notes,
+        paymentSource = paymentSource,
+        paymentSourceType = paymentSourceType
     )
 
     private fun TransactionEntity.toDomain() = Transaction(
@@ -79,6 +81,8 @@ class TransactionRepositoryImpl @Inject constructor(
         timestamp = timestamp,
         sourcePackageName = sourcePackageName,
         sourceAppName = sourceAppName,
-        notes = notes
+        notes = notes,
+        paymentSource = paymentSource,
+        paymentSourceType = paymentSourceType
     )
 }

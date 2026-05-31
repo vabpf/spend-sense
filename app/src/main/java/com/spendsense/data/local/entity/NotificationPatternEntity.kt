@@ -6,13 +6,15 @@ import androidx.room.PrimaryKey
 
 @Entity(
     tableName = "notification_patterns",
-    indices = [Index(value = ["packageName", "notificationTitle"])]
+    indices = [Index(value = ["packageName", "notificationTitle", "paymentSource"], unique = true)]
 )
 data class NotificationPatternEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val packageName: String,
     val notificationTitle: String,
+    val paymentSource: String = "",
+    val paymentSourceType: String = "Credit Card",
     val regex: String?,
     val currencyCode: String = "USD",
     val isTransaction: Boolean,

@@ -104,6 +104,14 @@ class RegexGeneratorViewModel @Inject constructor(
         securePreferences.saveRegexInput(title = s.notificationTitle, text = s.notificationText, manualPattern = pattern)
     }
 
+    fun updatePaymentSource(source: String) {
+        _state.value = _state.value.copy(paymentSource = source, errorMessage = null)
+    }
+
+    fun updatePaymentSourceType(type: String) {
+        _state.value = _state.value.copy(paymentSourceType = type, errorMessage = null)
+    }
+
     fun toggleActive() { _state.value = _state.value.copy(isActive = !_state.value.isActive) }
     fun toggleIsTransaction() { _state.value = _state.value.copy(isTransaction = !_state.value.isTransaction) }
     fun updateCurrency(currencyCode: String) { _state.value = _state.value.copy(currencyCode = currencyCode) }
@@ -309,6 +317,10 @@ Return ONLY valid JSON with no markdown formatting:
             _state.value = currentState.copy(errorMessage = "Please enter a notification title — patterns are keyed by (app × title)")
             return
         }
+        if (currentState.isTransaction && currentState.paymentSource.isBlank()) {
+            _state.value = currentState.copy(errorMessage = "Please specify a Payment Source (e.g. card/account identifier like x1234)")
+            return
+        }
 
         _state.value = currentState.copy(isSaving = true, errorMessage = null)
 
@@ -317,6 +329,8 @@ Return ONLY valid JSON with no markdown formatting:
                 val pattern = NotificationPatternEntity(
                     packageName = currentState.selectedAppPackage,
                     notificationTitle = currentState.notificationTitle,
+                    paymentSource = currentState.paymentSource.trim(),
+                    paymentSourceType = currentState.paymentSourceType.trim(),
                     regex = patternToSave,
                     currencyCode = currentState.currencyCode,
                     isTransaction = currentState.isTransaction
@@ -344,7 +358,8 @@ Return ONLY valid JSON with no markdown formatting:
                     successMessage = successMsg,
                     notificationTitle = "",
                     notificationText = "",
-                    manualPattern = ""
+                    manualPattern = "",
+                    paymentSource = ""
                 )
             } catch (e: Exception) {
                 _state.value = currentState.copy(isSaving = false, errorMessage = "Error saving pattern: ${e.message}")
@@ -376,6 +391,10 @@ Return ONLY valid JSON with no markdown formatting:
             _state.value = currentState.copy(errorMessage = "Please enter a notification title — patterns are keyed by (app × title)")
             return
         }
+        if (currentState.isTransaction && currentState.paymentSource.isBlank()) {
+            _state.value = currentState.copy(errorMessage = "Please specify a Payment Source (e.g. card/account identifier like x1234)")
+            return
+        }
 
         val finalAmountStr = editedAmount ?: currentState.extractedAmount
         if (finalAmountStr.isNullOrBlank()) {
@@ -393,6 +412,8 @@ Return ONLY valid JSON with no markdown formatting:
                 val pattern = NotificationPatternEntity(
                     packageName = currentState.selectedAppPackage,
                     notificationTitle = currentState.notificationTitle,
+                    paymentSource = currentState.paymentSource.trim(),
+                    paymentSourceType = currentState.paymentSourceType.trim(),
                     regex = patternToSave,
                     currencyCode = currentState.currencyCode,
                     isTransaction = currentState.isTransaction
@@ -423,7 +444,9 @@ Return ONLY valid JSON with no markdown formatting:
                         timestamp = currentState.transactionTimestamp,
                         sourcePackageName = currentState.selectedAppPackage,
                         sourceAppName = appName,
-                        notes = "Extracted during notification inbox pattern setup"
+                        notes = "Extracted during notification inbox pattern setup",
+                        paymentSource = currentState.paymentSource.trim(),
+                        paymentSourceType = currentState.paymentSourceType.trim()
                     )
                 )
 
@@ -454,7 +477,8 @@ Return ONLY valid JSON with no markdown formatting:
                     successMessage = successMsg,
                     notificationTitle = "",
                     notificationText = "",
-                    manualPattern = ""
+                    manualPattern = "",
+                    paymentSource = ""
                 )
             } catch (e: Exception) {
                 _state.value = currentState.copy(isSaving = false, errorMessage = "Error: ${e.message}")

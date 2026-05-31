@@ -623,8 +623,8 @@ fun HomeScreen(
             categories = categories,
             defaultCurrency = defaultCurrency,
             onDismiss = { isAddingTransaction = false },
-            onConfirm = { amount, currency, merchant, categoryId ->
-                viewModel.addTransaction(amount, currency, merchant, categoryId)
+            onConfirm = { amount, currency, merchant, categoryId, paymentSource, paymentSourceType ->
+                viewModel.addTransaction(amount, currency, merchant, categoryId, paymentSource, paymentSourceType)
                 isAddingTransaction = false
             }
         )
@@ -637,6 +637,7 @@ fun HomeScreen(
             onDismiss = onReviewHandled,
             onConfirm = { amount, currency, merchant, categoryId ->
                 if (data.transactionId != null && data.transactionId > 0) {
+                    val existingTxn = transactions.firstOrNull { it.id == data.transactionId }
                     viewModel.updateTransaction(
                         com.spendsense.domain.model.Transaction(
                             id = data.transactionId,
@@ -646,7 +647,9 @@ fun HomeScreen(
                             categoryId = categoryId,
                             timestamp = System.currentTimeMillis(),
                             sourcePackageName = data.sourcePackageName,
-                            sourceAppName = data.sourceAppName
+                            sourceAppName = data.sourceAppName,
+                            paymentSource = existingTxn?.paymentSource ?: "Manual",
+                            paymentSourceType = existingTxn?.paymentSourceType ?: "Manual"
                         )
                     )
                 } else {
@@ -900,6 +903,8 @@ fun EditTransactionDialog(
     var selectedCategoryId by remember { mutableStateOf(transaction.categoryId) }
     var notes by remember { mutableStateOf(transaction.notes ?: "") }
     var currencyExpanded by remember { mutableStateOf(false) }
+    var paymentSource by remember { mutableStateOf(transaction.paymentSource) }
+    var paymentSourceType by remember { mutableStateOf(transaction.paymentSourceType) }
     
     var transactionTimestamp by remember { mutableStateOf(transaction.timestamp) }
     var showDatePicker by remember { mutableStateOf(false) }
@@ -968,6 +973,30 @@ fun EditTransactionDialog(
                     label = { Text("Notes") },
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                OutlinedTextField(
+                    value = paymentSource,
+                    onValueChange = { paymentSource = it },
+                    label = { Text("Payment Source Identifier") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Text("Payment Source Type", style = MaterialTheme.typography.titleSmall)
+
+                val paymentSourceTypes = listOf("Credit Card", "Debit Card", "Bank Account", "Wallet", "Manual")
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    paymentSourceTypes.forEach { type ->
+                        FilterChip(
+                            selected = paymentSourceType == type,
+                            onClick = { paymentSourceType = type },
+                            label = { Text(type) }
+                        )
+                    }
+                }
 
                 Surface(
                     modifier = Modifier
@@ -1038,7 +1067,9 @@ fun EditTransactionDialog(
                         merchant = merchant,
                         categoryId = selectedCategoryId,
                         notes = notes.ifBlank { null },
-                        timestamp = transactionTimestamp
+                        timestamp = transactionTimestamp,
+                        paymentSource = paymentSource.trim(),
+                        paymentSourceType = paymentSourceType.trim()
                     ))
                 }
             ) {
@@ -1209,6 +1240,11 @@ fun TransactionItem(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(bottom = 2.dp)
                     )
+                    val sourceText = if (transaction.paymentSource.equals("Manual", ignoreCase = true)) {
+                        "Manual"
+                    } else {
+                        "${transaction.paymentSourceType} (${transaction.paymentSource})"
+                    }
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -1217,6 +1253,19 @@ fun TransactionItem(
                             text = category?.name ?: "Unknown",
                             style = MaterialTheme.typography.bodySmall,
                             color = categoryColor,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        Text(
+                            text = "•",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        )
+                        Text(
+                            text = sourceText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f, fill = false)

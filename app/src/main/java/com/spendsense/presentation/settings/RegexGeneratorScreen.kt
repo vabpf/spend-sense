@@ -4,6 +4,7 @@ package com.spendsense.presentation.settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
@@ -196,6 +197,39 @@ fun RegexGeneratorScreen(
                         label = { Text("Notification Body") },
                         maxLines = 6
                     )
+
+                    HorizontalDivider()
+
+                    Text(
+                        text = "Payment Source",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    OutlinedTextField(
+                        value = state.paymentSource,
+                        onValueChange = { viewModel.updatePaymentSource(it) },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("e.g. x1234 or account number") },
+                        label = { Text("Payment Source Identifier") },
+                        singleLine = true
+                    )
+
+                    Text("Payment Source Type", style = MaterialTheme.typography.titleSmall)
+
+                    val paymentSourceTypes = listOf("Credit Card", "Debit Card", "Bank Account", "Wallet", "Manual")
+                    Row(
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        paymentSourceTypes.forEach { type ->
+                            FilterChip(
+                                selected = state.paymentSourceType == type,
+                                onClick = { viewModel.updatePaymentSourceType(type) },
+                                label = { Text(type) }
+                            )
+                        }
+                    }
 
                     HorizontalDivider()
 

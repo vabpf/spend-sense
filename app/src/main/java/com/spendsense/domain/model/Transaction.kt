@@ -9,5 +9,7 @@ data class Transaction(
     val timestamp: Long,
     val sourcePackageName: String,
     val sourceAppName: String,
-    val notes: String? = null
+    val notes: String? = null,
+    val paymentSource: String = "Manual",
+    val paymentSourceType: String = "Manual"
 )

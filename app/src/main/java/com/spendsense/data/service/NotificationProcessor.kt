@@ -69,59 +69,66 @@ class NotificationProcessor @Inject constructor(
             return@withContext ProcessResult.INBOX_CREATED
         }
 
-        // KNOWN APP — try to match notification title
-        if (!title.isNullOrBlank()) {
-            val matchedPatterns = appPatterns.filter { pattern ->
-                title.contains(pattern.notificationTitle, ignoreCase = true)
-            }.sortedByDescending { it.notificationTitle.length }
+        // Stage 1: Scan for configured paymentSource identifiers in notification text
+        val configuredPaymentSources = appPatterns
+            .filter { it.isTransaction && it.paymentSource.isNotBlank() }
+            .map { it.paymentSource }
+            .distinct()
+            .sortedByDescending { it.length }
 
-            if (matchedPatterns.isNotEmpty()) {
-                val transactionPatterns = matchedPatterns.filter { it.isTransaction }
-                if (transactionPatterns.isEmpty()) {
-                    Log.d(TAG, "Known non-transaction patterns for ($packageName, $title) — skipping")
-                    return@withContext ProcessResult.SILENT_SKIPPED
-                }
+        val matchedPaymentSource = configuredPaymentSources.firstOrNull { source ->
+            text.contains(source, ignoreCase = true)
+        }
 
-                var hasStalePattern = false
-                var stalePatternId: Long? = null
-                var hasNoRegexPattern = false
+        if (matchedPaymentSource == null) {
+            // No matching payment source, move directly to pending inbox
+            saveToInbox(packageName, title, text, timestamp, null, existingRawNotificationId)
+            Log.d(TAG, "No configured payment source found in notification text for $packageName — saved to inbox")
+            return@withContext ProcessResult.INBOX_CREATED
+        }
 
-                for (pattern in transactionPatterns) {
-                    if (pattern.regex != null) {
-                        val matched = tryMatchPattern(pattern, text, packageName, appName, timestamp, listener, existingRawNotificationId)
-                        if (matched) {
-                            return@withContext ProcessResult.TRANSACTION_CREATED
-                        }
-                        hasStalePattern = true
-                        stalePatternId = pattern.id
-                    } else {
-                        hasNoRegexPattern = true
+        // Stage 2: Match with each pattern of that specific payment source
+        val candidatePatterns = appPatterns.filter { pattern ->
+            pattern.isTransaction &&
+            pattern.paymentSource.equals(matchedPaymentSource, ignoreCase = true) &&
+            (title.isNullOrBlank() || title.contains(pattern.notificationTitle, ignoreCase = true))
+        }.sortedByDescending { it.notificationTitle.length }
+
+        if (candidatePatterns.isNotEmpty()) {
+            var hasStalePattern = false
+            var stalePatternId: Long? = null
+            var hasNoRegexPattern = false
+
+            for (pattern in candidatePatterns) {
+                if (pattern.regex != null) {
+                    val matched = tryMatchPattern(pattern, text, packageName, appName, timestamp, listener, existingRawNotificationId)
+                    if (matched) {
+                        return@withContext ProcessResult.TRANSACTION_CREATED
                     }
+                    hasStalePattern = true
+                    stalePatternId = pattern.id
+                } else {
+                    hasNoRegexPattern = true
                 }
+            }
 
-                if (hasNoRegexPattern) {
-                    saveToInbox(packageName, title, text, timestamp, null, existingRawNotificationId)
-                    Log.d(TAG, "No regex for matched pattern ($packageName) — saved to inbox")
-                    return@withContext ProcessResult.INBOX_CREATED
-                }
+            if (hasNoRegexPattern) {
+                saveToInbox(packageName, title, text, timestamp, null, existingRawNotificationId)
+                Log.d(TAG, "No regex for matched pattern ($packageName, $matchedPaymentSource) — saved to inbox")
+                return@withContext ProcessResult.INBOX_CREATED
+            }
 
-                if (hasStalePattern) {
-                    saveToInbox(packageName, title, text, timestamp, stalePatternId, existingRawNotificationId)
-                    Log.d(TAG, "Stale pattern $stalePatternId for $packageName — saved to inbox")
-                    return@withContext ProcessResult.INBOX_CREATED
-                }
+            if (hasStalePattern) {
+                saveToInbox(packageName, title, text, timestamp, stalePatternId, existingRawNotificationId)
+                Log.d(TAG, "Stale pattern $stalePatternId for $packageName ($matchedPaymentSource) — saved to inbox")
+                return@withContext ProcessResult.INBOX_CREATED
             }
         }
 
-        // Gate 5: Multi-Language Transaction Heuristic for Unknown Title
-        if (isPotentialTransaction(text)) {
-            saveToInbox(packageName, title, text, timestamp, null, existingRawNotificationId)
-            Log.d(TAG, "Unknown title $title for known app $packageName (Looks like transaction) — saved to inbox")
-            return@withContext ProcessResult.INBOX_CREATED
-        } else {
-            Log.d(TAG, "Unknown title $title for known app $packageName (Looks like marketing/chat) — skipping")
-            return@withContext ProcessResult.SILENT_SKIPPED
-        }
+        // If no matching pattern format is found for this known payment source, route to pending inbox
+        saveToInbox(packageName, title, text, timestamp, null, existingRawNotificationId)
+        Log.d(TAG, "No matching patterns for $packageName and source $matchedPaymentSource — saved to inbox")
+        return@withContext ProcessResult.INBOX_CREATED
     }
 
     suspend fun reprocessInboxForPattern(
@@ -177,7 +184,20 @@ class NotificationProcessor @Inject constructor(
                             lastMatchedAt = System.currentTimeMillis(),
                             matchCount = pattern.matchCount + 1
                         ))
-                        saveAndPostNotification(amount, merchant, packageName, appName, pattern.currencyCode, notificationText, pattern.notificationTitle, timestamp, listener, existingRawNotificationId)
+                        saveAndPostNotification(
+                            amount = amount,
+                            merchant = merchant,
+                            packageName = packageName,
+                            appName = appName,
+                            currencyCode = pattern.currencyCode,
+                            notificationText = notificationText,
+                            notificationTitle = pattern.notificationTitle,
+                            timestamp = timestamp,
+                            listener = listener,
+                            existingRawNotificationId = existingRawNotificationId,
+                            paymentSource = pattern.paymentSource,
+                            paymentSourceType = pattern.paymentSourceType
+                        )
                         return true
                     }
                 }
@@ -198,7 +218,9 @@ class NotificationProcessor @Inject constructor(
         notificationTitle: String,
         timestamp: Long,
         listener: NotificationPostListener?,
-        existingRawNotificationId: Long?
+        existingRawNotificationId: Long?,
+        paymentSource: String,
+        paymentSourceType: String
     ) {
         val rawId = if (existingRawNotificationId != null) {
             val existing = rawNotificationDao.getById(existingRawNotificationId)
@@ -241,7 +263,9 @@ class NotificationProcessor @Inject constructor(
                 categoryId = finalCategoryId,
                 timestamp = timestamp,
                 sourcePackageName = packageName,
-                sourceAppName = appName
+                sourceAppName = appName,
+                paymentSource = paymentSource,
+                paymentSourceType = paymentSourceType
             )
         )
 

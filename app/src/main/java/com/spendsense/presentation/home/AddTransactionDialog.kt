@@ -21,13 +21,15 @@ fun AddTransactionDialog(
     categories: List<Category>,
     defaultCurrency: String = "USD",
     onDismiss: () -> Unit,
-    onConfirm: (amount: Double, currencyCode: String, merchant: String, categoryId: Long) -> Unit
+    onConfirm: (amount: Double, currencyCode: String, merchant: String, categoryId: Long, paymentSource: String, paymentSourceType: String) -> Unit
 ) {
     var amount by remember { mutableStateOf("") }
     var currency by remember { mutableStateOf(defaultCurrency) }
     var merchant by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf<Category?>(categories.firstOrNull()) }
     var currencyExpanded by remember { mutableStateOf(false) }
+    var paymentSource by remember { mutableStateOf("Manual") }
+    var paymentSourceType by remember { mutableStateOf("Manual") }
 
     GlassAlertDialog(
         onDismissRequest = onDismiss,
@@ -85,6 +87,30 @@ fun AddTransactionDialog(
                     singleLine = true
                 )
 
+                OutlinedTextField(
+                    value = paymentSource,
+                    onValueChange = { paymentSource = it },
+                    label = { Text("Payment Source Identifier") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Text("Payment Source Type", style = MaterialTheme.typography.titleSmall)
+
+                val paymentSourceTypes = listOf("Credit Card", "Debit Card", "Bank Account", "Wallet", "Manual")
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    paymentSourceTypes.forEach { type ->
+                        FilterChip(
+                            selected = paymentSourceType == type,
+                            onClick = { paymentSourceType = type },
+                            label = { Text(type) }
+                        )
+                    }
+                }
+
                 Text("Category", style = MaterialTheme.typography.titleSmall)
 
                 Row(
@@ -118,7 +144,14 @@ fun AddTransactionDialog(
                 onClick = {
                     if (canSave) {
                         selectedCategory?.let { category ->
-                            onConfirm(amountDouble!!, currency, merchant, category.id)
+                            onConfirm(
+                                amountDouble!!,
+                                currency,
+                                merchant,
+                                category.id,
+                                paymentSource.trim(),
+                                paymentSourceType.trim()
+                            )
                         }
                     }
                 },
