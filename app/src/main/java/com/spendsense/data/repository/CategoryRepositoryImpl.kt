@@ -4,8 +4,10 @@ import com.spendsense.data.local.dao.CategoryDao
 import com.spendsense.data.local.entity.CategoryEntity
 import com.spendsense.domain.model.Category
 import com.spendsense.domain.repository.CategoryRepository
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.*
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -13,6 +15,17 @@ import javax.inject.Singleton
 class CategoryRepositoryImpl @Inject constructor(
     private val categoryDao: CategoryDao
 ) : CategoryRepository {
+
+    private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    // Pre-loaded in-memory StateFlow cache to guarantee instant, flicker-free UI rendering
+    private val categoriesStateFlow: StateFlow<List<Category>> = categoryDao.getAllFlow()
+        .map { entities -> entities.map { it.toDomain() } }
+        .stateIn(
+            scope = repositoryScope,
+            started = SharingStarted.Eagerly,
+            initialValue = emptyList()
+        )
 
     override suspend fun insertCategory(category: Category): Long {
         return categoryDao.insert(category.toEntity())
@@ -31,9 +44,7 @@ class CategoryRepositoryImpl @Inject constructor(
     }
 
     override fun getAllCategories(): Flow<List<Category>> {
-        return categoryDao.getAllFlow().map { entities ->
-            entities.map { it.toDomain() }
-        }
+        return categoriesStateFlow
     }
 
     override suspend fun getAllCategoriesList(): List<Category> {

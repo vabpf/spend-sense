@@ -17,28 +17,17 @@ import com.spendsense.data.local.entity.NotificationPatternEntity
 import com.spendsense.presentation.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.collect
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class TransactionNotificationListener : NotificationListenerService() {
+class TransactionNotificationListener : NotificationListenerService(), NotificationProcessor.NotificationPostListener {
 
     @Inject
     lateinit var whitelistedAppDao: WhitelistedAppDao
 
     @Inject
-    lateinit var rawNotificationDao: com.spendsense.data.local.dao.RawNotificationDao
-
-    @Inject
-    lateinit var merchantCategoryMappingDao: MerchantCategoryMappingDao
-
-    @Inject
-    lateinit var notificationPatternDao: NotificationPatternDao
-
-    @Inject
-    lateinit var categoryDao: CategoryDao
-
-    @Inject
-    lateinit var transactionRepository: com.spendsense.domain.repository.TransactionRepository
+    lateinit var notificationProcessor: NotificationProcessor
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var whitelistedPackages: Set<String> = emptySet()
@@ -47,14 +36,13 @@ class TransactionNotificationListener : NotificationListenerService() {
     override fun onCreate() {
         super.onCreate()
         Log.d(TAG, "TransactionNotificationListener created")
-        loadWhitelistedPackages()
+        observeWhitelistedPackages()
         createNotificationChannel()
     }
 
     override fun onListenerConnected() {
         super.onListenerConnected()
         Log.d(TAG, "NotificationListener connected")
-        loadWhitelistedPackages()
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
@@ -93,142 +81,31 @@ class TransactionNotificationListener : NotificationListenerService() {
             return
         }
 
-        // Check if this app has been configured with patterns
-        val appPatterns = notificationPatternDao.getAllForPackage(packageName)
-        if (appPatterns.isEmpty()) {
-            // NEW APP — no patterns yet, save to inbox
-            saveToInbox(packageName, notificationTitle, notificationText, null)
-            Log.d(TAG, "New app $packageName — saved to inbox")
-            return
-        }
-
-        // KNOWN APP — try to match notification title
-        if (!notificationTitle.isNullOrBlank()) {
-            val matchedPattern = appPatterns.firstOrNull { pattern ->
-                notificationTitle.contains(pattern.notificationTitle, ignoreCase = true)
-            }
-
-            if (matchedPattern != null) {
-                if (!matchedPattern.isTransaction) {
-                    Log.d(TAG, "Known non-transaction pattern for ($packageName, $notificationTitle) — skipping")
-                    return
-                }
-
-                // It's a transaction — try the regex
-                if (matchedPattern.regex != null) {
-                    val matched = tryMatchPattern(matchedPattern, notificationText, packageName)
-                    if (matched) return
-                    // Regex exists but failed to match — pattern is stale
-                    saveToInbox(packageName, notificationTitle, notificationText, matchedPattern.id)
-                    Log.d(TAG, "Stale pattern ${matchedPattern.id} for $packageName — saved to inbox")
-                    return
-                }
-
-                // Transaction pattern with no regex — new body format, save to inbox
-                saveToInbox(packageName, notificationTitle, notificationText, null)
-                Log.d(TAG, "No regex for matched pattern ($packageName) — saved to inbox")
-                return
-            }
-        }
-
-        // Unknown title for a known app — silent skip (not a configured transaction type)
-        Log.d(TAG, "Unknown title for known app $packageName — skipping")
-    }
-
-    private suspend fun saveToInbox(packageName: String, title: String?, text: String, stalePatternId: Long?) {
-        rawNotificationDao.insert(
-            com.spendsense.data.local.entity.RawNotificationEntity(
-                packageName = packageName,
-                title = title,
-                text = text,
-                timestamp = System.currentTimeMillis(),
-                stalePatternId = stalePatternId
-            )
+        val appName = getAppName(packageName)
+        notificationProcessor.process(
+            packageName = packageName,
+            appName = appName,
+            title = notificationTitle,
+            text = notificationText,
+            timestamp = sbn.postTime,
+            listener = this
         )
     }
 
-    private suspend fun tryMatchPattern(
-        pattern: NotificationPatternEntity,
-        notificationText: String,
-        packageName: String
-    ): Boolean {
-        val regexStr = pattern.regex ?: return false
-        try {
-            val regex = Regex(regexStr)
-            val matchResult = regex.find(notificationText)
-            if (matchResult != null) {
-                val amountStr = matchResult.groups["amount"]?.value
-                val merchant = matchResult.groups["merchant"]?.value
-                if (amountStr != null && merchant != null) {
-                    val amount = parseAmount(amountStr)
-                    if (amount > 0) {
-                        notificationPatternDao.upsert(pattern.copy(
-                            lastMatchedAt = System.currentTimeMillis(),
-                            matchCount = pattern.matchCount + 1
-                        ))
-                        val appName = getAppName(packageName)
-                        saveAndPostNotification(amount, merchant, packageName, appName, pattern.currencyCode, notificationText, pattern.notificationTitle)
-                        return true
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error matching notification pattern: ${pattern.regex}", e)
-        }
-        return false
-    }
-
-    private suspend fun saveAndPostNotification(
+    override fun onTransactionProcessed(
         amount: Double,
         merchant: String,
         packageName: String,
         appName: String,
+        rawNotificationId: Long,
         currencyCode: String,
-        notificationText: String,
-        notificationTitle: String
+        suggestedCategoryId: Long?,
+        suggestedCategoryName: String?,
+        transactionId: Long
     ) {
-        // Save raw notification as already processed (since it is auto-saved)
-        val rawId = rawNotificationDao.insert(
-            com.spendsense.data.local.entity.RawNotificationEntity(
-                packageName = packageName,
-                title = notificationTitle,
-                text = notificationText,
-                timestamp = System.currentTimeMillis(),
-                isProcessed = true
-            )
-        )
-
-        val mapping = merchantCategoryMappingDao.getByMerchant(merchant.lowercase())
-        val suggestedCategoryId = mapping?.categoryId
-        val suggestedCategoryName = if (suggestedCategoryId != null) {
-            categoryDao.getById(suggestedCategoryId)?.name
-        } else null
-
-        val finalCategoryId = if (suggestedCategoryId != null && suggestedCategoryId > 0) {
-            suggestedCategoryId
-        } else {
-            val categories = categoryDao.getAll()
-            categories.firstOrNull { it.name == "Other" }?.id
-                ?: categories.firstOrNull()?.id
-                ?: 1L
-        }
-
-        // Auto-save the transaction right away!
-        val transactionId = transactionRepository.insertTransaction(
-            com.spendsense.domain.model.Transaction(
-                amount = amount,
-                currencyCode = currencyCode,
-                merchant = merchant,
-                categoryId = finalCategoryId,
-                timestamp = System.currentTimeMillis(),
-                sourcePackageName = packageName,
-                sourceAppName = appName
-            )
-        )
-
-        withContext(Dispatchers.Main) {
+        serviceScope.launch(Dispatchers.Main) {
             postTransactionNotification(
-                amount, merchant, packageName, appName, rawId,
+                amount, merchant, packageName, appName, rawNotificationId,
                 currencyCode, suggestedCategoryId, suggestedCategoryName,
                 transactionId
             )
@@ -321,26 +198,12 @@ class TransactionNotificationListener : NotificationListenerService() {
     private fun extractNotificationText(notification: android.app.Notification): String? {
         val extras = notification.extras ?: return null
         
-        val title = extras.getCharSequence(android.app.Notification.EXTRA_TITLE)?.toString() ?: ""
         val text = extras.getCharSequence(android.app.Notification.EXTRA_TEXT)?.toString() ?: ""
         val bigText = extras.getCharSequence(android.app.Notification.EXTRA_BIG_TEXT)?.toString() ?: ""
         
-        // Combine all text fields
-        return listOf(title, text, bigText)
-            .filter { it.isNotBlank() }
-            .joinToString(" ")
-            .takeIf { it.isNotBlank() }
-    }
-
-    private fun parseAmount(amountStr: String): Double {
-        return try {
-            // Remove currency symbols, commas, and spaces
-            val cleanedStr = amountStr.replace(Regex("[^0-9.]"), "")
-            cleanedStr.toDoubleOrNull() ?: 0.0
-        } catch (e: Exception) {
-            Log.e(TAG, "Error parsing amount", e)
-            0.0
-        }
+        // Prefer bigText (expanded content) over text (collapsed content) to avoid duplication
+        val body = if (bigText.isNotBlank()) bigText else text
+        return body.takeIf { it.isNotBlank() }
     }
 
     private fun getAppName(packageName: String): String {
@@ -353,14 +216,15 @@ class TransactionNotificationListener : NotificationListenerService() {
         }
     }
 
-    private fun loadWhitelistedPackages() {
+    private fun observeWhitelistedPackages() {
         serviceScope.launch(Dispatchers.IO) {
             try {
-                val apps = whitelistedAppDao.getEnabledApps()
-                whitelistedPackages = apps.map { it.packageName }.toSet()
-                Log.d(TAG, "Loaded ${whitelistedPackages.size} whitelisted packages")
+                whitelistedAppDao.getEnabledAppsFlow().collect { apps ->
+                    whitelistedPackages = apps.map { it.packageName }.toSet()
+                    Log.d(TAG, "Loaded/Updated ${whitelistedPackages.size} whitelisted packages in real-time")
+                }
             } catch (e: Exception) {
-                Log.e(TAG, "Error loading whitelisted packages", e)
+                Log.e(TAG, "Error collecting whitelisted packages flow", e)
             }
         }
     }

@@ -20,4 +20,10 @@ interface RawNotificationDao {
 
     @Query("UPDATE raw_notifications SET isProcessed = 1 WHERE id = :id")
     suspend fun markAsProcessed(id: Long)
+
+    @Query("SELECT * FROM raw_notifications WHERE id = :id")
+    suspend fun getById(id: Long): RawNotificationEntity?
+
+    @Query("SELECT * FROM raw_notifications WHERE isProcessed = 0 AND packageName = :packageName AND title = :title")
+    suspend fun getUnprocessedForPackageAndTitle(packageName: String, title: String): List<RawNotificationEntity>
 }

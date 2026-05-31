@@ -1,29 +1,15 @@
 package com.spendsense.presentation.whitelistedapps
 
-import android.content.Context
-import android.content.pm.ApplicationInfo
-import android.content.pm.PackageManager
-import android.graphics.drawable.Drawable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.spendsense.data.local.dao.WhitelistedAppDao
-import com.spendsense.data.local.entity.WhitelistedAppEntity
+import com.spendsense.domain.repository.AppItem
+import com.spendsense.domain.repository.WhitelistedAppRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
-
-data class AppItem(
-    val packageName: String,
-    val appName: String,
-    val isEnabled: Boolean,
-    val icon: Drawable? = null
-)
 
 data class WhitelistedAppsState(
     val apps: List<AppItem> = emptyList(),
@@ -35,8 +21,7 @@ data class WhitelistedAppsState(
 
 @HiltViewModel
 class WhitelistedAppsViewModel @Inject constructor(
-    private val whitelistedAppDao: WhitelistedAppDao,
-    @ApplicationContext private val context: Context
+    private val whitelistedAppRepository: WhitelistedAppRepository
 ) : ViewModel() {
 
     private val suggestedBankKeywords = listOf(
@@ -63,33 +48,7 @@ class WhitelistedAppsViewModel @Inject constructor(
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true)
 
-            // Collect flow of whitelisted apps from DB
-            whitelistedAppDao.getAllFlow().collect { dbApps ->
-                val dbAppsMap = dbApps.associateBy { it.packageName }
-
-                // Get installed apps
-                val installedApps = withContext(Dispatchers.IO) {
-                    val pm = context.packageManager
-                    val packages = pm.getInstalledApplications(PackageManager.GET_META_DATA)
-
-                    packages.filter { appInfo ->
-                        // Filter out system apps, mostly
-                        (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0 || dbAppsMap.containsKey(appInfo.packageName)
-                    }.map { appInfo ->
-                        val packageName = appInfo.packageName
-                        val appName = pm.getApplicationLabel(appInfo).toString()
-                        val isEnabled = dbAppsMap[packageName]?.isEnabled ?: false
-                        val icon = try { pm.getApplicationIcon(appInfo) } catch (_: Exception) { null }
-
-                        AppItem(
-                            packageName = packageName,
-                            appName = appName,
-                            isEnabled = isEnabled,
-                            icon = icon
-                        )
-                    }.sortedBy { it.appName }
-                }
-
+            whitelistedAppRepository.getWhitelistedAppsFlow().collect { installedApps ->
                 val currentQuery = _state.value.searchQuery
                 val suggestedApps = installedApps.filter { app ->
                     val name = app.appName.lowercase()
@@ -99,11 +58,14 @@ class WhitelistedAppsViewModel @Inject constructor(
                     }
                 }
 
+                // If installedApps list is not empty, we are no longer loading
+                val isStillLoading = installedApps.isEmpty() && _state.value.isLoading
+
                 _state.value = _state.value.copy(
                     apps = installedApps,
                     filteredApps = filterApps(installedApps, currentQuery),
                     suggestedApps = suggestedApps.sortedBy { it.appName.lowercase() },
-                    isLoading = false
+                    isLoading = isStillLoading
                 )
             }
         }
@@ -119,12 +81,7 @@ class WhitelistedAppsViewModel @Inject constructor(
 
     fun toggleApp(app: AppItem, isEnabled: Boolean) {
         viewModelScope.launch {
-            val entity = WhitelistedAppEntity(
-                packageName = app.packageName,
-                appName = app.appName,
-                isEnabled = isEnabled
-            )
-            whitelistedAppDao.insert(entity) // Insert or replace
+            whitelistedAppRepository.toggleApp(app.packageName, app.appName, isEnabled)
         }
     }
 

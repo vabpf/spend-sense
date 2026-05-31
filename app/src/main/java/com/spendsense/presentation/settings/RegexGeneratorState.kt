@@ -14,6 +14,8 @@ data class RegexGeneratorState(
     val manualPattern: String = "",
     val isGenerating: Boolean = false,
     val isTransaction: Boolean = true,
+    val isFromInbox: Boolean = false,
+    val transactionTimestamp: Long = System.currentTimeMillis(),
 
     val generatedPattern: String? = null,
     val extractedAmount: String? = null,

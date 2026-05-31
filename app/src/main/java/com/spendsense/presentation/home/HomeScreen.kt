@@ -50,6 +50,7 @@ import com.spendsense.presentation.util.getCategoryIcon
 import com.spendsense.presentation.util.glassEffect
 import com.spendsense.presentation.util.prismEdge
 import com.spendsense.presentation.util.parseColor
+import com.spendsense.presentation.util.bounceClickable
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.layout.ContentScale
@@ -899,6 +900,11 @@ fun EditTransactionDialog(
     var selectedCategoryId by remember { mutableStateOf(transaction.categoryId) }
     var notes by remember { mutableStateOf(transaction.notes ?: "") }
     var currencyExpanded by remember { mutableStateOf(false) }
+    
+    var transactionTimestamp by remember { mutableStateOf(transaction.timestamp) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
+    val dateTimeFormatter = remember { SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()) }
 
     GlassAlertDialog(
         onDismissRequest = onDismiss,
@@ -962,6 +968,40 @@ fun EditTransactionDialog(
                     label = { Text("Notes") },
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showDatePicker = true }
+                        .glassEffect(
+                            shape = MaterialTheme.shapes.medium,
+                            containerColor = GlassSurface.copy(alpha = 0.5f),
+                            borderAlpha = 0.15f
+                        ),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("Transaction Date & Time", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = dateTimeFormatter.format(Date(transactionTimestamp)),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Rounded.CalendarToday,
+                            contentDescription = "Change Date and Time",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
                 
                 Text("Category", style = MaterialTheme.typography.titleSmall)
                 
@@ -997,7 +1037,8 @@ fun EditTransactionDialog(
                         currencyCode = currency,
                         merchant = merchant,
                         categoryId = selectedCategoryId,
-                        notes = notes.ifBlank { null }
+                        notes = notes.ifBlank { null },
+                        timestamp = transactionTimestamp
                     ))
                 }
             ) {
@@ -1010,6 +1051,112 @@ fun EditTransactionDialog(
             }
         }
     )
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = transactionTimestamp
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val selectedDate = datePickerState.selectedDateMillis
+                        if (selectedDate != null) {
+                            val currentCal = Calendar.getInstance().apply { timeInMillis = transactionTimestamp }
+                            val newCal = Calendar.getInstance().apply {
+                                timeInMillis = selectedDate
+                                set(Calendar.HOUR_OF_DAY, currentCal.get(Calendar.HOUR_OF_DAY))
+                                set(Calendar.MINUTE, currentCal.get(Calendar.MINUTE))
+                            }
+                            transactionTimestamp = newCal.timeInMillis
+                        }
+                        showDatePicker = false
+                        showTimePicker = true
+                    }
+                ) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    if (showTimePicker) {
+        val currentCal = Calendar.getInstance().apply { timeInMillis = transactionTimestamp }
+        var hourInput by remember { mutableStateOf(currentCal.get(Calendar.HOUR_OF_DAY).toString()) }
+        var minuteInput by remember { mutableStateOf(currentCal.get(Calendar.MINUTE).toString().padStart(2, '0')) }
+
+        GlassAlertDialog(
+            onDismissRequest = { showTimePicker = false },
+            title = { Text("Edit Time") },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "Select time (24h format)",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = hourInput,
+                            onValueChange = { input ->
+                                val clean = input.filter { it.isDigit() }
+                                if (clean.isEmpty() || (clean.toIntOrNull() in 0..23)) {
+                                    hourInput = clean.take(2)
+                                }
+                            },
+                            label = { Text("Hour") },
+                            modifier = Modifier.width(80.dp),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true
+                        )
+                        Text(":", style = MaterialTheme.typography.titleLarge)
+                        OutlinedTextField(
+                            value = minuteInput,
+                            onValueChange = { input ->
+                                val clean = input.filter { it.isDigit() }
+                                if (clean.isEmpty() || (clean.toIntOrNull() in 0..59)) {
+                                    minuteInput = clean.take(2)
+                                }
+                            },
+                            label = { Text("Min") },
+                            modifier = Modifier.width(80.dp),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val hr = hourInput.toIntOrNull() ?: 12
+                        val min = minuteInput.toIntOrNull() ?: 0
+                        val newCal = Calendar.getInstance().apply {
+                            timeInMillis = transactionTimestamp
+                            set(Calendar.HOUR_OF_DAY, hr)
+                            set(Calendar.MINUTE, min)
+                        }
+                        transactionTimestamp = newCal.timeInMillis
+                        showTimePicker = false
+                    }
+                ) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTimePicker = false }) { Text("Cancel") }
+            }
+        )
+    }
 }
 
 @Composable
@@ -1025,7 +1172,7 @@ fun TransactionItem(
                 shape = MaterialTheme.shapes.medium,
                 containerColor = GlassSurface,
                 borderAlpha = 0.15f,
-                contentModifier = Modifier.clickable(onClick = onClick)
+                contentModifier = Modifier.bounceClickable(onClick = onClick)
             ),
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(

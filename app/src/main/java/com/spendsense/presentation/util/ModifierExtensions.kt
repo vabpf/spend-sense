@@ -21,6 +21,16 @@ import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.materials.HazeMaterials
 import io.github.fletchmckee.liquid.LiquidState
 import io.github.fletchmckee.liquid.liquid
+import androidx.compose.ui.composed
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 
 val LocalGlassHazeState = compositionLocalOf<HazeState?> { null }
 val LocalLiquidState = compositionLocalOf<LiquidState?> { null }
@@ -204,4 +214,36 @@ fun Modifier.glassCard(
     } else {
         mod
     }
+}
+
+/**
+ * Interactive bounce clickable effect.
+ * Compresses the element scale on press via a low-stiffness spring animation.
+ */
+fun Modifier.bounceClickable(
+    enabled: Boolean = true,
+    onClick: () -> Unit
+): Modifier = composed {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.97f else 1.0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "press_scale_spring"
+    )
+
+    this
+        .graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+        }
+        .clickable(
+            enabled = enabled,
+            interactionSource = interactionSource,
+            indication = null,
+            onClick = onClick
+        )
 }

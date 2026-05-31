@@ -6,6 +6,7 @@ import com.spendsense.data.local.SecurePreferences
 import com.spendsense.data.local.dao.NotificationPatternDao
 import com.spendsense.data.local.dao.WhitelistedAppDao
 import com.spendsense.data.local.entity.NotificationPatternEntity
+import com.spendsense.data.service.NotificationProcessor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -20,7 +21,8 @@ import javax.inject.Inject
 class NotificationPatternsViewModel @Inject constructor(
     private val notificationPatternDao: NotificationPatternDao,
     private val whitelistedAppDao: WhitelistedAppDao,
-    private val securePreferences: SecurePreferences
+    private val securePreferences: SecurePreferences,
+    private val notificationProcessor: NotificationProcessor
 ) : ViewModel() {
 
     val patterns: StateFlow<List<NotificationPatternEntity>> =
@@ -136,15 +138,22 @@ class NotificationPatternsViewModel @Inject constructor(
         if (title.isBlank() || packageName.isBlank()) return
 
         viewModelScope.launch {
-            notificationPatternDao.upsert(
-                NotificationPatternEntity(
-                    packageName = packageName,
-                    notificationTitle = title,
-                    regex = _newRegex.value.trim().takeIf { it.isNotBlank() },
-                    currencyCode = _newCurrencyCode.value,
-                    isTransaction = _newIsTransaction.value
-                )
+            val pattern = NotificationPatternEntity(
+                packageName = packageName,
+                notificationTitle = title,
+                regex = _newRegex.value.trim().takeIf { it.isNotBlank() },
+                currencyCode = _newCurrencyCode.value,
+                isTransaction = _newIsTransaction.value
             )
+            notificationPatternDao.upsert(pattern)
+            
+            val appName = _availableApps.value
+                .firstOrNull { it.packageName == packageName }
+                ?.appName ?: "App"
+            
+            // Reprocess the pending inbox for this newly saved pattern
+            notificationProcessor.reprocessInboxForPattern(pattern, appName = appName)
+
             hideAddDialog()
         }
     }
@@ -206,7 +215,7 @@ class NotificationPatternsViewModel @Inject constructor(
         if (title.isBlank() || packageName.isBlank()) return
 
         viewModelScope.launch {
-            notificationPatternDao.updateAll(
+            val pattern = NotificationPatternEntity(
                 id = id,
                 packageName = packageName,
                 notificationTitle = title,
@@ -214,6 +223,22 @@ class NotificationPatternsViewModel @Inject constructor(
                 currencyCode = _editCurrencyCode.value,
                 isTransaction = _editIsTransaction.value
             )
+            notificationPatternDao.updateAll(
+                id = id,
+                packageName = packageName,
+                notificationTitle = title,
+                regex = pattern.regex,
+                currencyCode = pattern.currencyCode,
+                isTransaction = pattern.isTransaction
+            )
+            
+            val appName = _availableApps.value
+                .firstOrNull { it.packageName == packageName }
+                ?.appName ?: "App"
+
+            // Reprocess the pending inbox for this edited pattern
+            notificationProcessor.reprocessInboxForPattern(pattern, appName = appName)
+
             hideEditDialog()
         }
     }

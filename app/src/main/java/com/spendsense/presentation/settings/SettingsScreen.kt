@@ -8,6 +8,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.spendsense.data.local.Currencies
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.ui.res.painterResource
@@ -33,6 +35,10 @@ import com.spendsense.presentation.util.glassEffect
 import com.spendsense.presentation.util.LocalLiquidState
 import io.github.fletchmckee.liquid.rememberLiquidState
 import io.github.fletchmckee.liquid.liquefiable
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import java.io.BufferedReader
+import java.io.InputStreamReader
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,6 +55,20 @@ fun SettingsScreen(
     val context = LocalContext.current
     var showCurrencySelector by remember { mutableStateOf(false) }
     val settingsLiquidState = rememberLiquidState()
+
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            try {
+                context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                    val reader = BufferedReader(InputStreamReader(inputStream))
+                    val content = reader.readText()
+                    viewModel.importNotificationsFromFile(content)
+                }
+            } catch (_: Exception) {}
+        }
+    }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     var isAccessGranted by remember { mutableStateOf(false) }
@@ -239,6 +259,15 @@ fun SettingsScreen(
                         description = "Manage expense categories",
                         onClick = onNavigateToCategories
                     )
+
+                    HorizontalDivider()
+
+                    SettingsItem(
+                        icon = Icons.Rounded.CloudUpload,
+                        title = "Import Notifications",
+                        description = "Import and process historical CSV/JSON files",
+                        onClick = { filePickerLauncher.launch("*/*") }
+                    )
                 }
             }
 
@@ -297,7 +326,7 @@ fun SettingsScreen(
                 SpendSenseTopBar(
                     title = "Settings",
                     onNavigationClick = onNavigateBack,
-                    navigationIcon = Icons.Rounded.ArrowBack
+                    navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack
                 )
             }
         } // outer Box
@@ -336,6 +365,131 @@ fun SettingsScreen(
             confirmButton = {},
             dismissButton = {
                 TextButton(onClick = { showCurrencySelector = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (state.isImporting) {
+        GlassAlertDialog(
+            onDismissRequest = {},
+            title = { Text("Importing Notifications") },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                    Text(
+                        text = "Processing your notification archive file. This might take a few moments.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    state.importResult?.let { result ->
+        GlassAlertDialog(
+            onDismissRequest = { viewModel.clearImportResult() },
+            title = {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.CheckCircle,
+                        contentDescription = null,
+                        tint = Color(0xFF81C784)
+                    )
+                    Text("Import Complete")
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "Historical notification file has been successfully processed:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    HorizontalDivider()
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Total Notifications Parsed", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            text = "${result.totalParsed}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("New Apps Whitelisted", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            text = "${result.newAppsWhitelisted}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Transactions Auto-Saved", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            text = "${result.transactionsCreated}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF81C784)
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Sent to Pending Inbox", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            text = "${result.inboxCreated}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Marketing Messages Skipped", style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            text = "${result.skipped}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = { viewModel.clearImportResult() }) {
+                    Text("Close")
+                }
             }
         )
     }

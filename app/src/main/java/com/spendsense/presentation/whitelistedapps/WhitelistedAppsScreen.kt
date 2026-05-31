@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +22,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.spendsense.presentation.theme.GlassSurface
 import com.spendsense.presentation.util.SpendSenseTopBar
 import com.spendsense.presentation.util.glassEffect
+import com.spendsense.presentation.util.shimmer
+import com.spendsense.domain.repository.AppItem
 
 @Composable
 private fun rememberDrawablePainter(drawable: Drawable): Painter {
@@ -51,7 +53,7 @@ fun WhitelistedAppsScreen(
             SpendSenseTopBar(
                 title = "Whitelisted Apps",
                 onNavigationClick = onNavigateBack,
-                navigationIcon = Icons.Rounded.ArrowBack
+                navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack
             )
         }
     ) { padding ->
@@ -61,8 +63,23 @@ fun WhitelistedAppsScreen(
                 .padding(top = padding.calculateTopPadding())
         ) {
             if (state.isLoading) {
-                Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Shimmer Placeholders for explanation text and search bar
+                    Box(modifier = Modifier.fillMaxWidth().height(16.dp).clip(RoundedCornerShape(4.dp)).shimmer())
+                    Box(modifier = Modifier.width(240.dp).height(16.dp).clip(RoundedCornerShape(4.dp)).shimmer())
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box(modifier = Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(4.dp)).shimmer())
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    repeat(5) {
+                        WhitelistedAppSkeletonItem()
+                    }
                 }
             } else {
                 LazyColumn(
@@ -101,43 +118,36 @@ fun WhitelistedAppsScreen(
                             )
                         }
 
-                        items(state.suggestedApps) { app ->
-                            AppListItem(
+                        items(
+                            items = state.suggestedApps,
+                            key = { "suggested_${it.packageName}" }
+                        ) { app ->
+                            WhitelistedAppCard(
                                 app = app,
-                                onToggle = { isEnabled -> viewModel.toggleApp(app, isEnabled) }
+                                onToggle = { isChecked -> viewModel.toggleApp(app, isChecked) }
                             )
                         }
-
-                        item {
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                        }
                     }
 
-                    item {
-                        Text(
-                            text = "All Installed Apps",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                    }
-
-                    items(nonSuggestedFilteredApps) { app ->
-                        AppListItem(
-                            app = app,
-                            onToggle = { isEnabled -> viewModel.toggleApp(app, isEnabled) }
-                        )
-                    }
-
-                    if (nonSuggestedFilteredApps.isEmpty()) {
+                    if (nonSuggestedFilteredApps.isNotEmpty()) {
                         item {
                             Text(
-                                text = "No apps match your search.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(vertical = 12.dp)
+                                text = "Installed Applications",
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+
+                        items(
+                            items = nonSuggestedFilteredApps,
+                            key = { "all_${it.packageName}" }
+                        ) { app ->
+                            WhitelistedAppCard(
+                                app = app,
+                                onToggle = { isChecked -> viewModel.toggleApp(app, isChecked) }
                             )
                         }
                     }
-                    item { Spacer(modifier = Modifier.height(40.dp)) }
                 }
             }
         }
@@ -145,7 +155,58 @@ fun WhitelistedAppsScreen(
 }
 
 @Composable
-fun AppListItem(
+fun WhitelistedAppSkeletonItem() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Rounded App Icon placeholder
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .shimmer()
+        )
+        
+        Spacer(modifier = Modifier.width(16.dp))
+        
+        // Two-line details placeholder
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(140.dp)
+                    .height(16.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .shimmer()
+            )
+            Box(
+                modifier = Modifier
+                    .width(200.dp)
+                    .height(12.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .shimmer()
+            )
+        }
+        
+        Spacer(modifier = Modifier.width(16.dp))
+        
+        // Toggle/Switch placeholder
+        Box(
+            modifier = Modifier
+                .size(width = 44.dp, height = 24.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .shimmer()
+        )
+    }
+}
+
+@Composable
+fun WhitelistedAppCard(
     app: AppItem,
     onToggle: (Boolean) -> Unit
 ) {

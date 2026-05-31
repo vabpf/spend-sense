@@ -7,13 +7,19 @@ import com.spendsense.data.local.dao.NotificationPatternDao
 import com.spendsense.data.local.dao.ProviderAccountDao
 import com.spendsense.data.local.dao.ProviderModelDao
 import com.spendsense.data.local.dao.WhitelistedAppDao
+import com.spendsense.data.local.dao.TransactionDao
+import com.spendsense.data.local.dao.CategoryDao
+import com.spendsense.data.local.dao.MerchantCategoryMappingDao
 import com.spendsense.data.local.entity.NotificationPatternEntity
 import com.spendsense.data.local.entity.ProviderAccountEntity
 import com.spendsense.data.local.entity.ProviderModelEntity
+import com.spendsense.data.local.entity.TransactionEntity
+import com.spendsense.data.local.entity.MerchantCategoryMappingEntity
 import com.spendsense.data.remote.ChatCompletionApi
 import com.spendsense.data.remote.DynamicBaseUrlInterceptor
 import com.spendsense.data.remote.model.Message
 import com.spendsense.data.remote.model.ChatCompletionRequest
+import com.spendsense.data.service.NotificationProcessor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,7 +35,11 @@ class RegexGeneratorViewModel @Inject constructor(
     private val accountDao: ProviderAccountDao,
     private val modelDao: ProviderModelDao,
     private val whitelistedAppDao: WhitelistedAppDao,
-    private val securePreferences: SecurePreferences
+    private val securePreferences: SecurePreferences,
+    private val transactionDao: TransactionDao,
+    private val categoryDao: CategoryDao,
+    private val merchantCategoryMappingDao: MerchantCategoryMappingDao,
+    private val notificationProcessor: NotificationProcessor
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(RegexGeneratorState())
@@ -304,20 +314,150 @@ Return ONLY valid JSON with no markdown formatting:
 
         viewModelScope.launch {
             try {
-                notificationPatternDao.upsert(
-                    NotificationPatternEntity(
-                        packageName = currentState.selectedAppPackage,
-                        notificationTitle = currentState.notificationTitle,
-                        regex = patternToSave,
-                        currencyCode = currentState.currencyCode,
-                        isTransaction = currentState.isTransaction
-                    )
+                val pattern = NotificationPatternEntity(
+                    packageName = currentState.selectedAppPackage,
+                    notificationTitle = currentState.notificationTitle,
+                    regex = patternToSave,
+                    currencyCode = currentState.currencyCode,
+                    isTransaction = currentState.isTransaction
                 )
+                notificationPatternDao.upsert(pattern)
+
+                val appName = currentState.availableApps
+                    .firstOrNull { it.packageName == currentState.selectedAppPackage }
+                    ?.appName ?: "App"
+
+                // Reprocess the pending inbox for this newly saved pattern
+                val recovered = notificationProcessor.reprocessInboxForPattern(pattern, appName = appName)
+
                 securePreferences.setDefaultCurrency(currentState.currencyCode)
                 securePreferences.clearRegexInput()
-                _state.value = _state.value.copy(isSaving = false, successMessage = "Pattern saved successfully!", notificationTitle = "", notificationText = "", manualPattern = "")
+
+                val successMsg = if (recovered > 0) {
+                    "Pattern saved successfully. $recovered past transactions recovered from pending inbox."
+                } else {
+                    "Pattern saved successfully!"
+                }
+
+                _state.value = _state.value.copy(
+                    isSaving = false,
+                    successMessage = successMsg,
+                    notificationTitle = "",
+                    notificationText = "",
+                    manualPattern = ""
+                )
             } catch (e: Exception) {
                 _state.value = currentState.copy(isSaving = false, errorMessage = "Error saving pattern: ${e.message}")
+            }
+        }
+    }
+
+    fun setIsFromInbox(fromInbox: Boolean) {
+        _state.value = _state.value.copy(isFromInbox = fromInbox)
+    }
+
+    fun updateTransactionTimestamp(timestamp: Long) {
+        _state.value = _state.value.copy(transactionTimestamp = timestamp)
+    }
+
+    fun savePatternAndTransaction(editedMerchant: String? = null, editedAmount: String? = null) {
+        val currentState = _state.value
+        val patternToSave = if (currentState.manualPattern.isNotBlank()) currentState.manualPattern else currentState.generatedPattern
+
+        if (currentState.availableApps.isEmpty()) {
+            _state.value = currentState.copy(errorMessage = "No whitelisted apps found. Please whitelist at least one app first.")
+            return
+        }
+        if (currentState.selectedAppPackage.isBlank()) {
+            _state.value = currentState.copy(errorMessage = "Please select an app to apply this pattern")
+            return
+        }
+        if (currentState.notificationTitle.isBlank()) {
+            _state.value = currentState.copy(errorMessage = "Please enter a notification title — patterns are keyed by (app × title)")
+            return
+        }
+
+        val finalAmountStr = editedAmount ?: currentState.extractedAmount
+        if (finalAmountStr.isNullOrBlank()) {
+            _state.value = currentState.copy(errorMessage = "No transaction amount extracted to save")
+            return
+        }
+
+        val finalMerchant = (editedMerchant ?: currentState.extractedMerchant ?: "Unknown").trim()
+
+        _state.value = currentState.copy(isSaving = true, errorMessage = null)
+
+        viewModelScope.launch {
+            try {
+                // 1. Save pattern
+                val pattern = NotificationPatternEntity(
+                    packageName = currentState.selectedAppPackage,
+                    notificationTitle = currentState.notificationTitle,
+                    regex = patternToSave,
+                    currencyCode = currentState.currencyCode,
+                    isTransaction = currentState.isTransaction
+                )
+                notificationPatternDao.upsert(pattern)
+
+                // 2. Determine Category
+                val mapping = merchantCategoryMappingDao.getByMerchant(finalMerchant.lowercase())
+                var catId = mapping?.categoryId
+
+                if (catId == null) {
+                    val allCategories = categoryDao.getAll()
+                    val otherCategory = allCategories.firstOrNull { it.name.equals("Other", ignoreCase = true) }
+                    catId = otherCategory?.id ?: allCategories.firstOrNull()?.id ?: 1L
+                }
+
+                val appName = currentState.availableApps
+                    .firstOrNull { it.packageName == currentState.selectedAppPackage }
+                    ?.appName ?: "Notification"
+
+                // 3. Save Transaction
+                transactionDao.insert(
+                    TransactionEntity(
+                        amount = parseAmount(finalAmountStr),
+                        currencyCode = currentState.currencyCode,
+                        merchant = finalMerchant,
+                        categoryId = catId,
+                        timestamp = currentState.transactionTimestamp,
+                        sourcePackageName = currentState.selectedAppPackage,
+                        sourceAppName = appName,
+                        notes = "Extracted during notification inbox pattern setup"
+                    )
+                )
+
+                // 4. Update Category mapping if new
+                if (mapping == null) {
+                    merchantCategoryMappingDao.upsert(
+                        MerchantCategoryMappingEntity(
+                            merchant = finalMerchant.lowercase(),
+                            categoryId = catId
+                        )
+                    )
+                }
+
+                // 5. Reprocess the pending inbox for this newly saved pattern
+                val recovered = notificationProcessor.reprocessInboxForPattern(pattern, appName = appName)
+
+                securePreferences.setDefaultCurrency(currentState.currencyCode)
+                securePreferences.clearRegexInput()
+
+                val successMsg = if (recovered > 0) {
+                    "Pattern and transaction saved successfully. $recovered past transactions recovered from pending inbox."
+                } else {
+                    "Pattern and transaction saved successfully!"
+                }
+
+                _state.value = _state.value.copy(
+                    isSaving = false,
+                    successMessage = successMsg,
+                    notificationTitle = "",
+                    notificationText = "",
+                    manualPattern = ""
+                )
+            } catch (e: Exception) {
+                _state.value = currentState.copy(isSaving = false, errorMessage = "Error: ${e.message}")
             }
         }
     }

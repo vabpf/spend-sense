@@ -9,6 +9,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,12 +30,20 @@ import io.github.fletchmckee.liquid.rememberLiquidState
 import io.github.fletchmckee.liquid.liquefiable
 import com.spendsense.presentation.util.SpendSenseTopBar
 import com.spendsense.presentation.util.glassEffect
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.Calendar
 
 @Composable
 fun RegexGeneratorScreen(
     viewModel: RegexGeneratorViewModel = hiltViewModel(),
     initialNotificationText: String? = null,
     initialNotificationTitle: String? = null,
+    isFromInbox: Boolean = false,
     onNavigateBack: () -> Unit = {},
     onNavigateToNotificationPatterns: () -> Unit = {}
 ) {
@@ -43,8 +52,15 @@ fun RegexGeneratorScreen(
     var showProviderSelector by remember { mutableStateOf(false) }
     var showCurrencySelector by remember { mutableStateOf(false) }
 
+    var editedAmount by remember(state.extractedAmount) { mutableStateOf(state.extractedAmount ?: "") }
+    var editedMerchant by remember(state.extractedMerchant) { mutableStateOf(state.extractedMerchant ?: "") }
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
+    val dateTimeFormatter = remember { SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()) }
+
     // Pre-fill initial text and title if provided
-    LaunchedEffect(initialNotificationText, initialNotificationTitle) {
+    LaunchedEffect(initialNotificationText, initialNotificationTitle, isFromInbox) {
+        viewModel.setIsFromInbox(isFromInbox)
         if (initialNotificationText != null) {
             viewModel.updateNotificationText(initialNotificationText)
         }
@@ -441,25 +457,80 @@ fun RegexGeneratorScreen(
                             HorizontalDivider()
 
                             Text(
-                                text = "Test Results",
+                                text = if (state.isFromInbox) "Transaction Details Preview" else "Test Results",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold
                             )
 
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                TestResultChip(
-                                    label = "Amount",
-                                    value = state.extractedAmount!!,
-                                    modifier = Modifier.weight(1f)
+                            if (state.isFromInbox) {
+                                OutlinedTextField(
+                                    value = editedAmount,
+                                    onValueChange = { editedAmount = it },
+                                    label = { Text("Transaction Amount") },
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true
                                 )
-                                TestResultChip(
-                                    label = "Merchant",
-                                    value = state.extractedMerchant!!,
-                                    modifier = Modifier.weight(1f)
+
+                                OutlinedTextField(
+                                    value = editedMerchant,
+                                    onValueChange = { editedMerchant = it },
+                                    label = { Text("Merchant / Payee") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true
                                 )
+
+                                Spacer(modifier = Modifier.height(4.dp))
+
+                                Surface(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { showDatePicker = true }
+                                        .glassEffect(
+                                            shape = MaterialTheme.shapes.medium,
+                                            containerColor = GlassSurface.copy(alpha = 0.5f),
+                                            borderAlpha = 0.15f
+                                        ),
+                                    shape = MaterialTheme.shapes.medium
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(12.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column {
+                                            Text("Transaction Date & Time", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = dateTimeFormatter.format(Date(state.transactionTimestamp)),
+                                                style = MaterialTheme.typography.bodyLarge,
+                                                color = MaterialTheme.colorScheme.primary,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                        }
+                                        Icon(
+                                            imageVector = Icons.Rounded.CalendarToday,
+                                            contentDescription = "Change Date and Time",
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                            } else {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    TestResultChip(
+                                        label = "Amount",
+                                        value = state.extractedAmount!!,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    TestResultChip(
+                                        label = "Merchant",
+                                        value = state.extractedMerchant!!,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
                             }
                         }
 
@@ -646,22 +717,53 @@ fun RegexGeneratorScreen(
                             )
                         }
 
-                        Button(
-                            onClick = { viewModel.savePattern() },
-                            modifier = Modifier.fillMaxWidth(),
-                            enabled = !state.isSaving && state.selectedAppPackage.isNotBlank() && state.availableApps.isNotEmpty()
-                        ) {
-                            if (state.isSaving) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    color = MaterialTheme.colorScheme.onPrimary
-                                )
+                        if (state.isFromInbox && state.extractedAmount != null) {
+                            Button(
+                                onClick = { viewModel.savePatternAndTransaction(editedMerchant, editedAmount) },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = !state.isSaving && state.selectedAppPackage.isNotBlank() && state.availableApps.isNotEmpty()
+                            ) {
+                                if (state.isSaving) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        color = MaterialTheme.colorScheme.onPrimary
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Saving...")
+                                } else {
+                                    Icon(Icons.Rounded.Save, contentDescription = null)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Save Pattern & Transaction")
+                                }
+                            }
+
+                            OutlinedButton(
+                                onClick = { viewModel.savePattern() },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = !state.isSaving && state.selectedAppPackage.isNotBlank() && state.availableApps.isNotEmpty()
+                            ) {
+                                Icon(Icons.Rounded.BookmarkAdd, contentDescription = null)
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Saving...")
-                            } else {
-                                Icon(Icons.Rounded.Save, contentDescription = null)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Add to Watchlist")
+                                Text("Save Pattern Only")
+                            }
+                        } else {
+                            Button(
+                                onClick = { viewModel.savePattern() },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = !state.isSaving && state.selectedAppPackage.isNotBlank() && state.availableApps.isNotEmpty()
+                            ) {
+                                if (state.isSaving) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        color = MaterialTheme.colorScheme.onPrimary
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Saving...")
+                                } else {
+                                    Icon(Icons.Rounded.Save, contentDescription = null)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Add to Watchlist")
+                                }
                             }
                         }
 
@@ -699,11 +801,117 @@ fun RegexGeneratorScreen(
                 SpendSenseTopBar(
                     title = "AI Regex Generator",
                     onNavigationClick = onNavigateBack,
-                    navigationIcon = Icons.Rounded.ArrowBack
+                    navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack
                 )
             }
         } // outer Box
     } // Scaffold close
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = state.transactionTimestamp
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val selectedDate = datePickerState.selectedDateMillis
+                        if (selectedDate != null) {
+                            val currentCal = Calendar.getInstance().apply { timeInMillis = state.transactionTimestamp }
+                            val newCal = Calendar.getInstance().apply {
+                                timeInMillis = selectedDate
+                                set(Calendar.HOUR_OF_DAY, currentCal.get(Calendar.HOUR_OF_DAY))
+                                set(Calendar.MINUTE, currentCal.get(Calendar.MINUTE))
+                            }
+                            viewModel.updateTransactionTimestamp(newCal.timeInMillis)
+                        }
+                        showDatePicker = false
+                        showTimePicker = true
+                    }
+                ) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    if (showTimePicker) {
+        val currentCal = Calendar.getInstance().apply { timeInMillis = state.transactionTimestamp }
+        var hourInput by remember { mutableStateOf(currentCal.get(Calendar.HOUR_OF_DAY).toString()) }
+        var minuteInput by remember { mutableStateOf(currentCal.get(Calendar.MINUTE).toString().padStart(2, '0')) }
+
+        GlassAlertDialog(
+            onDismissRequest = { showTimePicker = false },
+            title = { Text("Edit Time") },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "Select time (24h format)",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = hourInput,
+                            onValueChange = { input ->
+                                val clean = input.filter { it.isDigit() }
+                                if (clean.isEmpty() || (clean.toIntOrNull() in 0..23)) {
+                                    hourInput = clean.take(2)
+                                }
+                            },
+                            label = { Text("Hour") },
+                            modifier = Modifier.width(80.dp),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true
+                        )
+                        Text(":", style = MaterialTheme.typography.titleLarge)
+                        OutlinedTextField(
+                            value = minuteInput,
+                            onValueChange = { input ->
+                                val clean = input.filter { it.isDigit() }
+                                if (clean.isEmpty() || (clean.toIntOrNull() in 0..59)) {
+                                    minuteInput = clean.take(2)
+                                }
+                            },
+                            label = { Text("Min") },
+                            modifier = Modifier.width(80.dp),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val hr = hourInput.toIntOrNull() ?: 12
+                        val min = minuteInput.toIntOrNull() ?: 0
+                        val newCal = Calendar.getInstance().apply {
+                            timeInMillis = state.transactionTimestamp
+                            set(Calendar.HOUR_OF_DAY, hr)
+                            set(Calendar.MINUTE, min)
+                        }
+                        viewModel.updateTransactionTimestamp(newCal.timeInMillis)
+                        showTimePicker = false
+                    }
+                ) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTimePicker = false }) { Text("Cancel") }
+            }
+        )
+    }
 }
 
 @Composable

@@ -24,6 +24,9 @@ interface WhitelistedAppDao {
     @Query("SELECT * FROM whitelisted_apps WHERE isEnabled = 1")
     suspend fun getEnabledApps(): List<WhitelistedAppEntity>
 
+    @Query("SELECT * FROM whitelisted_apps WHERE isEnabled = 1")
+    fun getEnabledAppsFlow(): Flow<List<WhitelistedAppEntity>>
+
     @Query("SELECT * FROM whitelisted_apps ORDER BY appName ASC")
     fun getAllFlow(): Flow<List<WhitelistedAppEntity>>
 

@@ -50,10 +50,17 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.navigation.navArgument
 import com.spendsense.data.service.TransactionNotificationListener
 import com.spendsense.domain.model.ReviewTransactionData
 import com.spendsense.domain.repository.CategoryRepository
+import com.spendsense.domain.repository.WhitelistedAppRepository
 import com.spendsense.presentation.home.HomeScreen
 import com.spendsense.presentation.charts.ChartsScreen
 import com.spendsense.presentation.categories.CategoriesScreen
@@ -86,6 +93,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var categoryRepository: CategoryRepository
+
+    @Inject
+    lateinit var whitelistedAppRepository: WhitelistedAppRepository
 
     @Inject
     lateinit var whitelistedAppDao: com.spendsense.data.local.dao.WhitelistedAppDao
@@ -175,7 +185,31 @@ class MainActivity : ComponentActivity() {
                             ) { innerPadding ->
                                 NavHost(
                                     navController = navController,
-                                    startDestination = "home"
+                                    startDestination = "home",
+                                    enterTransition = {
+                                        slideIntoContainer(
+                                            AnimatedContentTransitionScope.SlideDirection.Start,
+                                            animationSpec = tween(300, easing = FastOutSlowInEasing)
+                                        ) + fadeIn(animationSpec = tween(300))
+                                    },
+                                    exitTransition = {
+                                        slideOutOfContainer(
+                                            AnimatedContentTransitionScope.SlideDirection.Start,
+                                            animationSpec = tween(200, easing = FastOutLinearInEasing)
+                                        ) + fadeOut(animationSpec = tween(200))
+                                    },
+                                    popEnterTransition = {
+                                        slideIntoContainer(
+                                            AnimatedContentTransitionScope.SlideDirection.End,
+                                            animationSpec = tween(300, easing = FastOutSlowInEasing)
+                                        ) + fadeIn(animationSpec = tween(300))
+                                    },
+                                    popExitTransition = {
+                                        slideOutOfContainer(
+                                            AnimatedContentTransitionScope.SlideDirection.End,
+                                            animationSpec = tween(200, easing = FastOutLinearInEasing)
+                                        ) + fadeOut(animationSpec = tween(200))
+                                    }
                                 ) {
                                     composable("home") {
                                         HomeScreen(
@@ -189,17 +223,17 @@ class MainActivity : ComponentActivity() {
                                                 }
                                             },
                                             onNavigateToRegexGenerator = { text, title ->
-                                                val route = if (text != null && title != null) {
-                                                    "regex_generator?text=$text&title=$title"
-                                                } else if (text != null) {
-                                                    "regex_generator?text=$text"
-                                                } else if (title != null) {
-                                                    "regex_generator?title=$title"
-                                                } else {
-                                                    "regex_generator"
-                                                }
-                                                navController.navigate(route)
-                                            }
+                                                 val route = if (text != null && title != null) {
+                                                     "regex_generator?text=$text&title=$title&fromInbox=true"
+                                                 } else if (text != null) {
+                                                     "regex_generator?text=$text&fromInbox=true"
+                                                 } else if (title != null) {
+                                                     "regex_generator?title=$title&fromInbox=true"
+                                                 } else {
+                                                     "regex_generator"
+                                                 }
+                                                 navController.navigate(route)
+                                             }
                                         )
                                     }
 
@@ -285,7 +319,7 @@ class MainActivity : ComponentActivity() {
                                     }
 
                                     composable(
-                                         route = "regex_generator?text={text}&title={title}",
+                                         route = "regex_generator?text={text}&title={title}&fromInbox={fromInbox}",
                                          arguments = listOf(
                                              navArgument("text") {
                                                  type = NavType.StringType
@@ -296,14 +330,20 @@ class MainActivity : ComponentActivity() {
                                                  type = NavType.StringType
                                                  nullable = true
                                                  defaultValue = null
+                                             },
+                                             navArgument("fromInbox") {
+                                                 type = NavType.BoolType
+                                                 defaultValue = false
                                              }
                                          )
                                      ) { backStackEntry ->
                                          val text = backStackEntry.arguments?.getString("text")
                                          val title = backStackEntry.arguments?.getString("title")
+                                         val fromInbox = backStackEntry.arguments?.getBoolean("fromInbox") ?: false
                                          RegexGeneratorScreen(
                                              initialNotificationText = text,
                                              initialNotificationTitle = title,
+                                             isFromInbox = fromInbox,
                                             onNavigateBack = {
                                                 navController.popBackStack()
                                             },
