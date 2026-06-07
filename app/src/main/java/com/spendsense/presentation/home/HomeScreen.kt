@@ -214,17 +214,9 @@ fun HomeScreen(
             }
             val startOfDay = calendar.timeInMillis
 
-            calendar.apply {
-                set(Calendar.HOUR_OF_DAY, 23)
-                set(Calendar.MINUTE, 59)
-                set(Calendar.SECOND, 59)
-                set(Calendar.MILLISECOND, 999)
-            }
-            val endOfDay = calendar.timeInMillis
-
             filterState = filterState.copy(
                 startDateMillis = startOfDay,
-                endDateMillis = endOfDay
+                endDateMillis = startOfDay
             )
         }
     }
