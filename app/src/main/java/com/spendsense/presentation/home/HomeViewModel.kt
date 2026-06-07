@@ -54,6 +54,13 @@ class HomeViewModel @Inject constructor(
         recalculateConvertedTotal(_transactions.value)
     }
 
+    suspend fun convertAmount(amount: Double, from: String, timestamp: Long): Double {
+        val to = _defaultCurrency.value
+        if (from == to) return amount
+        val rate = exchangeRateRepository.getRate(from, to, timestamp)
+        return if (rate != null) amount * rate else amount
+    }
+
     private fun loadPendingNotifications() {
         viewModelScope.launch {
             rawNotificationDao.getUnprocessedNotificationsFlow().collect { notifications ->
@@ -79,7 +86,11 @@ class HomeViewModel @Inject constructor(
             categoryRepository.getAllCategories().collect { categories ->
                 _categories.value = categories.sortedBy { cat ->
                     val idx = defaultCategoryOrder.indexOfFirst { it.equals(cat.name, ignoreCase = true) }
-                    if (idx >= 0) idx else defaultCategoryOrder.size + cat.id.toInt()
+                    if (idx >= 0) {
+                        if (cat.name.equals("Other", ignoreCase = true)) Int.MAX_VALUE else idx
+                    } else {
+                        defaultCategoryOrder.size + cat.id.toInt()
+                    }
                 }
             }
         }
@@ -115,6 +126,12 @@ class HomeViewModel @Inject constructor(
     fun updateTransaction(transaction: Transaction) {
         viewModelScope.launch {
             transactionRepository.updateTransaction(transaction)
+        }
+    }
+
+    fun updateTransactions(updatedList: List<Transaction>) {
+        viewModelScope.launch {
+            updatedList.forEach { transactionRepository.updateTransaction(it) }
         }
     }
 

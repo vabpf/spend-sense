@@ -317,21 +317,41 @@ class NotificationProcessor @Inject constructor(
         return hasAmount && hasKeyword
     }
 
-    private fun parseAmount(amountStr: String): Double {
-        val cleanedStr = amountStr.replace(Regex("[^0-9.,]"), "")
-            .replace(",", ".")
-        
-        val firstDot = cleanedStr.indexOf('.')
-        val lastDot = cleanedStr.lastIndexOf('.')
-        
-        val normalizedStr = if (firstDot != lastDot && firstDot != -1) {
-            cleanedStr.replace(".", "")
+    fun parseAmount(amountStr: String): Double {
+        val cleaned = amountStr.replace(Regex("[^0-9.,]"), "")
+        if (cleaned.isEmpty()) return 0.0
+
+        val hasComma = cleaned.contains(',')
+        val hasDot = cleaned.contains('.')
+
+        val normalized = if (hasComma && hasDot) {
+            val commaIndex = cleaned.lastIndexOf(',')
+            val dotIndex = cleaned.lastIndexOf('.')
+            if (commaIndex > dotIndex) {
+                cleaned.replace(".", "").replace(",", ".")
+            } else {
+                cleaned.replace(",", "")
+            }
+        } else if (hasComma) {
+            val lastCommaOffset = cleaned.length - 1 - cleaned.lastIndexOf(',')
+            if (lastCommaOffset == 3) {
+                cleaned.replace(",", "")
+            } else {
+                cleaned.replace(",", ".")
+            }
+        } else if (hasDot) {
+            val lastDotOffset = cleaned.length - 1 - cleaned.lastIndexOf('.')
+            if (lastDotOffset == 3) {
+                cleaned.replace(".", "")
+            } else {
+                cleaned
+            }
         } else {
-            cleanedStr
+            cleaned
         }
 
         return try {
-            normalizedStr.toDoubleOrNull() ?: 0.0
+            normalized.toDoubleOrNull() ?: 0.0
         } catch (e: Exception) {
             Log.e(TAG, "Error parsing amount", e)
             0.0

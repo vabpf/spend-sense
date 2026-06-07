@@ -326,7 +326,7 @@ fun RegexGeneratorScreen(
                             state.enabledModels.groupBy { it.providerAccountId }
                         }
                         Column(
-                            modifier = Modifier.verticalScroll(rememberScrollState()),
+                            modifier = Modifier.fillMaxWidth(),
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             modelsByProvider.forEach { (providerId, models) ->

@@ -21,6 +21,27 @@ fun getCategoryIcon(iconName: String): ImageVector {
         "Pets" -> Icons.Rounded.Pets
         "FitnessCenter" -> Icons.Rounded.FitnessCenter
         "School" -> Icons.Rounded.School
+        "Coffee" -> Icons.Rounded.Coffee
+        "ShoppingBag" -> Icons.Rounded.ShoppingBag
+        "MusicNote" -> Icons.Rounded.MusicNote
+        "Train" -> Icons.Rounded.Train
+        "Laptop" -> Icons.Rounded.Laptop
+        "Spa" -> Icons.Rounded.Spa
+        "AccountBalance" -> Icons.Rounded.AccountBalance
+        "Build" -> Icons.Rounded.Build
+        "CardGiftcard" -> Icons.Rounded.CardGiftcard
+        "CameraAlt" -> Icons.Rounded.CameraAlt
+        "Weekend" -> Icons.Rounded.Weekend
+        "BeachAccess" -> Icons.Rounded.BeachAccess
+        "Pool" -> Icons.Rounded.Pool
+        "ChildCare" -> Icons.Rounded.ChildCare
+        "Store" -> Icons.Rounded.Store
+        "Kitchen" -> Icons.Rounded.Kitchen
+        "Business" -> Icons.Rounded.Business
+        "Wifi" -> Icons.Rounded.Wifi
+        "Phone" -> Icons.Rounded.Phone
+        "Work" -> Icons.Rounded.Work
+        "VolunteerActivism" -> Icons.Rounded.VolunteerActivism
         else -> Icons.Rounded.Category
     }
 }
@@ -44,5 +65,10 @@ val availableIcons = listOf(
     "Category", "Restaurant", "DirectionsCar", "ShoppingCart",
     "Movie", "Receipt", "LocalHospital", "MoreHoriz",
     "Fastfood", "Home", "LocalGasStation", "Flight",
-    "Pets", "FitnessCenter", "School"
+    "Pets", "FitnessCenter", "School",
+    "Coffee", "ShoppingBag", "MusicNote", "Train", "Laptop",
+    "Spa", "AccountBalance", "Build", "CardGiftcard", "CameraAlt",
+    "Weekend", "BeachAccess", "Pool", "ChildCare", "Store",
+    "Kitchen", "Business", "Wifi", "Phone", "Work",
+    "VolunteerActivism"
 )

@@ -110,6 +110,15 @@ fun ChartsScreen(
                     )
                 }
 
+                // ── Payment sources ──────────────────────────────────────────────
+                item {
+                    PaymentSourcesCard(
+                        currentMonthSources = state.currentMonthPaymentSources,
+                        monthlyData = state.monthlyPaymentSources,
+                        currency = summary.currency
+                    )
+                }
+
                 // ── Daily bar chart ───────────────────────────────────────────────
                 item {
                     DailySpendingBarChart(
@@ -165,7 +174,7 @@ private fun MonthTotalCard(
     val deltaIcon = if (deltaPositive) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward
     val deltaLabel = if (lastMonth > 0) {
         val pct = (abs(delta) / lastMonth * 100).toInt()
-        "${if (deltaPositive) "+" else "-"}$pct% vs last month"
+        "$pct% vs last month"
     } else {
         "No data last month"
     }
@@ -215,7 +224,7 @@ private fun DailyAverageCard(
     val deltaIcon = if (deltaPositive) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward
     val deltaLabel = if (lastMonthDailyAverage > 0) {
         val pct = (abs(delta) / lastMonthDailyAverage * 100).toInt()
-        "${if (deltaPositive) "+" else "-"}$pct% vs last month"
+        "$pct% vs last month"
     } else {
         "No data last month"
     }

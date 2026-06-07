@@ -223,12 +223,14 @@ class MainActivity : ComponentActivity() {
                                                 }
                                             },
                                             onNavigateToRegexGenerator = { text, title ->
-                                                 val route = if (text != null && title != null) {
-                                                     "regex_generator?text=$text&title=$title&fromInbox=true"
-                                                 } else if (text != null) {
-                                                     "regex_generator?text=$text&fromInbox=true"
-                                                 } else if (title != null) {
-                                                     "regex_generator?title=$title&fromInbox=true"
+                                                 val encodedText = text?.let { java.net.URLEncoder.encode(it, "UTF-8").replace("+", "%20") }
+                                                 val encodedTitle = title?.let { java.net.URLEncoder.encode(it, "UTF-8").replace("+", "%20") }
+                                                 val route = if (encodedText != null && encodedTitle != null) {
+                                                     "regex_generator?text=$encodedText&title=$encodedTitle&fromInbox=true"
+                                                 } else if (encodedText != null) {
+                                                     "regex_generator?text=$encodedText&fromInbox=true"
+                                                 } else if (encodedTitle != null) {
+                                                     "regex_generator?title=$encodedTitle&fromInbox=true"
                                                  } else {
                                                      "regex_generator"
                                                  }

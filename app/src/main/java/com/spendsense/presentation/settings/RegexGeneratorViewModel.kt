@@ -219,7 +219,9 @@ class RegexGeneratorViewModel @Inject constructor(
                             isGenerating = false,
                             generatedPattern = result.regex,
                             manualPattern = "",
-                            isTransaction = result.isTransaction
+                            isTransaction = result.isTransaction,
+                            currencyCode = result.currency ?: _state.value.currencyCode,
+                            paymentSource = result.paymentSource ?: _state.value.paymentSource
                         )
                         if (result.regex != null) {
                             testPattern(result.regex, notificationText)
@@ -245,27 +247,61 @@ Notification Text: "$text"
 
 Requirements:
 1. Determine if this is a financial transaction notification (true) or not (false).
-2. If it IS a transaction, generate ONE Kotlin-compatible regex pattern with named capture groups:
-   - (?<amount>...) — captures the transaction amount
-   - (?<merchant>...) — captures the merchant/payee name
-3. If it is NOT a transaction, set regex to null.
+2. If it IS a transaction:
+   - Identify the currency of the transaction (e.g. "VND", "USD", etc.).
+   - Identify the thousands separator character used in the transaction amount (e.g. "," or "."). If none is used, set to null.
+   - Extract the account/payment source identifier (e.g. "03xxx589" or "X4685") from the notification.
+   - Generate ONE Kotlin-compatible regex pattern that matches the structural format of the notification.
+     Guidelines for the regex pattern:
+     - It MUST match the entire notification structure, preserving constant/static text, labels, and delimiters (e.g., "TK", "GD:", "|", "SD:", "DEN:", "ND:") as literals.
+     - Escape regex special characters in the static text (e.g., escape "|" as "\|", parentheses as "\(", etc.).
+     - Replace only the dynamic/variable values with specific regex patterns:
+       - The transaction amount must be captured using the named group: (?<amount>[0-9,.]+VND) or (?<amount>[0-9,.]+USD) or similar. The currency letters/suffixes MUST be matched inside the capture group 'amount' if present in the text (it is required by the parser to extract and clean correctly).
+       - The merchant/payee name must be captured using: (?<merchant>[^|]+) (or another appropriate non-greedy pattern that does not cross segment borders).
+       - Match timestamps (e.g., "06/06/26 09:19") with specific date/time patterns (e.g., "\d{2}/\d{2}/\d{2}\s+\d{2}:\d{2}").
+       - Match account identifiers (e.g., "03xxx589") with specific patterns (e.g., "\d+xxx\d+" or "\w+").
+     - Do NOT use generic/lazy wildcards like `.*?` to skip entire fields or structure segments. Every structural segment of the notification template must be explicitly represented so that notifications with different structures fail to match.
+3. If it is NOT a transaction, set regex, thousandsSeparator, currency, and paymentSource to null.
 
 Return ONLY valid JSON with no markdown formatting:
-{"isTransaction": true/false, "regex": "pattern or null"}
+{
+  "isTransaction": true,
+  "regex": "pattern",
+  "thousandsSeparator": "," or "." or null,
+  "currency": "VND" or "USD" or null,
+  "paymentSource": "03xxx589" or "X4685" or null
+}
         """.trimIndent()
     }
 
-    private data class AiResponse(val isTransaction: Boolean, val regex: String?)
+    private data class AiResponse(
+        val isTransaction: Boolean,
+        val regex: String?,
+        val thousandsSeparator: String?,
+        val currency: String?,
+        val paymentSource: String?
+    )
 
     private fun parseAiResponse(response: String): AiResponse? {
         try {
-            val json = org.json.JSONObject(response.trim())
+            val trimmed = response.trim()
+            val firstBrace = trimmed.indexOf('{')
+            val lastBrace = trimmed.lastIndexOf('}')
+            val jsonStr = if (firstBrace != -1 && lastBrace != -1 && lastBrace > firstBrace) {
+                trimmed.substring(firstBrace, lastBrace + 1)
+            } else {
+                trimmed
+            }
+            val json = org.json.JSONObject(jsonStr.trim())
             val isTransaction = json.optBoolean("isTransaction", true)
             val regex = json.optString("regex", "").takeIf { it.isNotBlank() && it != "null" }
-            return AiResponse(isTransaction, regex)
+            val thousandsSeparator = json.optString("thousandsSeparator", "").takeIf { it.isNotBlank() && it != "null" }
+            val currency = json.optString("currency", "").takeIf { it.isNotBlank() && it != "null" }
+            val paymentSource = json.optString("paymentSource", "").takeIf { it.isNotBlank() && it != "null" }
+            return AiResponse(isTransaction, regex, thousandsSeparator, currency, paymentSource)
         } catch (e: Exception) {
             val regex = extractRegexPatternLegacy(response)
-            return AiResponse(isTransaction = regex != null, regex = regex)
+            return AiResponse(isTransaction = regex != null, regex = regex, thousandsSeparator = null, currency = null, paymentSource = null)
         }
     }
 
@@ -298,7 +334,43 @@ Return ONLY valid JSON with no markdown formatting:
     }
 
     private fun parseAmount(amountStr: String): Double {
-        return try { amountStr.replace(Regex("[^0-9.]"), "").toDoubleOrNull() ?: 0.0 } catch (_: Exception) { 0.0 }
+        val cleaned = amountStr.replace(Regex("[^0-9.,]"), "")
+        if (cleaned.isEmpty()) return 0.0
+
+        val hasComma = cleaned.contains(',')
+        val hasDot = cleaned.contains('.')
+
+        val normalized = if (hasComma && hasDot) {
+            val commaIndex = cleaned.lastIndexOf(',')
+            val dotIndex = cleaned.lastIndexOf('.')
+            if (commaIndex > dotIndex) {
+                cleaned.replace(".", "").replace(",", ".")
+            } else {
+                cleaned.replace(",", "")
+            }
+        } else if (hasComma) {
+            val lastCommaOffset = cleaned.length - 1 - cleaned.lastIndexOf(',')
+            if (lastCommaOffset == 3) {
+                cleaned.replace(",", "")
+            } else {
+                cleaned.replace(",", ".")
+            }
+        } else if (hasDot) {
+            val lastDotOffset = cleaned.length - 1 - cleaned.lastIndexOf('.')
+            if (lastDotOffset == 3) {
+                cleaned.replace(".", "")
+            } else {
+                cleaned
+            }
+        } else {
+            cleaned
+        }
+
+        return try {
+            normalized.toDoubleOrNull() ?: 0.0
+        } catch (e: Exception) {
+            0.0
+        }
     }
 
     fun savePattern() {

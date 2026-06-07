@@ -7,8 +7,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -16,9 +19,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.spendsense.presentation.theme.GlassSurface
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.unit.Dp
 
 /**
  * A Material3-style dialog with the liquid glass effect applied to its surface.
@@ -41,6 +51,9 @@ fun GlassAlertDialog(
     borderAlpha: Float = 0f
 ) {
     Dialog(onDismissRequest = onDismissRequest) {
+        val configuration = LocalConfiguration.current
+        val maxContentHeight = configuration.screenHeightDp.dp * 0.55f
+
         Box(
             modifier = modifier
                 .glassEffect(
@@ -50,14 +63,26 @@ fun GlassAlertDialog(
                 )
                 .padding(24.dp)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
                 if (title != null) {
                     Box(modifier = Modifier.fillMaxWidth()) {
                         title()
                     }
                 }
                 if (text != null) {
-                    text()
+                    val scrollState = rememberScrollState()
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = maxContentHeight)
+                            .fadingScrollEdges(scrollState, 20.dp)
+                            .verticalScroll(scrollState)
+                    ) {
+                        text()
+                    }
                 }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -72,3 +97,44 @@ fun GlassAlertDialog(
         }
     }
 }
+
+private fun Modifier.fadingScrollEdges(
+    scrollState: androidx.compose.foundation.ScrollState,
+    fadeHeight: Dp
+): Modifier = this
+    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+    .drawWithContent {
+        drawContent()
+        
+        val fadePx = fadeHeight.toPx()
+        if (fadePx > 0f) {
+            // Top fade
+            if (scrollState.value > 0) {
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0f to Color.Transparent,
+                            1f to Color.Black
+                        ),
+                        startY = 0f,
+                        endY = fadePx
+                    ),
+                    blendMode = BlendMode.DstIn
+                )
+            }
+            // Bottom fade
+            if (scrollState.value < scrollState.maxValue) {
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colorStops = arrayOf(
+                            0f to Color.Black,
+                            1f to Color.Transparent
+                        ),
+                        startY = size.height - fadePx,
+                        endY = size.height
+                    ),
+                    blendMode = BlendMode.DstIn
+                )
+            }
+        }
+    }

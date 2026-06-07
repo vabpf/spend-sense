@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.spendsense.data.local.SecurePreferences
 import com.spendsense.data.local.dao.WhitelistedAppDao
-import com.spendsense.data.local.entity.WhitelistedAppEntity
 import com.spendsense.data.service.NotificationProcessor
 import com.spendsense.data.service.ProcessResult
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -63,7 +62,6 @@ class SettingsViewModel @Inject constructor(
                 val result = withContext(Dispatchers.IO) {
                     val rawItems = parseFileContent(content)
                     
-                    var newAppsCount = 0
                     var transCreatedCount = 0
                     var inboxCreatedCount = 0
                     var skippedCount = 0
@@ -71,17 +69,10 @@ class SettingsViewModel @Inject constructor(
                     val existingApps = whitelistedAppDao.getEnabledApps().map { it.packageName }.toSet()
 
                     for (item in rawItems) {
-                        // 1. Check if we need to auto-whitelist the app
+                        // 1. Skip if app is not whitelisted
                         if (!existingApps.contains(item.packageName)) {
-                            whitelistedAppDao.insert(
-                                WhitelistedAppEntity(
-                                    packageName = item.packageName,
-                                    appName = item.appName,
-                                    isEnabled = true,
-                                    addedAt = System.currentTimeMillis()
-                                )
-                            )
-                            newAppsCount++
+                            skippedCount++
+                            continue
                         }
 
                         // 2. Process notification silently
@@ -103,7 +94,7 @@ class SettingsViewModel @Inject constructor(
 
                     ImportResult(
                         totalParsed = rawItems.size,
-                        newAppsWhitelisted = newAppsCount,
+                        newAppsWhitelisted = 0,
                         transactionsCreated = transCreatedCount,
                         inboxCreated = inboxCreatedCount,
                         skipped = skippedCount

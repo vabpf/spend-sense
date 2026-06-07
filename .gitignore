@@ -63,3 +63,6 @@ vcs.xml
 Thumbs.db
 .worktrees/
 .gitnexus
+
+# Local exported data
+exported-data/

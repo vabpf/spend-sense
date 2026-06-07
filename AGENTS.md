@@ -4,7 +4,10 @@
 
 ```bash
 ./gradlew assembleDebug
-adb install app/build/outputs/apk/debug/app-debug.apk
+/mnt/d/Apps/Android/Sdk/platform-tools/adb.exe install app/build/outputs/apk/debug/app-debug.apk
+
+./gradlew assembleRelease
+cp app/build/outputs/apk/release/app-release.apk /path/to/output/SpendSense.apk
 ```
 Note: Adjust the `adb` path for your environment (e.g., `/mnt/d/Apps/Android/Sdk/platform-tools/adb.exe` on WSL with Windows).
 
@@ -38,7 +41,7 @@ This project is indexed by GitNexus as **spend-sense** (1077 symbols, 2377 relat
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **spend-sense** (1910 symbols, 4135 relationships, 102 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **spend-sense** (2151 symbols, 4544 relationships, 112 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

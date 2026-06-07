@@ -79,6 +79,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.rememberDatePickerState
+import android.widget.Toast
 
 private fun Modifier.fadingEdge(topFadeHeight: Dp): Modifier = this
     .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
@@ -132,11 +133,22 @@ enum class SortOrder {
 
 data class TransactionFilterState(
     val selectedCategoryIds: Set<Long> = emptySet(),
+    val selectedPaymentSources: Set<String> = emptySet(),
+    val selectedPaymentSourceTypes: Set<String> = emptySet(),
     val startDateMillis: Long? = null,
     val endDateMillis: Long? = null,
     val minAmount: Double? = null,
     val maxAmount: Double? = null,
     val sortOrder: SortOrder = SortOrder.NEWEST_FIRST
+)
+
+data class BatchChanges(
+    val categoryId: Long?,
+    val paymentSource: String?,
+    val paymentSourceType: String?,
+    val notes: String?,
+    val currency: String?,
+    val merchant: String?
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -170,7 +182,20 @@ fun HomeScreen(
     var editingTransaction by remember { mutableStateOf<Transaction?>(null) }
     var isAddingTransaction by remember { mutableStateOf(false) }
     var selectedTransactionIds by remember { mutableStateOf(emptySet<Long>()) }
+    var selectedTotalAmount by remember { mutableStateOf(0.0) }
+    LaunchedEffect(selectedTransactionIds, transactions, defaultCurrency) {
+        val selectedTxns = transactions.filter { selectedTransactionIds.contains(it.id) }
+        var sum = 0.0
+        for (txn in selectedTxns) {
+            sum += viewModel.convertAmount(txn.amount, txn.currencyCode, txn.timestamp)
+        }
+        selectedTotalAmount = sum
+    }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var showBatchEditDialog by remember { mutableStateOf(false) }
+    var showBatchEditConfirmDialog by remember { mutableStateOf(false) }
+    var pendingBatchChanges by remember { mutableStateOf<BatchChanges?>(null) }
+    val context = LocalContext.current
 
     val homeLiquidState = rememberLiquidState()
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -193,6 +218,13 @@ fun HomeScreen(
         with(density) { measuredHeaderHeightPx.toDp() + statusBarPadding + 16.dp }
     }
 
+    val availablePaymentSources = remember(transactions) {
+        transactions.map { it.paymentSource }.distinct().filter { it.isNotBlank() }
+    }
+    val availablePaymentSourceTypes = remember(transactions) {
+        transactions.map { it.paymentSourceType }.distinct().filter { it.isNotBlank() }
+    }
+
     val filteredTransactions = remember(transactions, searchQuery, filterState, categories) {
         var list = if (searchQuery.isBlank()) {
             transactions
@@ -204,13 +236,25 @@ fun HomeScreen(
                 isFuzzyMatch(transaction.merchant, searchQuery) ||
                 isFuzzyMatch(categoryName, searchQuery) ||
                 isFuzzyMatch(transaction.amount.toString(), searchQuery) ||
-                isFuzzyMatch(transaction.currencyCode, searchQuery)
+                isFuzzyMatch(transaction.currencyCode, searchQuery) ||
+                isFuzzyMatch(transaction.paymentSource, searchQuery) ||
+                isFuzzyMatch(transaction.paymentSourceType, searchQuery)
             }
         }
 
         // 1. Filter by Category
         if (filterState.selectedCategoryIds.isNotEmpty()) {
             list = list.filter { filterState.selectedCategoryIds.contains(it.categoryId) }
+        }
+
+        // 1a. Filter by Payment Source
+        if (filterState.selectedPaymentSources.isNotEmpty()) {
+            list = list.filter { filterState.selectedPaymentSources.contains(it.paymentSource) }
+        }
+
+        // 1b. Filter by Payment Source Type
+        if (filterState.selectedPaymentSourceTypes.isNotEmpty()) {
+            list = list.filter { filterState.selectedPaymentSourceTypes.contains(it.paymentSourceType) }
         }
 
         // 2. Filter by Custom Date Range (Start Date & End Date)
@@ -360,7 +404,11 @@ fun HomeScreen(
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         item {
-                            Spacer(modifier = Modifier.height(headerHeight))
+                            Spacer(
+                                modifier = Modifier.height(
+                                    headerHeight + if (selectedTransactionIds.isNotEmpty()) 72.dp else 0.dp
+                                )
+                            )
                         }
 
                         items(
@@ -639,14 +687,14 @@ fun HomeScreen(
                 }
             }
 
-            // Selection Toolbar
+            // Floating selection toolbar at the top of the transaction list
             if (selectedTransactionIds.isNotEmpty()) {
                 Box(
                     modifier = Modifier
-                        .align(Alignment.BottomCenter)
+                        .align(Alignment.TopCenter)
+                        .padding(top = headerHeight + 8.dp)
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 24.dp)
-                        .offset(y = (-100).dp)
+                        .padding(horizontal = 16.dp)
                         .shadow(
                             elevation = 16.dp,
                             shape = RoundedCornerShape(20.dp),
@@ -658,7 +706,8 @@ fun HomeScreen(
                             containerColor = GlassSurface.copy(alpha = 0.92f),
                             borderAlpha = 0.20f
                         )
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                        .padding(horizontal = 16.dp, vertical = 10.dp)
+
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -667,23 +716,35 @@ fun HomeScreen(
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             IconButton(
-                                onClick = { selectedTransactionIds = emptySet() }
+                                onClick = { selectedTransactionIds = emptySet() },
+                                modifier = Modifier.size(32.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Rounded.Close,
                                     contentDescription = "Cancel selection",
-                                    tint = MaterialTheme.colorScheme.onSurface
+                                    tint = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
-                            Text(
-                                text = "${selectedTransactionIds.size} Selected",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                Text(
+                                    text = "${selectedTransactionIds.size} Selected",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                    fontWeight = FontWeight.Normal
+                                )
+                                Text(
+                                    text = "Total: ${formatCurrency(selectedTotalAmount, defaultCurrency)}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = CyberBlue
+                                )
+                            }
                         }
 
                         Row(
@@ -691,29 +752,45 @@ fun HomeScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             val allVisibleSelected = filteredTransactions.all { selectedTransactionIds.contains(it.id) }
-                            TextButton(
+                            IconButton(
                                 onClick = {
                                     selectedTransactionIds = if (allVisibleSelected) {
                                         emptySet()
                                     } else {
                                         filteredTransactions.map { it.id }.toSet()
                                     }
-                                }
+                                },
+                                modifier = Modifier.size(32.dp)
                             ) {
-                                Text(
-                                    text = if (allVisibleSelected) "Deselect All" else "Select All",
-                                    color = CyberBlue,
-                                    fontWeight = FontWeight.SemiBold
+                                Icon(
+                                    imageVector = if (allVisibleSelected) Icons.Rounded.Deselect else Icons.Rounded.SelectAll,
+                                    contentDescription = if (allVisibleSelected) "Deselect all" else "Select all",
+                                    tint = CyberBlue,
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
 
                             IconButton(
-                                onClick = { showDeleteConfirmation = true }
+                                onClick = { showBatchEditDialog = true },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Edit,
+                                    contentDescription = "Edit selection",
+                                    tint = CyberBlue,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+
+                            IconButton(
+                                onClick = { showDeleteConfirmation = true },
+                                modifier = Modifier.size(32.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Rounded.Delete,
                                     contentDescription = "Delete selected",
-                                    tint = NeonRose
+                                    tint = NeonRose,
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
                         }
@@ -783,6 +860,8 @@ fun HomeScreen(
     if (showFilterSheet) {
         AdvancedFilterDialog(
             filterState = filterState,
+            availablePaymentSources = availablePaymentSources,
+            availablePaymentSourceTypes = availablePaymentSourceTypes,
             onFilterChange = { filterState = it },
             onDismiss = { showFilterSheet = false },
             onSelectStartDate = { showStartDatePicker = true },
@@ -869,6 +948,113 @@ fun HomeScreen(
                 }
             }
         )
+    }
+
+    if (showBatchEditDialog) {
+        BatchEditTransactionsDialog(
+            selectedCount = selectedTransactionIds.size,
+            categories = categories,
+            onDismiss = { showBatchEditDialog = false },
+            onConfirm = { categoryId, paymentSource, paymentSourceType, notes, currency, merchant ->
+                if (categoryId != null || paymentSource != null || paymentSourceType != null || notes != null || currency != null || merchant != null) {
+                    pendingBatchChanges = BatchChanges(
+                        categoryId = categoryId,
+                        paymentSource = paymentSource,
+                        paymentSourceType = paymentSourceType,
+                        notes = notes,
+                        currency = currency,
+                        merchant = merchant
+                    )
+                    showBatchEditConfirmDialog = true
+                } else {
+                    Toast.makeText(
+                        context,
+                        "No changes specified.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        )
+    }
+
+    if (showBatchEditConfirmDialog) {
+        val changes = pendingBatchChanges
+        if (changes != null) {
+            val selectedCount = selectedTransactionIds.size
+            GlassAlertDialog(
+                onDismissRequest = { showBatchEditConfirmDialog = false },
+                title = { Text("Confirm Batch Edit") },
+                text = {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Are you sure you want to update $selectedCount transactions with the following changes?",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            if (changes.categoryId != null) {
+                                val catName = categories.firstOrNull { it.id == changes.categoryId }?.name ?: "Unknown"
+                                Text("• Category: $catName", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                            }
+                            if (changes.merchant != null) {
+                                Text("• Merchant: ${changes.merchant}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                            }
+                            if (changes.notes != null) {
+                                Text("• Notes: ${changes.notes}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                            }
+                            if (changes.paymentSource != null) {
+                                Text("• Payment Source: ${changes.paymentSource}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                            }
+                            if (changes.paymentSourceType != null) {
+                                Text("• Payment Source Type: ${changes.paymentSourceType}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                            }
+                            if (changes.currency != null) {
+                                Text("• Currency: ${changes.currency}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            val selectedTxns = transactions.filter { selectedTransactionIds.contains(it.id) }
+                            val updatedTxns = selectedTxns.map { txn ->
+                                txn.copy(
+                                    categoryId = changes.categoryId ?: txn.categoryId,
+                                    merchant = changes.merchant ?: txn.merchant,
+                                    notes = changes.notes ?: txn.notes,
+                                    paymentSource = changes.paymentSource ?: txn.paymentSource,
+                                    paymentSourceType = changes.paymentSourceType ?: txn.paymentSourceType,
+                                    currencyCode = changes.currency ?: txn.currencyCode
+                                )
+                            }
+                            viewModel.updateTransactions(updatedTxns)
+                            Toast.makeText(
+                                context,
+                                "Updated $selectedCount transactions successfully",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            selectedTransactionIds = emptySet()
+                            showBatchEditConfirmDialog = false
+                            showBatchEditDialog = false
+                            pendingBatchChanges = null
+                        }
+                    ) {
+                        Text("Confirm", color = CyberBlue)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showBatchEditConfirmDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
     }
 }
 
@@ -1043,7 +1229,7 @@ fun EditTransactionDialog(
     onDismiss: () -> Unit,
     onConfirm: (Transaction) -> Unit
 ) {
-    var amount by remember { mutableStateOf(transaction.amount.toString()) }
+    var amount by remember { mutableStateOf(formatDoublePlain(transaction.amount)) }
     var currency by remember { mutableStateOf(transaction.currencyCode) }
     var merchant by remember { mutableStateOf(transaction.merchant) }
     var selectedCategoryId by remember { mutableStateOf(transaction.categoryId) }
@@ -1494,7 +1680,7 @@ fun ReviewTransactionDialog(
     onDismiss: () -> Unit,
     onConfirm: (amount: Double, currencyCode: String, merchant: String, categoryId: Long) -> Unit
 ) {
-    var amount by remember { mutableStateOf(data.amount.toString()) }
+    var amount by remember { mutableStateOf(formatDoublePlain(data.amount)) }
     var currency by remember { mutableStateOf(data.currencyCode) }
     var merchant by remember { mutableStateOf(data.merchant) }
     var selectedCategoryId by remember {
@@ -1607,13 +1793,32 @@ fun ReviewTransactionDialog(
 
 private fun formatCurrency(amount: Double, currencyCode: String = "USD"): String {
     return try {
-        val currency = java.util.Currency.getInstance(currencyCode)
+        val cleanCurrencyCode = currencyCode.trim().uppercase()
+        val currency = java.util.Currency.getInstance(cleanCurrencyCode)
         val formatter = NumberFormat.getCurrencyInstance().apply {
             this.currency = currency
+            if (amount % 1.0 == 0.0) {
+                this.minimumFractionDigits = 0
+                this.maximumFractionDigits = 0
+            }
         }
         formatter.format(amount)
     } catch (e: Exception) {
-        "$$amount"
+        val cleanCode = currencyCode.trim()
+        val symbol = try {
+            java.util.Currency.getInstance(cleanCode.uppercase()).symbol
+        } catch (_: Exception) {
+            if (cleanCode.isNotBlank()) cleanCode else "$"
+        }
+        "$symbol ${formatDoublePlain(amount)}"
+    }
+}
+
+private fun formatDoublePlain(value: Double): String {
+    return if (value % 1.0 == 0.0) {
+        value.toLong().toString()
+    } else {
+        java.math.BigDecimal.valueOf(value).toPlainString()
     }
 }
 
@@ -1728,6 +1933,8 @@ fun GlassFilterChip(
 @Composable
 fun AdvancedFilterDialog(
     filterState: TransactionFilterState,
+    availablePaymentSources: List<String>,
+    availablePaymentSourceTypes: List<String>,
     onFilterChange: (TransactionFilterState) -> Unit,
     onDismiss: () -> Unit,
     onSelectStartDate: () -> Unit,
@@ -1736,6 +1943,8 @@ fun AdvancedFilterDialog(
     var minAmount by remember { mutableStateOf(filterState.minAmount?.toString() ?: "") }
     var maxAmount by remember { mutableStateOf(filterState.maxAmount?.toString() ?: "") }
     var sortOrder by remember { mutableStateOf(filterState.sortOrder) }
+    var selectedPaymentSources by remember { mutableStateOf(filterState.selectedPaymentSources) }
+    var selectedPaymentSourceTypes by remember { mutableStateOf(filterState.selectedPaymentSourceTypes) }
 
     val isMinValid = minAmount.isEmpty() || minAmount.toDoubleOrNull() != null
     val isMaxValid = maxAmount.isEmpty() || maxAmount.toDoubleOrNull() != null
@@ -1753,9 +1962,7 @@ fun AdvancedFilterDialog(
         },
         text = {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
+                modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
@@ -1866,6 +2073,62 @@ fun AdvancedFilterDialog(
                     )
                 }
 
+                if (availablePaymentSourceTypes.isNotEmpty()) {
+                    Text(
+                        "Payment Source Type",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        availablePaymentSourceTypes.forEach { type ->
+                            val selected = selectedPaymentSourceTypes.contains(type)
+                            FilterChip(
+                                selected = selected,
+                                onClick = {
+                                    selectedPaymentSourceTypes = if (selected) {
+                                        selectedPaymentSourceTypes - type
+                                    } else {
+                                        selectedPaymentSourceTypes + type
+                                    }
+                                },
+                                label = { Text(type) }
+                            )
+                        }
+                    }
+                }
+
+                if (availablePaymentSources.isNotEmpty()) {
+                    Text(
+                        "Payment Source",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        availablePaymentSources.forEach { source ->
+                            val selected = selectedPaymentSources.contains(source)
+                            FilterChip(
+                                selected = selected,
+                                onClick = {
+                                    selectedPaymentSources = if (selected) {
+                                        selectedPaymentSources - source
+                                    } else {
+                                        selectedPaymentSources + source
+                                    }
+                                },
+                                label = { Text(source) }
+                            )
+                        }
+                    }
+                }
+
                 Text(
                     "Sort Order",
                     style = MaterialTheme.typography.titleSmall,
@@ -1921,7 +2184,9 @@ fun AdvancedFilterDialog(
                         filterState.copy(
                             minAmount = min,
                             maxAmount = max,
-                            sortOrder = sortOrder
+                            sortOrder = sortOrder,
+                            selectedPaymentSources = selectedPaymentSources,
+                            selectedPaymentSourceTypes = selectedPaymentSourceTypes
                         )
                     )
                     onDismiss()
@@ -1939,6 +2204,8 @@ fun AdvancedFilterDialog(
                         minAmount = ""
                         maxAmount = ""
                         sortOrder = SortOrder.NEWEST_FIRST
+                        selectedPaymentSources = emptySet()
+                        selectedPaymentSourceTypes = emptySet()
                         onDismiss()
                     }
                 ) {
@@ -1982,4 +2249,181 @@ fun SortChip(
             color = textColor
         )
     }
+}
+
+@Composable
+fun BatchEditTransactionsDialog(
+    selectedCount: Int,
+    categories: List<Category>,
+    onDismiss: () -> Unit,
+    onConfirm: (
+        categoryId: Long?,
+        paymentSource: String?,
+        paymentSourceType: String?,
+        notes: String?,
+        currency: String?,
+        merchant: String?
+    ) -> Unit
+) {
+    var currency by remember { mutableStateOf("") }
+    var merchant by remember { mutableStateOf("") }
+    var selectedCategoryId by remember { mutableStateOf<Long?>(-1L) }
+    var notes by remember { mutableStateOf("") }
+    var currencyExpanded by remember { mutableStateOf(false) }
+    var paymentSource by remember { mutableStateOf("") }
+    var paymentSourceType by remember { mutableStateOf("No Change") }
+
+    val paymentSourceTypes = listOf("No Change", "Credit Card", "Debit Card", "Bank Account", "Wallet", "Manual")
+
+    GlassAlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit Selection ($selectedCount)") },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Only non-blank fields entered in the window will be updated for all selected items.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    ExposedDropdownMenuBox(
+                        expanded = currencyExpanded,
+                        onExpandedChange = { currencyExpanded = !currencyExpanded },
+                        modifier = Modifier.width(130.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = if (currency.isEmpty()) "No Change" else currency,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Currency") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = currencyExpanded) },
+                            modifier = Modifier.menuAnchor(),
+                            singleLine = true
+                        )
+                        ExposedDropdownMenu(
+                            expanded = currencyExpanded,
+                            onDismissRequest = { currencyExpanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("No Change") },
+                                onClick = {
+                                    currency = ""
+                                    currencyExpanded = false
+                                }
+                            )
+                            com.spendsense.data.local.Currencies.SUPPORTED.forEach { cur ->
+                                DropdownMenuItem(
+                                    text = { Text("${cur.symbol} ${cur.code}") },
+                                    onClick = {
+                                        currency = cur.code
+                                        currencyExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    OutlinedTextField(
+                        value = merchant,
+                        onValueChange = { merchant = it },
+                        label = { Text("Merchant") },
+                        placeholder = { Text("No Change") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+                }
+
+                OutlinedTextField(
+                    value = notes,
+                    onValueChange = { notes = it },
+                    label = { Text("Notes") },
+                    placeholder = { Text("No Change") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = paymentSource,
+                    onValueChange = { paymentSource = it },
+                    label = { Text("Payment Source Identifier") },
+                    placeholder = { Text("No Change") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Text("Payment Source Type", style = MaterialTheme.typography.titleSmall)
+
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    paymentSourceTypes.forEach { type ->
+                        FilterChip(
+                            selected = paymentSourceType == type,
+                            onClick = { paymentSourceType = type },
+                            label = { Text(type) }
+                        )
+                    }
+                }
+
+                Text("Category", style = MaterialTheme.typography.titleSmall)
+
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        selected = selectedCategoryId == -1L || selectedCategoryId == null,
+                        onClick = { selectedCategoryId = -1L },
+                        label = { Text("No Change") }
+                    )
+                    
+                    categories.forEach { category ->
+                        val categoryColor = parseColor(category.colorHex)
+                        FilterChip(
+                            selected = category.id == selectedCategoryId,
+                            onClick = { selectedCategoryId = category.id },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = getCategoryIcon(category.iconName),
+                                    contentDescription = null,
+                                    tint = categoryColor,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            label = { Text(category.name, color = categoryColor) }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onConfirm(
+                        if (selectedCategoryId == -1L) null else selectedCategoryId,
+                        paymentSource.trim().ifBlank { null },
+                        if (paymentSourceType == "No Change") null else paymentSourceType,
+                        notes.trim().ifBlank { null },
+                        currency.ifBlank { null },
+                        merchant.trim().ifBlank { null }
+                    )
+                }
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }

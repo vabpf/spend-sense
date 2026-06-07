@@ -34,7 +34,11 @@ class CategoriesViewModel @Inject constructor(
             categoryRepository.getAllCategories().collect { categories ->
                 val sorted = categories.sortedBy { cat ->
                     val idx = defaultCategoryOrder.indexOfFirst { it.equals(cat.name, ignoreCase = true) }
-                    if (idx >= 0) idx else defaultCategoryOrder.size + cat.id.toInt()
+                    if (idx >= 0) {
+                        if (cat.name.equals("Other", ignoreCase = true)) Int.MAX_VALUE else idx
+                    } else {
+                        defaultCategoryOrder.size + cat.id.toInt()
+                    }
                 }
                 _state.value = _state.value.copy(categories = sorted)
             }

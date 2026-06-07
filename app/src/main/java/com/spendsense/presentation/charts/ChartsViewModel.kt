@@ -39,8 +39,9 @@ data class CategorySlice(
 )
 
 data class DailyBar(
-    val dayLabel: String,   // "Mon", "Tue", etc.
-    val amount: Double
+    val dayLabel: String,
+    val amount: Double,
+    val transactionCount: Int = 0
 )
 
 data class MonthlyPoint(
@@ -48,11 +49,32 @@ data class MonthlyPoint(
     val amount: Double
 )
 
+data class PaymentSourceBreakdown(
+    val type: String,
+    val identifier: String,
+    val amount: Double
+)
+
+data class MonthlyPaymentSourceSlice(
+    val type: String,
+    val amount: Double,
+    val sources: List<PaymentSourceBreakdown>,
+    val fraction: Float
+)
+
+data class MonthlyPaymentSourceData(
+    val monthLabel: String,
+    val slices: List<MonthlyPaymentSourceSlice>,
+    val total: Double
+)
+
 data class ChartsDataState(
     val summary: ChartsSummaryState = ChartsSummaryState(),
     val categorySlices: List<CategorySlice> = emptyList(),
     val dailyBars: List<DailyBar> = emptyList(),
-    val monthlyPoints: List<MonthlyPoint> = emptyList()
+    val monthlyPoints: List<MonthlyPoint> = emptyList(),
+    val currentMonthPaymentSources: List<PaymentSourceBreakdown> = emptyList(),
+    val monthlyPaymentSources: List<MonthlyPaymentSourceData> = emptyList()
 )
 
 @HiltViewModel
@@ -159,8 +181,8 @@ class ChartsViewModel @Inject constructor(
                     val dayStart = dayCal.timeInMillis
                     val dayEnd = dayStart + 86_400_000L
                     val label = dayLabels[dayCal.get(Calendar.DAY_OF_WEEK) - 1]
-                    val total = convertedTransactions.filter { it.timestamp in dayStart until dayEnd }.sumOf { it.amount }
-                    DailyBar(label, total)
+                    val dayTxns = convertedTransactions.filter { it.timestamp in dayStart until dayEnd }
+                    DailyBar(label, dayTxns.sumOf { it.amount }, dayTxns.size)
                 }
 
                 // ── Monthly trend: last 6 months ──────────────────────────────
@@ -175,11 +197,53 @@ class ChartsViewModel @Inject constructor(
                     MonthlyPoint(label, total)
                 }
 
+                // ── Payment source: current month breakdown ──────────────────
+                val sourceGroups = thisMonthTxns
+                    .groupBy { Pair(it.paymentSourceType, it.paymentSource) }
+                    .map { (key, txns) ->
+                        PaymentSourceBreakdown(key.first, key.second, txns.sumOf { it.amount })
+                    }
+                    .sortedByDescending { it.amount }
+
+                // ── Payment source: monthly stacked data ─────────────────────
+                val monthlyPaymentSources = (5 downTo 0).map { monthsBack ->
+                    val mCal = Calendar.getInstance().apply { add(Calendar.MONTH, -monthsBack) }
+                    val mStart = monthStart(mCal, 0)
+                    val mEnd = monthStart(mCal, 1)
+                    val monthTxns = convertedTransactions.filter { it.timestamp in mStart until mEnd }
+                    val monthTotal = monthTxns.sumOf { it.amount }.takeIf { it > 0 } ?: 1.0
+                    val typeGroups = monthTxns
+                        .groupBy { it.paymentSourceType }
+                        .map { (type, txns) ->
+                            val typeAmount = txns.sumOf { it.amount }
+                            val sourceList = txns
+                                .groupBy { it.paymentSource }
+                                .map { (src, srcTxns) ->
+                                    PaymentSourceBreakdown(type, src, srcTxns.sumOf { it.amount })
+                                }
+                                .sortedByDescending { it.amount }
+                            MonthlyPaymentSourceSlice(
+                                type = type,
+                                amount = typeAmount,
+                                sources = sourceList,
+                                fraction = (typeAmount / monthTotal).toFloat()
+                            )
+                        }
+                        .sortedByDescending { it.amount }
+                    MonthlyPaymentSourceData(
+                        monthLabel = monthLabels[mCal.get(Calendar.MONTH)],
+                        slices = typeGroups,
+                        total = monthTotal
+                    )
+                }
+
                 _state.value = ChartsDataState(
                     summary = summaryState,
                     categorySlices = categorySlices,
                     dailyBars = dailyBars,
-                    monthlyPoints = monthlyPoints
+                    monthlyPoints = monthlyPoints,
+                    currentMonthPaymentSources = sourceGroups,
+                    monthlyPaymentSources = monthlyPaymentSources
                 )
             }
         }
