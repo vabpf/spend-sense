@@ -43,12 +43,17 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.spendsense.presentation.theme.CyberBlue
 import com.spendsense.presentation.theme.DarkSurface
 import com.spendsense.presentation.theme.GlassSurface
+import com.spendsense.presentation.theme.NeonRose
 import com.spendsense.presentation.theme.TextSecondary
 import com.spendsense.presentation.util.glassEffect
 import com.spendsense.presentation.util.parseColor
@@ -612,6 +617,8 @@ fun MonthlyTrendLineChart(
         }
         val progress = anim.value
 
+        val textMeasurer = rememberTextMeasurer()
+
         val maxAmount = points.maxOf { it.amount }.takeIf { it > 0 } ?: 1.0
         val lineColor = CyberBlue
 
@@ -656,7 +663,10 @@ fun MonthlyTrendLineChart(
                     fun yAt(i: Int): Float {
                         val raw = (points[i].amount / maxAmount).toFloat()
                         val clamped = (raw * progress).coerceIn(0f, 1f)
-                        return size.height * (1f - clamped) + 4f
+                        val topPadding = 24f
+                        val bottomPadding = 8f
+                        val availableHeight = size.height - topPadding - bottomPadding
+                        return availableHeight * (1f - clamped) + topPadding
                     }
 
                     listOf(0.25f, 0.5f, 0.75f, 1f).forEach { fraction ->
@@ -725,6 +735,35 @@ fun MonthlyTrendLineChart(
                             radius = if (isSelected) 4f else 2f,
                             center = Offset(xAt(i), yAt(i))
                         )
+
+                        // Draw compact amount text annotation above the line point
+                        val text = formatCompactAmount(points[i].amount)
+                        if (text.isNotEmpty() && progress >= 0.9f) {
+                            val textLayoutResult = textMeasurer.measure(
+                                text = text,
+                                style = TextStyle(
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            )
+                            val textWidth = textLayoutResult.size.width
+                            val textHeight = textLayoutResult.size.height
+                            
+                            val xOffset = when (i) {
+                                0 -> 4f
+                                n - 1 -> size.width - textWidth - 4f
+                                else -> xAt(i) - textWidth / 2f
+                            }
+                            
+                            drawText(
+                                textLayoutResult = textLayoutResult,
+                                topLeft = Offset(
+                                    x = xOffset,
+                                    y = yAt(i) - textHeight - 8f
+                                )
+                            )
+                        }
                     }
                 }
 

@@ -157,6 +157,7 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
     reviewData: ReviewTransactionData? = null,
     onReviewHandled: () -> Unit = {},
+    initialFilterDate: Long? = null,
     onNavigateToSettings: () -> Unit = {},
     onNavigateToRegexGenerator: (String?, String?) -> Unit = { _, _ -> }
 ) {
@@ -201,6 +202,33 @@ fun HomeScreen(
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     var searchQuery by remember { mutableStateOf("") }
     var filterState by remember { mutableStateOf(TransactionFilterState()) }
+
+    LaunchedEffect(initialFilterDate) {
+        initialFilterDate?.let { dateMillis ->
+            val calendar = Calendar.getInstance().apply {
+                timeInMillis = dateMillis
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+            val startOfDay = calendar.timeInMillis
+
+            calendar.apply {
+                set(Calendar.HOUR_OF_DAY, 23)
+                set(Calendar.MINUTE, 59)
+                set(Calendar.SECOND, 59)
+                set(Calendar.MILLISECOND, 999)
+            }
+            val endOfDay = calendar.timeInMillis
+
+            filterState = filterState.copy(
+                startDateMillis = startOfDay,
+                endDateMillis = endOfDay
+            )
+        }
+    }
+
     var showFilterSheet by remember { mutableStateOf(false) }
     var showStartDatePicker by remember { mutableStateOf(false) }
     var showEndDatePicker by remember { mutableStateOf(false) }

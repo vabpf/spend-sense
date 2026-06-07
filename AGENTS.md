@@ -41,7 +41,7 @@ This project is indexed by GitNexus as **spend-sense** (1077 symbols, 2377 relat
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **spend-sense** (2151 symbols, 4544 relationships, 112 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **spend-sense** (2202 symbols, 4630 relationships, 113 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

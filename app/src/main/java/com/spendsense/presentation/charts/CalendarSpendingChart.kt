@@ -66,7 +66,8 @@ fun CalendarSpendingChart(
     allTransactions: List<Transaction>,
     categories: List<Category>,
     currency: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onFilterDay: (Long) -> Unit = {}
 ) {
     var currentMonth by remember { mutableStateOf(Calendar.getInstance()) }
     var selectedDay by remember { mutableStateOf<CalendarDay?>(null) }
@@ -312,6 +313,20 @@ fun CalendarSpendingChart(
                     color = CyberBlue,
                     modifier = Modifier
                         .clickable { selectedDay = null }
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            },
+            dismissButton = {
+                Text(
+                    text = "View This Day",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = CyberBlue,
+                    modifier = Modifier
+                        .clickable {
+                            onFilterDay(day.dateMillis)
+                            selectedDay = null
+                        }
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                 )
             },

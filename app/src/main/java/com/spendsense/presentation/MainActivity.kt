@@ -211,10 +211,20 @@ class MainActivity : ComponentActivity() {
                                         ) + fadeOut(animationSpec = tween(200))
                                     }
                                 ) {
-                                    composable("home") {
+                                    composable(
+                                        route = "home?filterDate={filterDate}",
+                                        arguments = listOf(
+                                            navArgument("filterDate") {
+                                                type = NavType.LongType
+                                                defaultValue = -1L
+                                            }
+                                        )
+                                    ) { backStackEntry ->
+                                        val filterDate = backStackEntry.arguments?.getLong("filterDate") ?: -1L
                                         HomeScreen(
                                             reviewData = reviewData,
                                             onReviewHandled = { reviewData = null },
+                                            initialFilterDate = if (filterDate != -1L) filterDate else null,
                                             onNavigateToSettings = {
                                                 navController.navigate("settings") {
                                                     popUpTo(navController.graph.findStartDestination().id) { saveState = true }
@@ -240,7 +250,16 @@ class MainActivity : ComponentActivity() {
                                     }
 
                                     composable("charts") {
-                                        ChartsScreen()
+                                        ChartsScreen(
+                                            onNavigateToHomeWithFilter = { date ->
+                                                navController.navigate("home?filterDate=$date") {
+                                                    popUpTo(navController.graph.findStartDestination().id) {
+                                                        // clear backstack up to home to apply the new argument cleanly
+                                                    }
+                                                    launchSingleTop = true
+                                                }
+                                            }
+                                        )
                                     }
 
                                     composable("settings") {
@@ -371,7 +390,11 @@ class MainActivity : ComponentActivity() {
                             Triple("settings", Icons.Rounded.Settings, "Settings")
                         )
 
-                        if (currentDestination?.route in mainScreens) {
+                        val isMainScreen = currentDestination?.route?.let { route ->
+                            route.startsWith("home") || route == "charts" || route == "settings"
+                        } ?: false
+
+                        if (isMainScreen) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -418,7 +441,13 @@ class MainActivity : ComponentActivity() {
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     navItems.forEach { (route, icon, label) ->
-                                        val selected = currentDestination?.hierarchy?.any { it.route == route } == true
+                                        val selected = currentDestination?.hierarchy?.any { dest ->
+                                            if (route == "home") {
+                                                dest.route?.startsWith("home") == true
+                                            } else {
+                                                dest.route == route
+                                            }
+                                        } == true
 
                                         Box(
                                             modifier = Modifier

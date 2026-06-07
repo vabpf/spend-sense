@@ -45,7 +45,8 @@ import kotlin.math.abs
 @Composable
 fun ChartsScreen(
     modifier: Modifier = Modifier,
-    viewModel: ChartsViewModel = hiltViewModel()
+    viewModel: ChartsViewModel = hiltViewModel(),
+    onNavigateToHomeWithFilter: (Long) -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
     val summary = state.summary
@@ -124,7 +125,8 @@ fun ChartsScreen(
                     CalendarSpendingChart(
                         allTransactions = state.allTransactions,
                         categories = summary.categories,
-                        currency = summary.currency
+                        currency = summary.currency,
+                        onFilterDay = onNavigateToHomeWithFilter
                     )
                 }
 
