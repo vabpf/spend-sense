@@ -119,10 +119,11 @@ fun ChartsScreen(
                     )
                 }
 
-                // ── Daily bar chart ───────────────────────────────────────────────
+                // ── Daily calendar chart ──────────────────────────────────────────
                 item {
-                    DailySpendingBarChart(
-                        bars = state.dailyBars,
+                    CalendarSpendingChart(
+                        allTransactions = state.allTransactions,
+                        categories = summary.categories,
                         currency = summary.currency
                     )
                 }

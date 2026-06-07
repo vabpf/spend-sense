@@ -74,7 +74,8 @@ data class ChartsDataState(
     val dailyBars: List<DailyBar> = emptyList(),
     val monthlyPoints: List<MonthlyPoint> = emptyList(),
     val currentMonthPaymentSources: List<PaymentSourceBreakdown> = emptyList(),
-    val monthlyPaymentSources: List<MonthlyPaymentSourceData> = emptyList()
+    val monthlyPaymentSources: List<MonthlyPaymentSourceData> = emptyList(),
+    val allTransactions: List<Transaction> = emptyList()
 )
 
 @HiltViewModel
@@ -243,7 +244,8 @@ class ChartsViewModel @Inject constructor(
                     dailyBars = dailyBars,
                     monthlyPoints = monthlyPoints,
                     currentMonthPaymentSources = sourceGroups,
-                    monthlyPaymentSources = monthlyPaymentSources
+                    monthlyPaymentSources = monthlyPaymentSources,
+                    allTransactions = convertedTransactions
                 )
             }
         }
