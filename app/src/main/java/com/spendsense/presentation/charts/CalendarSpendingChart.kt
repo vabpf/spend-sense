@@ -261,7 +261,7 @@ fun CalendarSpendingChart(
             }
 
             // 6 rows grid
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
                 val today = Calendar.getInstance()
                 val cellCal = Calendar.getInstance()
                 for (row in 0 until 6) {
@@ -437,7 +437,7 @@ private fun CalendarDayCell(
             Text(
                 text = compactAmount,
                 style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.Light,
                 color = NeonRose,
                 fontSize = 10.sp,
                 maxLines = 1,
