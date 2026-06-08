@@ -844,6 +844,18 @@ private fun EmptyChart(message: String) {
 }
 
 internal fun formatAmount(amount: Double, currencyCode: String): String {
+    val cleanCurrencyCode = currencyCode.trim().uppercase()
+    if (cleanCurrencyCode == "VND") {
+        return try {
+            val fmt = NumberFormat.getNumberInstance(Locale.getDefault()).apply {
+                maximumFractionDigits = 0
+            }
+            val formatted = fmt.format(amount)
+            "$formatted₫"
+        } catch (_: Exception) {
+            "${String.format("%.0f", amount)}₫"
+        }
+    }
     return try {
         val fmt = NumberFormat.getCurrencyInstance(Locale.getDefault())
         fmt.currency = Currency.getInstance(currencyCode)

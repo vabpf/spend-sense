@@ -452,7 +452,7 @@ private fun CalendarDayCell(
             Text(
                 text = compactAmount,
                 style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Light,
+                fontWeight = FontWeight.Normal,
                 color = NeonRose,
                 fontSize = 10.sp,
                 maxLines = 1,

@@ -43,6 +43,20 @@ class NotificationProcessor @Inject constructor(
             suggestedCategoryName: String?,
             transactionId: Long
         )
+
+        fun onNotificationSkipped(
+            packageName: String,
+            appName: String,
+            title: String?,
+            text: String
+        )
+
+        fun onAddedToInbox(
+            packageName: String,
+            appName: String,
+            title: String?,
+            text: String
+        )
     }
 
     private val TAG = "NotificationProcessor"
@@ -64,9 +78,59 @@ class NotificationProcessor @Inject constructor(
         // Check if this app has been configured with patterns
         val appPatterns = notificationPatternDao.getAllForPackage(packageName)
         if (appPatterns.isEmpty()) {
-            saveToInbox(packageName, title, text, timestamp, null, existingRawNotificationId)
+            saveToInbox(packageName, title, text, timestamp, null, existingRawNotificationId, appName, listener)
             Log.d(TAG, "New app $packageName — saved to inbox")
             return@withContext ProcessResult.INBOX_CREATED
+        }
+
+        // Stage 0: Check if it matches any non-transaction (Skip/Ignore) patterns
+        val skipPatterns = appPatterns.filter { !it.isTransaction }
+        for (pattern in skipPatterns) {
+            try {
+                val isTitleMatch = title != null && title.contains(pattern.notificationTitle, ignoreCase = true)
+                val isRegexMatch = if (pattern.regex != null) {
+                    Regex(pattern.regex).containsMatchIn(text)
+                } else {
+                    isTitleMatch
+                }
+
+                if (isRegexMatch) {
+                    if (pattern.regex != null) {
+                        // Regex match case: SAVE it in raw_notifications and prune
+                        if (existingRawNotificationId != null) {
+                            rawNotificationDao.markAsProcessed(existingRawNotificationId)
+                        } else {
+                            rawNotificationDao.insert(
+                                RawNotificationEntity(
+                                    packageName = packageName,
+                                    title = title,
+                                    text = text,
+                                    timestamp = timestamp,
+                                    isProcessed = true
+                                )
+                            )
+                            listener?.onNotificationSkipped(packageName, appName, title, text)
+                        }
+                        rawNotificationDao.pruneProcessedForPackage(packageName, limit = 50)
+                        Log.d(TAG, "Notification matched skip pattern (regex): ${pattern.regex} — skipped & saved")
+                    } else {
+                        // Title-only match case: DELETE it or DO NOT save it
+                        if (existingRawNotificationId != null) {
+                            rawNotificationDao.deleteById(existingRawNotificationId)
+                        } else {
+                            listener?.onNotificationSkipped(packageName, appName, title, text)
+                        }
+                        Log.d(TAG, "Notification matched skip pattern (title): ${pattern.notificationTitle} — skipped & deleted")
+                    }
+                    notificationPatternDao.upsert(pattern.copy(
+                        lastMatchedAt = System.currentTimeMillis(),
+                        matchCount = pattern.matchCount + 1
+                    ))
+                    return@withContext ProcessResult.SILENT_SKIPPED
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error matching skip pattern: ${pattern.regex}", e)
+            }
         }
 
         // Stage 1: Scan for configured paymentSource identifiers in notification text
@@ -82,7 +146,7 @@ class NotificationProcessor @Inject constructor(
 
         if (matchedPaymentSource == null) {
             // No matching payment source, move directly to pending inbox
-            saveToInbox(packageName, title, text, timestamp, null, existingRawNotificationId)
+            saveToInbox(packageName, title, text, timestamp, null, existingRawNotificationId, appName, listener)
             Log.d(TAG, "No configured payment source found in notification text for $packageName — saved to inbox")
             return@withContext ProcessResult.INBOX_CREATED
         }
@@ -113,20 +177,20 @@ class NotificationProcessor @Inject constructor(
             }
 
             if (hasNoRegexPattern) {
-                saveToInbox(packageName, title, text, timestamp, null, existingRawNotificationId)
+                saveToInbox(packageName, title, text, timestamp, null, existingRawNotificationId, appName, listener)
                 Log.d(TAG, "No regex for matched pattern ($packageName, $matchedPaymentSource) — saved to inbox")
                 return@withContext ProcessResult.INBOX_CREATED
             }
 
             if (hasStalePattern) {
-                saveToInbox(packageName, title, text, timestamp, stalePatternId, existingRawNotificationId)
+                saveToInbox(packageName, title, text, timestamp, stalePatternId, existingRawNotificationId, appName, listener)
                 Log.d(TAG, "Stale pattern $stalePatternId for $packageName ($matchedPaymentSource) — saved to inbox")
                 return@withContext ProcessResult.INBOX_CREATED
             }
         }
 
         // If no matching pattern format is found for this known payment source, route to pending inbox
-        saveToInbox(packageName, title, text, timestamp, null, existingRawNotificationId)
+        saveToInbox(packageName, title, text, timestamp, null, existingRawNotificationId, appName, listener)
         Log.d(TAG, "No matching patterns for $packageName and source $matchedPaymentSource — saved to inbox")
         return@withContext ProcessResult.INBOX_CREATED
     }
@@ -153,9 +217,6 @@ class NotificationProcessor @Inject constructor(
             )
             if (outcome == ProcessResult.TRANSACTION_CREATED) {
                 recoveredCount++
-            } else if (outcome == ProcessResult.SILENT_SKIPPED) {
-                // Clear skipped notifications from the pending inbox
-                rawNotificationDao.markAsProcessed(notif.id)
             }
         }
         return@withContext recoveredCount
@@ -240,6 +301,9 @@ class NotificationProcessor @Inject constructor(
             )
         }
 
+        // Prune processed raw notifications to keep storage efficient (limit to latest 50 per package)
+        rawNotificationDao.pruneProcessedForPackage(packageName, limit = 50)
+
         val mapping = merchantCategoryMappingDao.getByMerchant(merchant.lowercase())
         val suggestedCategoryId = mapping?.categoryId
         val suggestedCategoryName = if (suggestedCategoryId != null) {
@@ -288,7 +352,9 @@ class NotificationProcessor @Inject constructor(
         text: String,
         timestamp: Long,
         stalePatternId: Long?,
-        existingRawNotificationId: Long?
+        existingRawNotificationId: Long?,
+        appName: String,
+        listener: NotificationPostListener?
     ) {
         if (existingRawNotificationId != null) {
             val existing = rawNotificationDao.getById(existingRawNotificationId)
@@ -305,6 +371,7 @@ class NotificationProcessor @Inject constructor(
                     stalePatternId = stalePatternId
                 )
             )
+            listener?.onAddedToInbox(packageName, appName, title, text)
         }
     }
 

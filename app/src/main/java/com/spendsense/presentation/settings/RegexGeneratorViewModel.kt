@@ -123,9 +123,32 @@ class RegexGeneratorViewModel @Inject constructor(
             enabledModels = currentState.enabledModels,
             selectedModel = currentState.selectedModel,
             availableApps = currentState.availableApps,
-            currencyCode = currentState.currencyCode
+            currencyCode = currentState.currencyCode,
+            editingPatternId = null
         )
         securePreferences.clearRegexInput()
+    }
+
+    fun loadStalePattern(stalePatternId: Long) {
+        viewModelScope.launch {
+            try {
+                val pattern = notificationPatternDao.getById(stalePatternId)
+                if (pattern != null) {
+                    _state.value = _state.value.copy(
+                        editingPatternId = stalePatternId,
+                        selectedAppPackage = pattern.packageName,
+                        notificationTitle = pattern.notificationTitle,
+                        paymentSource = pattern.paymentSource,
+                        paymentSourceType = pattern.paymentSourceType,
+                        manualPattern = pattern.regex ?: "",
+                        currencyCode = pattern.currencyCode,
+                        isTransaction = pattern.isTransaction
+                    )
+                }
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(errorMessage = "Error loading stale pattern: ${e.message}")
+            }
+        }
     }
 
     private fun loadWhitelistedApps() {
@@ -399,6 +422,7 @@ Return ONLY valid JSON with no markdown formatting:
         viewModelScope.launch {
             try {
                 val pattern = NotificationPatternEntity(
+                    id = currentState.editingPatternId ?: 0L,
                     packageName = currentState.selectedAppPackage,
                     notificationTitle = currentState.notificationTitle,
                     paymentSource = currentState.paymentSource.trim(),
@@ -482,6 +506,7 @@ Return ONLY valid JSON with no markdown formatting:
             try {
                 // 1. Save pattern
                 val pattern = NotificationPatternEntity(
+                    id = currentState.editingPatternId ?: 0L,
                     packageName = currentState.selectedAppPackage,
                     notificationTitle = currentState.notificationTitle,
                     paymentSource = currentState.paymentSource.trim(),

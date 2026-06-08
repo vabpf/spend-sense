@@ -26,4 +26,24 @@ interface RawNotificationDao {
 
     @Query("SELECT * FROM raw_notifications WHERE isProcessed = 0 AND packageName = :packageName AND title = :title")
     suspend fun getUnprocessedForPackageAndTitle(packageName: String, title: String): List<RawNotificationEntity>
+
+    @Query("SELECT * FROM raw_notifications WHERE isProcessed = 1 AND packageName = :packageName ORDER BY timestamp DESC")
+    suspend fun getProcessedForPackage(packageName: String): List<RawNotificationEntity>
+
+    @Query("DELETE FROM raw_notifications WHERE id = :id")
+    suspend fun deleteById(id: Long)
+
+    @Query("""
+        DELETE FROM raw_notifications 
+        WHERE isProcessed = 1 AND packageName = :packageName AND id NOT IN (
+            SELECT id FROM raw_notifications 
+            WHERE isProcessed = 1 AND packageName = :packageName 
+            ORDER BY timestamp DESC 
+            LIMIT :limit
+        )
+    """)
+    suspend fun pruneProcessedForPackage(packageName: String, limit: Int = 100)
+
+    @Query("DELETE FROM raw_notifications WHERE isProcessed = 0")
+    suspend fun deleteAllUnprocessed()
 }

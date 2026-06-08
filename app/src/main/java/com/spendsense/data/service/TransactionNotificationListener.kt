@@ -167,7 +167,7 @@ class TransactionNotificationListener : NotificationListenerService(), Notificat
         )
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(com.spendsense.R.drawable.ic_notification)
             .setContentTitle(merchant)
             .setContentText(bodyText)
             .setStyle(NotificationCompat.BigTextStyle().bigText(bodyText))
@@ -227,6 +227,83 @@ class TransactionNotificationListener : NotificationListenerService(), Notificat
                 Log.e(TAG, "Error collecting whitelisted packages flow", e)
             }
         }
+    }
+
+    override fun onNotificationSkipped(
+        packageName: String,
+        appName: String,
+        title: String?,
+        text: String
+    ) {
+        serviceScope.launch(Dispatchers.Main) {
+            postSkippedNotification(packageName, appName, title, text)
+        }
+    }
+
+    override fun onAddedToInbox(
+        packageName: String,
+        appName: String,
+        title: String?,
+        text: String
+    ) {
+        serviceScope.launch(Dispatchers.Main) {
+            postAddedToInboxNotification(packageName, appName, title, text)
+        }
+    }
+
+    private fun postSkippedNotification(
+        packageName: String,
+        appName: String,
+        title: String?,
+        text: String
+    ) {
+        val notificationId = notificationIdCounter++
+        val contentTitle = "Notification Skipped"
+        val contentText = "From $appName: ${text.take(60)}"
+
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(com.spendsense.R.drawable.ic_notification)
+            .setContentTitle(contentTitle)
+            .setContentText(contentText)
+            .setStyle(NotificationCompat.BigTextStyle().bigText("From $appName:\n$text"))
+            .setAutoCancel(true)
+            .build()
+
+        val notificationManager = getSystemService(NotificationManager::class.java)
+        notificationManager.notify(notificationId, notification)
+        Log.d(TAG, "Skipped notification posted for $appName: $text")
+    }
+
+    private fun postAddedToInboxNotification(
+        packageName: String,
+        appName: String,
+        title: String?,
+        text: String
+    ) {
+        val notificationId = notificationIdCounter++
+        val contentTitle = "Added to Pending Inbox"
+        val contentText = "From $appName: ${text.take(60)}"
+
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            this, notificationId + 3000, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(com.spendsense.R.drawable.ic_notification)
+            .setContentTitle(contentTitle)
+            .setContentText(contentText)
+            .setStyle(NotificationCompat.BigTextStyle().bigText("From $appName:\n$text"))
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .build()
+
+        val notificationManager = getSystemService(NotificationManager::class.java)
+        notificationManager.notify(notificationId, notification)
+        Log.d(TAG, "Added to inbox notification posted for $appName: $text")
     }
 
     override fun onDestroy() {

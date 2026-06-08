@@ -15,6 +15,9 @@ interface NotificationPatternDao {
     @Query("SELECT * FROM notification_patterns WHERE packageName = :packageName AND notificationTitle = :title")
     suspend fun getByPackageAndTitle(packageName: String, title: String): NotificationPatternEntity?
 
+    @Query("SELECT * FROM notification_patterns WHERE id = :id")
+    suspend fun getById(id: Long): NotificationPatternEntity?
+
     @Query("SELECT * FROM notification_patterns WHERE packageName = :packageName")
     suspend fun getAllForPackage(packageName: String): List<NotificationPatternEntity>
 

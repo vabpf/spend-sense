@@ -34,6 +34,7 @@ import io.github.fletchmckee.liquid.rememberLiquidState
 import io.github.fletchmckee.liquid.liquefiable
 import com.spendsense.presentation.util.SpendSenseTopBar
 import com.spendsense.presentation.util.glassEffect
+import androidx.compose.foundation.BorderStroke
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,6 +62,10 @@ fun NotificationPatternsScreen(
     val editSelectedAppIndex by viewModel.editSelectedAppIndex.collectAsState()
     val editPaymentSource by viewModel.editPaymentSource.collectAsState()
     val editPaymentSourceType by viewModel.editPaymentSourceType.collectAsState()
+
+    val selectedPatternForHistory by viewModel.selectedPatternForHistory.collectAsState()
+    val matchedNotifications by viewModel.matchedNotifications.collectAsState()
+    val isLoadingHistory by viewModel.isLoadingHistory.collectAsState()
 
     val patternsLiquidState = rememberLiquidState()
  
@@ -171,7 +176,8 @@ fun NotificationPatternsScreen(
                                 onDelete = { viewModel.deletePattern(pattern.id) },
                                 onToggleTransaction = {
                                     viewModel.updatePattern(pattern.id, pattern.regex, !pattern.isTransaction)
-                                }
+                                },
+                                onShowHistory = { viewModel.showHistoryForPattern(pattern) }
                             )
                         }
                         item { Spacer(modifier = Modifier.height(40.dp)) }
@@ -246,6 +252,123 @@ fun NotificationPatternsScreen(
             onPaymentSourceTypeChange = { viewModel.updateEditPaymentSourceType(it) },
             onAppSelected = { viewModel.selectEditApp(it) },
             onSave = { viewModel.saveEditedPattern() }
+        )
+    }
+
+    if (selectedPatternForHistory != null) {
+        val pattern = selectedPatternForHistory!!
+        GlassAlertDialog(
+            onDismissRequest = { viewModel.showHistoryForPattern(null) },
+            title = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Notification History",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Pattern: ${pattern.notificationTitle}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = CyberBlue
+                    )
+                    if (pattern.regex != null) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                            shape = MaterialTheme.shapes.small,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = pattern.regex,
+                                modifier = Modifier.padding(8.dp),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontFamily = FontFamily.Monospace,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            },
+            text = {
+                if (isLoadingHistory) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = CyberBlue)
+                    }
+                } else if (matchedNotifications.isEmpty()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            Icons.Rounded.History,
+                            contentDescription = null,
+                            modifier = Modifier.size(48.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        )
+                        Text(
+                            text = "No processed notifications found",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "Matched processed notifications will appear here.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                    }
+                } else {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        matchedNotifications.forEach { notif ->
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                                ),
+                                border = BorderStroke(
+                                    width = 1.dp,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+                                )
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    val formattedTime = remember(notif.timestamp) {
+                                        val cal = java.util.Calendar.getInstance().apply {
+                                            timeInMillis = notif.timestamp
+                                        }
+                                        val format = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault())
+                                        format.format(cal.time)
+                                    }
+                                    Text(
+                                        text = formattedTime,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                                    )
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text(
+                                        text = notif.text,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.showHistoryForPattern(null) }) {
+                    Text("Close", color = CyberBlue)
+                }
+            }
         )
     }
 }
@@ -446,7 +569,7 @@ private fun AddPatternDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Transaction?")
+                    Text("Expense Transaction?")
                     Switch(checked = isTransaction, onCheckedChange = onIsTransactionChange)
                 }
             }
@@ -658,7 +781,7 @@ private fun EditPatternDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Transaction?")
+                    Text("Expense Transaction?")
                     Switch(checked = isTransaction, onCheckedChange = onIsTransactionChange)
                 }
             }
@@ -686,11 +809,13 @@ fun PatternItem(
     appNameMap: Map<String, String>,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
-    onToggleTransaction: () -> Unit
+    onToggleTransaction: () -> Unit,
+    onShowHistory: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable { onShowHistory() }
             .glassEffect(
                 shape = MaterialTheme.shapes.large,
                 containerColor = GlassSurface.copy(alpha = 0.8f),
@@ -735,7 +860,7 @@ fun PatternItem(
                         }
                     ) {
                         Text(
-                            text = if (pattern.isTransaction) "Transaction" else "Skip",
+                            text = if (pattern.isTransaction) "Expense" else "Skip",
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                             style = MaterialTheme.typography.labelSmall
                         )
@@ -781,7 +906,7 @@ fun PatternItem(
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(if (pattern.isTransaction) "Mark as non-transaction" else "Mark as transaction")
+                    Text(if (pattern.isTransaction) "Mark as skip" else "Mark as expense")
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 IconButton(onClick = onEdit) {

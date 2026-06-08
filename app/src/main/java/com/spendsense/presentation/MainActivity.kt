@@ -232,20 +232,15 @@ class MainActivity : ComponentActivity() {
                                                     restoreState = true
                                                 }
                                             },
-                                            onNavigateToRegexGenerator = { text, title ->
-                                                 val encodedText = text?.let { java.net.URLEncoder.encode(it, "UTF-8").replace("+", "%20") }
-                                                 val encodedTitle = title?.let { java.net.URLEncoder.encode(it, "UTF-8").replace("+", "%20") }
-                                                 val route = if (encodedText != null && encodedTitle != null) {
-                                                     "regex_generator?text=$encodedText&title=$encodedTitle&fromInbox=true"
-                                                 } else if (encodedText != null) {
-                                                     "regex_generator?text=$encodedText&fromInbox=true"
-                                                 } else if (encodedTitle != null) {
-                                                     "regex_generator?title=$encodedTitle&fromInbox=true"
-                                                 } else {
-                                                     "regex_generator"
-                                                 }
-                                                 navController.navigate(route)
-                                             }
+                                            onNavigateToRegexGenerator = { text, title, stalePatternId ->
+                                                val encodedText = text?.let { java.net.URLEncoder.encode(it, "UTF-8").replace("+", "%20") }
+                                                val encodedTitle = title?.let { java.net.URLEncoder.encode(it, "UTF-8").replace("+", "%20") }
+                                                val baseRoute = "regex_generator?fromInbox=true"
+                                                val textParam = if (encodedText != null) "&text=$encodedText" else ""
+                                                val titleParam = if (encodedTitle != null) "&title=$encodedTitle" else ""
+                                                val staleParam = if (stalePatternId != null) "&stalePatternId=$stalePatternId" else ""
+                                                navController.navigate(baseRoute + textParam + titleParam + staleParam)
+                                            }
                                         )
                                     }
 
@@ -340,39 +335,47 @@ class MainActivity : ComponentActivity() {
                                     }
 
                                     composable(
-                                         route = "regex_generator?text={text}&title={title}&fromInbox={fromInbox}",
-                                         arguments = listOf(
-                                             navArgument("text") {
-                                                 type = NavType.StringType
-                                                 nullable = true
-                                                 defaultValue = null
+                                          route = "regex_generator?text={text}&title={title}&fromInbox={fromInbox}&stalePatternId={stalePatternId}",
+                                          arguments = listOf(
+                                              navArgument("text") {
+                                                  type = NavType.StringType
+                                                  nullable = true
+                                                  defaultValue = null
+                                              },
+                                              navArgument("title") {
+                                                  type = NavType.StringType
+                                                  nullable = true
+                                                  defaultValue = null
+                                              },
+                                              navArgument("fromInbox") {
+                                                  type = NavType.BoolType
+                                                  defaultValue = false
+                                              },
+                                              navArgument("stalePatternId") {
+                                                  type = NavType.StringType
+                                                  nullable = true
+                                                  defaultValue = null
+                                              }
+                                          )
+                                      ) { backStackEntry ->
+                                          val text = backStackEntry.arguments?.getString("text")
+                                          val title = backStackEntry.arguments?.getString("title")
+                                          val fromInbox = backStackEntry.arguments?.getBoolean("fromInbox") ?: false
+                                          val stalePatternIdStr = backStackEntry.arguments?.getString("stalePatternId")
+                                          val stalePatternId = stalePatternIdStr?.toLongOrNull()
+                                          RegexGeneratorScreen(
+                                              initialNotificationText = text,
+                                              initialNotificationTitle = title,
+                                              isFromInbox = fromInbox,
+                                              stalePatternId = stalePatternId,
+                                             onNavigateBack = {
+                                                 navController.popBackStack()
                                              },
-                                             navArgument("title") {
-                                                 type = NavType.StringType
-                                                 nullable = true
-                                                 defaultValue = null
-                                             },
-                                             navArgument("fromInbox") {
-                                                 type = NavType.BoolType
-                                                 defaultValue = false
+                                             onNavigateToNotificationPatterns = {
+                                                 navController.navigate("notification_patterns")
                                              }
                                          )
-                                     ) { backStackEntry ->
-                                         val text = backStackEntry.arguments?.getString("text")
-                                         val title = backStackEntry.arguments?.getString("title")
-                                         val fromInbox = backStackEntry.arguments?.getBoolean("fromInbox") ?: false
-                                         RegexGeneratorScreen(
-                                             initialNotificationText = text,
-                                             initialNotificationTitle = title,
-                                             isFromInbox = fromInbox,
-                                            onNavigateBack = {
-                                                navController.popBackStack()
-                                            },
-                                            onNavigateToNotificationPatterns = {
-                                                navController.navigate("notification_patterns")
-                                            }
-                                        )
-                                    }
+                                     }
                                 }
                             }
                         }

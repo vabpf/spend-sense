@@ -45,6 +45,7 @@ fun RegexGeneratorScreen(
     initialNotificationText: String? = null,
     initialNotificationTitle: String? = null,
     isFromInbox: Boolean = false,
+    stalePatternId: Long? = null,
     onNavigateBack: () -> Unit = {},
     onNavigateToNotificationPatterns: () -> Unit = {}
 ) {
@@ -67,6 +68,12 @@ fun RegexGeneratorScreen(
         }
         if (initialNotificationTitle != null) {
             viewModel.updateNotificationTitle(initialNotificationTitle)
+        }
+    }
+
+    LaunchedEffect(stalePatternId) {
+        if (stalePatternId != null) {
+            viewModel.loadStalePattern(stalePatternId)
         }
     }
 
@@ -732,7 +739,7 @@ fun RegexGeneratorScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Transaction?")
+                            Text("Expense Transaction?")
                             Switch(
                                 checked = state.isTransaction,
                                 onCheckedChange = { viewModel.toggleIsTransaction() }

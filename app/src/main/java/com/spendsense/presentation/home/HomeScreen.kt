@@ -159,13 +159,15 @@ fun HomeScreen(
     onReviewHandled: () -> Unit = {},
     initialFilterDate: Long? = null,
     onNavigateToSettings: () -> Unit = {},
-    onNavigateToRegexGenerator: (String?, String?) -> Unit = { _, _ -> }
+    onNavigateToRegexGenerator: (String?, String?, Long?) -> Unit = { _, _, _ -> }
 ) {
     val transactions by viewModel.transactions.collectAsState()
     val categories by viewModel.categories.collectAsState()
     val pendingNotifications by viewModel.pendingNotifications.collectAsState()
     val defaultCurrency by viewModel.defaultCurrency.collectAsState()
     val convertedTotal by viewModel.convertedTotal.collectAsState()
+    val todayConvertedTotal by viewModel.todayConvertedTotal.collectAsState()
+    val yesterdayConvertedTotal by viewModel.yesterdayConvertedTotal.collectAsState()
     
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -571,7 +573,8 @@ fun HomeScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     HomeSummaryCard(
-                        totalSpending = convertedTotal,
+                        todaySpending = todayConvertedTotal,
+                        yesterdaySpending = yesterdayConvertedTotal,
                         transactionCount = transactions.size,
                         pendingCount = pendingNotifications.size,
                         defaultCurrency = defaultCurrency,
@@ -676,11 +679,48 @@ fun HomeScreen(
                     }
 
                     if (pendingNotifications.isNotEmpty()) {
-                        Text(
-                            text = "Notification Inbox (${pendingNotifications.size})",
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp)
-                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(start = 16.dp, end = 16.dp, top = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Notification Inbox (${pendingNotifications.size})",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .glassEffect(
+                                        shape = CircleShape,
+                                        containerColor = GlassSurface.copy(alpha = 0.12f),
+                                        borderWidth = 1.dp,
+                                        borderAlpha = 0.15f
+                                    )
+                                    .clickable { viewModel.discardAllNotifications() }
+                                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Delete,
+                                        contentDescription = "Discard All",
+                                        modifier = Modifier.size(16.dp),
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                    Text(
+                                        text = "Discard All",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
+                        }
 
                         LazyRow(
                             modifier = Modifier.fillMaxWidth(),
@@ -691,7 +731,11 @@ fun HomeScreen(
                                 InboxItem(
                                     notification = notification,
                                     onProcess = {
-                                        onNavigateToRegexGenerator(notification.text, notification.title)
+                                        onNavigateToRegexGenerator(notification.text, notification.title, notification.stalePatternId)
+                                        viewModel.markNotificationAsProcessed(notification)
+                                    },
+                                    onAddNew = {
+                                        onNavigateToRegexGenerator(notification.text, notification.title, null)
                                         viewModel.markNotificationAsProcessed(notification)
                                     },
                                     onDelete = { viewModel.deleteNotification(notification) }
@@ -1080,7 +1124,8 @@ fun HomeScreen(
 
 @Composable
 private fun HomeSummaryCard(
-    totalSpending: Double,
+    todaySpending: Double,
+    yesterdaySpending: Double,
     transactionCount: Int,
     pendingCount: Int,
     defaultCurrency: String,
@@ -1106,11 +1151,18 @@ private fun HomeSummaryCard(
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Text(
-                text = formatCurrency(totalSpending, defaultCurrency),
-                style = MaterialTheme.typography.displayMedium,
-                fontWeight = FontWeight.Bold
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = formatCurrency(todaySpending, defaultCurrency),
+                    style = MaterialTheme.typography.displayMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "You spent ${formatCurrency(yesterdaySpending, defaultCurrency)} yesterday",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                )
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -1134,7 +1186,8 @@ private fun HomeSummaryCard(
 fun InboxItem(
     notification: RawNotificationEntity,
     onProcess: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onAddNew: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val appName = remember(notification.packageName) {
@@ -1222,7 +1275,19 @@ fun InboxItem(
                             .height(32.dp),
                         contentPadding = PaddingValues(0.dp)
                     ) {
-                        Text("Update Pattern", style = MaterialTheme.typography.labelMedium)
+                        Text("Update", style = MaterialTheme.typography.labelMedium)
+                    }
+                    Button(
+                        onClick = { onAddNew?.invoke() },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(32.dp),
+                        contentPadding = PaddingValues(0.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondary
+                        )
+                    ) {
+                        Text("Add New", style = MaterialTheme.typography.labelMedium)
                     }
                 }
             } else {
@@ -1812,8 +1877,25 @@ fun ReviewTransactionDialog(
 }
 
 private fun formatCurrency(amount: Double, currencyCode: String = "USD"): String {
+    val cleanCurrencyCode = currencyCode.trim().uppercase()
+    if (cleanCurrencyCode == "VND") {
+        return try {
+            val formatter = NumberFormat.getNumberInstance().apply {
+                if (amount % 1.0 == 0.0) {
+                    this.minimumFractionDigits = 0
+                    this.maximumFractionDigits = 0
+                } else {
+                    this.minimumFractionDigits = 0
+                    this.maximumFractionDigits = 2
+                }
+            }
+            val formattedNumber = formatter.format(amount)
+            "$formattedNumber₫"
+        } catch (e: Exception) {
+            "${formatDoublePlain(amount)}₫"
+        }
+    }
     return try {
-        val cleanCurrencyCode = currencyCode.trim().uppercase()
         val currency = java.util.Currency.getInstance(cleanCurrencyCode)
         val formatter = NumberFormat.getCurrencyInstance().apply {
             this.currency = currency

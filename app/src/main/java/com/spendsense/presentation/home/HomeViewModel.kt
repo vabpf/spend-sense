@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.Calendar
 import javax.inject.Inject
 
 @HiltViewModel
@@ -41,6 +42,12 @@ class HomeViewModel @Inject constructor(
 
     private val _convertedTotal = MutableStateFlow(0.0)
     val convertedTotal: StateFlow<Double> = _convertedTotal.asStateFlow()
+
+    private val _todayConvertedTotal = MutableStateFlow(0.0)
+    val todayConvertedTotal: StateFlow<Double> = _todayConvertedTotal.asStateFlow()
+
+    private val _yesterdayConvertedTotal = MutableStateFlow(0.0)
+    val yesterdayConvertedTotal: StateFlow<Double> = _yesterdayConvertedTotal.asStateFlow()
 
     init {
         loadTransactions()
@@ -99,21 +106,58 @@ class HomeViewModel @Inject constructor(
     private fun recalculateConvertedTotal(transactions: List<Transaction>) {
         viewModelScope.launch {
             val currency = _defaultCurrency.value
-            val deferred = transactions.map { txn ->
-                async {
-                    if (txn.currencyCode == currency) {
-                        txn.amount
-                    } else {
-                        val rate = exchangeRateRepository.getRate(
-                            from = txn.currencyCode,
-                            to = currency,
-                            dateMillis = txn.timestamp
-                        )
-                        if (rate != null) txn.amount * rate else 0.0
-                    }
+            
+            val todayCal = Calendar.getInstance()
+            val yesterdayCal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
+            val tempCal = Calendar.getInstance()
+            
+            val todayTxns = mutableListOf<Transaction>()
+            val yesterdayTxns = mutableListOf<Transaction>()
+            
+            for (txn in transactions) {
+                tempCal.timeInMillis = txn.timestamp
+                val isSameYear = tempCal.get(Calendar.YEAR) == todayCal.get(Calendar.YEAR)
+                if (isSameYear && tempCal.get(Calendar.DAY_OF_YEAR) == todayCal.get(Calendar.DAY_OF_YEAR)) {
+                    todayTxns.add(txn)
+                } else if (tempCal.get(Calendar.YEAR) == yesterdayCal.get(Calendar.YEAR) && tempCal.get(Calendar.DAY_OF_YEAR) == yesterdayCal.get(Calendar.DAY_OF_YEAR)) {
+                    yesterdayTxns.add(txn)
                 }
             }
-            _convertedTotal.value = deferred.sumOf { it.await() }
+
+            val todayDeferred = todayTxns.map { txn ->
+                async {
+                    convertTransactionAmount(txn, currency)
+                }
+            }
+            
+            val yesterdayDeferred = yesterdayTxns.map { txn ->
+                async {
+                    convertTransactionAmount(txn, currency)
+                }
+            }
+
+            val allDeferred = transactions.map { txn ->
+                async {
+                    convertTransactionAmount(txn, currency)
+                }
+            }
+
+            _todayConvertedTotal.value = todayDeferred.sumOf { it.await() }
+            _yesterdayConvertedTotal.value = yesterdayDeferred.sumOf { it.await() }
+            _convertedTotal.value = allDeferred.sumOf { it.await() }
+        }
+    }
+
+    private suspend fun convertTransactionAmount(txn: Transaction, targetCurrency: String): Double {
+        return if (txn.currencyCode == targetCurrency) {
+            txn.amount
+        } else {
+            val rate = exchangeRateRepository.getRate(
+                from = txn.currencyCode,
+                to = targetCurrency,
+                dateMillis = txn.timestamp
+            )
+            if (rate != null) txn.amount * rate else 0.0
         }
     }
 
@@ -175,6 +219,12 @@ class HomeViewModel @Inject constructor(
     fun markNotificationAsProcessedById(id: Long) {
         viewModelScope.launch {
             rawNotificationDao.markAsProcessed(id)
+        }
+    }
+
+    fun discardAllNotifications() {
+        viewModelScope.launch {
+            rawNotificationDao.deleteAllUnprocessed()
         }
     }
 }

@@ -4,8 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.spendsense.data.local.SecurePreferences
 import com.spendsense.data.local.dao.NotificationPatternDao
+import com.spendsense.data.local.dao.RawNotificationDao
 import com.spendsense.data.local.dao.WhitelistedAppDao
 import com.spendsense.data.local.entity.NotificationPatternEntity
+import com.spendsense.data.local.entity.RawNotificationEntity
 import com.spendsense.data.service.NotificationProcessor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,7 +24,8 @@ class NotificationPatternsViewModel @Inject constructor(
     private val notificationPatternDao: NotificationPatternDao,
     private val whitelistedAppDao: WhitelistedAppDao,
     private val securePreferences: SecurePreferences,
-    private val notificationProcessor: NotificationProcessor
+    private val notificationProcessor: NotificationProcessor,
+    private val rawNotificationDao: RawNotificationDao
 ) : ViewModel() {
 
     val patterns: StateFlow<List<NotificationPatternEntity>> =
@@ -278,6 +281,47 @@ class NotificationPatternsViewModel @Inject constructor(
             notificationProcessor.reprocessInboxForPattern(pattern, appName = appName)
 
             hideEditDialog()
+        }
+    }
+
+    private val _selectedPatternForHistory = MutableStateFlow<NotificationPatternEntity?>(null)
+    val selectedPatternForHistory: StateFlow<NotificationPatternEntity?> = _selectedPatternForHistory.asStateFlow()
+
+    private val _matchedNotifications = MutableStateFlow<List<RawNotificationEntity>>(emptyList())
+    val matchedNotifications: StateFlow<List<RawNotificationEntity>> = _matchedNotifications.asStateFlow()
+
+    private val _isLoadingHistory = MutableStateFlow(false)
+    val isLoadingHistory: StateFlow<Boolean> = _isLoadingHistory.asStateFlow()
+
+    fun showHistoryForPattern(pattern: NotificationPatternEntity?) {
+        _selectedPatternForHistory.value = pattern
+        if (pattern == null) {
+            _matchedNotifications.value = emptyList()
+            return
+        }
+        viewModelScope.launch {
+            _isLoadingHistory.value = true
+            try {
+                val allProcessed = rawNotificationDao.getProcessedForPackage(pattern.packageName)
+                val matched = allProcessed.filter { notif ->
+                    val isTitleMatch = (notif.title ?: "").equals(pattern.notificationTitle, ignoreCase = true)
+                    val isRegexMatch = if (pattern.regex != null) {
+                        try {
+                            Regex(pattern.regex).containsMatchIn(notif.text)
+                        } catch (_: Exception) {
+                            false
+                        }
+                    } else {
+                        isTitleMatch
+                    }
+                    isTitleMatch && isRegexMatch
+                }
+                _matchedNotifications.value = matched
+            } catch (e: Exception) {
+                _matchedNotifications.value = emptyList()
+            } finally {
+                _isLoadingHistory.value = false
+            }
         }
     }
 }
