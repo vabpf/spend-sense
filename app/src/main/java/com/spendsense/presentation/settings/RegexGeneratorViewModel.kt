@@ -515,7 +515,7 @@ Return ONLY valid JSON with no markdown formatting:
                     currencyCode = currentState.currencyCode,
                     isTransaction = currentState.isTransaction
                 )
-                notificationPatternDao.upsert(pattern)
+                val savedPatternId = notificationPatternDao.upsert(pattern)
 
                 // 2. Determine Category
                 val mapping = merchantCategoryMappingDao.getByMerchant(finalMerchant.lowercase())
@@ -543,9 +543,20 @@ Return ONLY valid JSON with no markdown formatting:
                         sourceAppName = appName,
                         notes = "Extracted during notification inbox pattern setup",
                         paymentSource = currentState.paymentSource.trim(),
-                        paymentSourceType = currentState.paymentSourceType.trim()
+                        paymentSourceType = currentState.paymentSourceType.trim(),
+                        patternId = savedPatternId
                     )
                 )
+
+                // 4. Update pattern count since we created a transaction for it manually
+                if (currentState.isTransaction) {
+                    val freshPattern = notificationPatternDao.getById(savedPatternId)
+                    if (freshPattern != null) {
+                        notificationPatternDao.upsert(freshPattern.copy(
+                            matchCount = freshPattern.matchCount + 1
+                        ))
+                    }
+                }
 
                 // 4. Update Category mapping if new
                 if (mapping == null) {

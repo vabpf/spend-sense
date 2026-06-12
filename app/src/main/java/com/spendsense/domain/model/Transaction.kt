@@ -11,5 +11,6 @@ data class Transaction(
     val sourceAppName: String,
     val notes: String? = null,
     val paymentSource: String = "Manual",
-    val paymentSourceType: String = "Manual"
+    val paymentSourceType: String = "Manual",
+    val patternId: Long? = null
 )

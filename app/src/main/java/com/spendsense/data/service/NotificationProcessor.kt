@@ -242,8 +242,7 @@ class NotificationProcessor @Inject constructor(
                     val amount = parseAmount(amountStr)
                     if (amount > 0) {
                         notificationPatternDao.upsert(pattern.copy(
-                            lastMatchedAt = System.currentTimeMillis(),
-                            matchCount = pattern.matchCount + 1
+                            lastMatchedAt = System.currentTimeMillis()
                         ))
                         saveAndPostNotification(
                             amount = amount,
@@ -257,7 +256,8 @@ class NotificationProcessor @Inject constructor(
                             listener = listener,
                             existingRawNotificationId = existingRawNotificationId,
                             paymentSource = pattern.paymentSource,
-                            paymentSourceType = pattern.paymentSourceType
+                            paymentSourceType = pattern.paymentSourceType,
+                            patternId = pattern.id
                         )
                         return true
                     }
@@ -281,7 +281,8 @@ class NotificationProcessor @Inject constructor(
         listener: NotificationPostListener?,
         existingRawNotificationId: Long?,
         paymentSource: String,
-        paymentSourceType: String
+        paymentSourceType: String,
+        patternId: Long?
     ) {
         val rawId = if (existingRawNotificationId != null) {
             val existing = rawNotificationDao.getById(existingRawNotificationId)
@@ -329,7 +330,8 @@ class NotificationProcessor @Inject constructor(
                 sourcePackageName = packageName,
                 sourceAppName = appName,
                 paymentSource = paymentSource,
-                paymentSourceType = paymentSourceType
+                paymentSourceType = paymentSourceType,
+                patternId = patternId
             )
         )
 

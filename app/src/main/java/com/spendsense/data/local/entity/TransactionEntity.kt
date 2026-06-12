@@ -18,5 +18,6 @@ data class TransactionEntity(
     val isSynced: Boolean = false,
     val firestoreId: String? = null,
     val paymentSource: String = "Manual",
-    val paymentSourceType: String = "Manual"
+    val paymentSourceType: String = "Manual",
+    val patternId: Long? = null
 )

@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "48e15c3d2a40556a7ffa984696bc2a69",
+    "identityHash": "ad527bfd964c256013460f8aeb871e16",
     "entities": [
       {
         "tableName": "transactions",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `amount` REAL NOT NULL, `currencyCode` TEXT NOT NULL, `merchant` TEXT NOT NULL, `categoryId` INTEGER NOT NULL, `timestamp` INTEGER NOT NULL, `sourcePackageName` TEXT NOT NULL, `sourceAppName` TEXT NOT NULL, `notes` TEXT, `isSynced` INTEGER NOT NULL, `firestoreId` TEXT)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `amount` REAL NOT NULL, `currencyCode` TEXT NOT NULL, `merchant` TEXT NOT NULL, `categoryId` INTEGER NOT NULL, `timestamp` INTEGER NOT NULL, `sourcePackageName` TEXT NOT NULL, `sourceAppName` TEXT NOT NULL, `notes` TEXT, `isSynced` INTEGER NOT NULL, `firestoreId` TEXT, `paymentSource` TEXT NOT NULL, `paymentSourceType` TEXT NOT NULL, `patternId` INTEGER)",
         "fields": [
           {
             "fieldPath": "id",
@@ -71,6 +71,23 @@
             "fieldPath": "firestoreId",
             "columnName": "firestoreId",
             "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "paymentSource",
+            "columnName": "paymentSource",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "paymentSourceType",
+            "columnName": "paymentSourceType",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "patternId",
+            "columnName": "patternId",
+            "affinity": "INTEGER"
           }
         ],
         "primaryKey": {
@@ -166,7 +183,7 @@
       },
       {
         "tableName": "raw_notifications",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `packageName` TEXT NOT NULL, `text` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, `isProcessed` INTEGER NOT NULL, `stalePatternId` INTEGER)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `packageName` TEXT NOT NULL, `text` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, `isProcessed` INTEGER NOT NULL, `stalePatternId` INTEGER, `title` TEXT)",
         "fields": [
           {
             "fieldPath": "id",
@@ -202,54 +219,11 @@
             "fieldPath": "stalePatternId",
             "columnName": "stalePatternId",
             "affinity": "INTEGER"
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": true,
-          "columnNames": [
-            "id"
-          ]
-        }
-      },
-      {
-        "tableName": "ai_providers",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `baseUrl` TEXT NOT NULL, `defaultModel` TEXT NOT NULL, `jobType` TEXT NOT NULL, `isPreset` INTEGER NOT NULL)",
-        "fields": [
-          {
-            "fieldPath": "id",
-            "columnName": "id",
-            "affinity": "INTEGER",
-            "notNull": true
           },
           {
-            "fieldPath": "name",
-            "columnName": "name",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "baseUrl",
-            "columnName": "baseUrl",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "defaultModel",
-            "columnName": "defaultModel",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "jobType",
-            "columnName": "jobType",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "isPreset",
-            "columnName": "isPreset",
-            "affinity": "INTEGER",
-            "notNull": true
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT"
           }
         ],
         "primaryKey": {
@@ -297,7 +271,7 @@
       },
       {
         "tableName": "notification_patterns",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `packageName` TEXT NOT NULL, `notificationTitle` TEXT NOT NULL, `regex` TEXT, `currencyCode` TEXT NOT NULL, `isTransaction` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `lastMatchedAt` INTEGER, `matchCount` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `packageName` TEXT NOT NULL, `notificationTitle` TEXT NOT NULL, `paymentSource` TEXT NOT NULL, `paymentSourceType` TEXT NOT NULL, `regex` TEXT, `currencyCode` TEXT NOT NULL, `isTransaction` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `lastMatchedAt` INTEGER, `matchCount` INTEGER NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -314,6 +288,18 @@
           {
             "fieldPath": "notificationTitle",
             "columnName": "notificationTitle",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "paymentSource",
+            "columnName": "paymentSource",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "paymentSourceType",
+            "columnName": "paymentSourceType",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -360,14 +346,15 @@
         },
         "indices": [
           {
-            "name": "index_notification_patterns_packageName_notificationTitle",
-            "unique": true,
+            "name": "index_notification_patterns_packageName_notificationTitle_paymentSource",
+            "unique": false,
             "columnNames": [
               "packageName",
-              "notificationTitle"
+              "notificationTitle",
+              "paymentSource"
             ],
             "orders": [],
-            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_notification_patterns_packageName_notificationTitle` ON `${TABLE_NAME}` (`packageName`, `notificationTitle`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_notification_patterns_packageName_notificationTitle_paymentSource` ON `${TABLE_NAME}` (`packageName`, `notificationTitle`, `paymentSource`)"
           }
         ]
       },
@@ -511,7 +498,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '48e15c3d2a40556a7ffa984696bc2a69')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ad527bfd964c256013460f8aeb871e16')"
     ]
   }
 }

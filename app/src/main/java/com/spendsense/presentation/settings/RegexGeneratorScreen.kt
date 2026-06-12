@@ -479,20 +479,19 @@ fun RegexGeneratorScreen(
                             fontWeight = FontWeight.Bold
                         )
 
-                        Surface(
+                        OutlinedTextField(
+                            value = displayPattern,
+                            onValueChange = { newPattern ->
+                                viewModel.updateManualPattern(newPattern)
+                                viewModel.testManualPattern()
+                            },
                             modifier = Modifier.fillMaxWidth(),
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            shape = MaterialTheme.shapes.small
-                        ) {
-                            SelectionContainer {
-                                Text(
-                                    text = displayPattern,
-                                    modifier = Modifier.padding(12.dp),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
-                                )
-                            }
-                        }
+                            textStyle = MaterialTheme.typography.bodySmall.copy(
+                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                            ),
+                            placeholder = { Text("Regex pattern...") },
+                            label = { Text("Pattern String") }
+                        )
 
                         if (state.extractedAmount != null && state.extractedMerchant != null) {
                             HorizontalDivider()

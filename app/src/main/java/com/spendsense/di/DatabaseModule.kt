@@ -48,11 +48,6 @@ object DatabaseModule {
     }
 
     @Provides
-    fun provideAiProviderDao(database: SpendSenseDatabase): AiProviderDao {
-        return database.aiProviderDao()
-    }
-
-    @Provides
     fun provideMerchantCategoryMappingDao(database: SpendSenseDatabase): MerchantCategoryMappingDao {
         return database.merchantCategoryMappingDao()
     }

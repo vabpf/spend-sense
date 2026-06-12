@@ -11,14 +11,13 @@ import com.spendsense.data.local.entity.*
         CategoryEntity::class,
         WhitelistedAppEntity::class,
         RawNotificationEntity::class,
-        AiProviderEntity::class,
         MerchantCategoryMappingEntity::class,
         NotificationPatternEntity::class,
         ExchangeRateEntity::class,
         ProviderAccountEntity::class,
         ProviderModelEntity::class
     ],
-    version = 4,
+    version = 1,
     exportSchema = true
 )
 abstract class SpendSenseDatabase : RoomDatabase() {
@@ -26,7 +25,6 @@ abstract class SpendSenseDatabase : RoomDatabase() {
     abstract fun categoryDao(): CategoryDao
     abstract fun whitelistedAppDao(): WhitelistedAppDao
     abstract fun rawNotificationDao(): RawNotificationDao
-    abstract fun aiProviderDao(): AiProviderDao
     abstract fun merchantCategoryMappingDao(): MerchantCategoryMappingDao
     abstract fun notificationPatternDao(): NotificationPatternDao
     abstract fun exchangeRateDao(): ExchangeRateDao

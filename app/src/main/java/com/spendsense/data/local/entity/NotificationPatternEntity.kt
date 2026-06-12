@@ -6,7 +6,7 @@ import androidx.room.PrimaryKey
 
 @Entity(
     tableName = "notification_patterns",
-    indices = [Index(value = ["packageName", "notificationTitle", "paymentSource"], unique = true)]
+    indices = [Index(value = ["packageName", "notificationTitle", "paymentSource"], unique = false)]
 )
 data class NotificationPatternEntity(
     @PrimaryKey(autoGenerate = true)

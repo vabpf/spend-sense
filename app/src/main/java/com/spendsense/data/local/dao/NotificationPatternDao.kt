@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface NotificationPatternDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsert(pattern: NotificationPatternEntity)
+    suspend fun upsert(pattern: NotificationPatternEntity): Long
 
     @Query("SELECT * FROM notification_patterns WHERE packageName = :packageName AND notificationTitle = :title")
     suspend fun getByPackageAndTitle(packageName: String, title: String): NotificationPatternEntity?

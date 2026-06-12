@@ -128,6 +128,7 @@ class MainActivity : ComponentActivity() {
                         com.spendsense.data.local.entity.NotificationPatternEntity(
                             packageName = "com.android.shell",
                             notificationTitle = "Chase",
+                            paymentSource = "Chase",
                             regex = "Spent (?<amount>\\d+\\.\\d{2}) at (?<merchant>[\\w\\s\\-\\#\\.\\,\\&]+)",
                             isTransaction = true,
                             currencyCode = "USD"
