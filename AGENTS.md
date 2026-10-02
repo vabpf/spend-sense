@@ -1,15 +1,31 @@
 # SpendSense — Android App
 
-## Build & Install
+## Build & Test — Remote Only (GitHub Actions)
 
+**CRITICAL RULE: DO NOT RUN GRADLE TASKS LOCALLY (`./gradlew`)**. All building, testing, and assembling must be performed remotely via GitHub Actions to preserve local CPU and RAM.
+
+### 1. Trigger Remote Build or Run Tests
+- **Automatic on push**: Any push to `main` automatically triggers the test suite and release build.
+- **Manual trigger (via `gh` CLI)**:
+  ```bash
+  gh workflow run build.yml
+  ```
+- **Check build status**:
+  ```bash
+  gh run list --limit 3
+  gh run watch
+  ```
+
+### 2. Download Built APK to Local Machine
+Once the GitHub Action completes, download `SpendSense.apk` directly into the Windows Downloads folder:
 ```bash
-./gradlew assembleDebug
-/mnt/d/Apps/Android/Sdk/platform-tools/adb.exe install app/build/outputs/apk/debug/app-debug.apk
-
-./gradlew assembleRelease
-cp app/build/outputs/apk/release/app-release.apk /mnt/c/Users/vuong/Downloads/SpendSense.apk
+gh run download -n SpendSense-Release-APK -D /mnt/c/Users/vuong/Downloads
 ```
-Note: Adjust the `adb` path for your environment (e.g., `/mnt/d/Apps/Android/Sdk/platform-tools/adb.exe` on WSL with Windows).
+
+### 3. Install to Device (via ADB)
+```bash
+/mnt/d/Apps/Android/Sdk/platform-tools/adb.exe install /mnt/c/Users/vuong/Downloads/SpendSense.apk
+```
 
 ## Project Structure
 
