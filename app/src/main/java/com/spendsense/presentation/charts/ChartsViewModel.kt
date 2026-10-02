@@ -2,7 +2,7 @@ package com.spendsense.presentation.charts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.spendsense.data.local.preferences.SecurePreferences
+import com.spendsense.data.local.SecurePreferences
 import com.spendsense.domain.model.Category
 import com.spendsense.domain.model.Transaction
 import com.spendsense.domain.repository.CategoryRepository
