@@ -2,6 +2,7 @@ package com.spendsense.presentation.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.spendsense.data.local.SecurePreferences
 import com.spendsense.data.local.dao.MerchantCategoryMappingDao
 import com.spendsense.data.local.dao.RawNotificationDao
 import com.spendsense.data.local.entity.MerchantCategoryMappingEntity
