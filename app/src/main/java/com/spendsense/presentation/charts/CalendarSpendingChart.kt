@@ -67,10 +67,27 @@ fun CalendarSpendingChart(
     categories: List<Category>,
     currency: String,
     modifier: Modifier = Modifier,
+    selectedYear: Int? = null,
+    selectedMonth: Int? = null,
+    onMonthChanged: ((year: Int, month: Int) -> Unit)? = null,
     onFilterDay: (Long) -> Unit = {}
 ) {
     var currentMonth by remember { mutableStateOf(Calendar.getInstance()) }
     var selectedDay by remember { mutableStateOf<CalendarDay?>(null) }
+
+    LaunchedEffect(selectedYear, selectedMonth) {
+        if (selectedYear != null && selectedMonth != null) {
+            if (currentMonth.get(Calendar.YEAR) != selectedYear || currentMonth.get(Calendar.MONTH) != selectedMonth) {
+                currentMonth = Calendar.getInstance().apply {
+                    set(Calendar.YEAR, selectedYear)
+                    set(Calendar.MONTH, selectedMonth)
+                    set(Calendar.DAY_OF_MONTH, 1)
+                    set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+                }
+            }
+        }
+    }
 
     val monthYearFormatter = remember(currentMonth) {
         val monthLabels = listOf(
@@ -204,6 +221,7 @@ fun CalendarSpendingChart(
                                 add(Calendar.MONTH, -1)
                             }
                             currentMonth = newMonth
+                            onMonthChanged?.invoke(newMonth.get(Calendar.YEAR), newMonth.get(Calendar.MONTH))
                         },
                         modifier = Modifier.size(28.dp)
                     ) {
@@ -230,6 +248,7 @@ fun CalendarSpendingChart(
                                 add(Calendar.MONTH, 1)
                             }
                             currentMonth = newMonth
+                            onMonthChanged?.invoke(newMonth.get(Calendar.YEAR), newMonth.get(Calendar.MONTH))
                         },
                         modifier = Modifier.size(28.dp)
                     ) {

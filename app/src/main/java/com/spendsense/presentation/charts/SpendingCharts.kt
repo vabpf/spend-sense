@@ -312,11 +312,13 @@ private fun computeDonutHitRegions(
 fun CategoryDonutChart(
     slices: List<CategorySlice>,
     currency: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    monthLabel: String? = null
 ) {
-    ChartCard(title = "Spending by Category", modifier = modifier) {
+    val title = if (monthLabel.isNullOrBlank()) "Spending by Category" else "Spending by Category ($monthLabel)"
+    ChartCard(title = title, modifier = modifier) {
         if (slices.isEmpty()) {
-            EmptyChart("No transactions this month")
+            EmptyChart(if (monthLabel.isNullOrBlank()) "No transactions this month" else "No transactions in $monthLabel")
             return@ChartCard
         }
 

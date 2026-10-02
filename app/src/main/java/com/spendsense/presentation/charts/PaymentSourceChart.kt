@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -20,19 +21,19 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -40,6 +41,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -65,13 +67,16 @@ internal fun paymentSourceTypeColor(type: String): Color = when {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Stacked bar chart composable with tap-to-inspect month breakdown
+// Stacked bar chart composable with synchronized month selection and Option 1 highlight
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 internal fun MonthlyPaymentSourceStackedBar(
     monthlyData: List<MonthlyPaymentSourceData>,
     currency: String,
+    selectedYear: Int,
+    selectedMonth: Int,
+    onMonthSelected: (year: Int, month: Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     if (monthlyData.isEmpty()) return
@@ -83,7 +88,13 @@ internal fun MonthlyPaymentSourceStackedBar(
     }
     val progress = anim.value
 
-    var selectedMonth by remember { mutableStateOf(-1) }
+    val selectedIndex = monthlyData.indexOfFirst { it.year == selectedYear && it.month == selectedMonth }
+    val isAnyMonthSelected = selectedIndex != -1
+
+    val density = LocalDensity.current
+    val colCornerPx = with(density) { 8.dp.toPx() }
+    val barStrokePx = with(density) { 2.dp.toPx() }
+    val colBorderPx = with(density) { 1.dp.toPx() }
 
     Column(modifier = modifier) {
         Canvas(
@@ -99,11 +110,14 @@ internal fun MonthlyPaymentSourceStackedBar(
                         val barWidth = (w - totalSpacing) / count
                         val gap = totalSpacing / (count + 1)
 
-                        val hitMonth = monthlyData.indices.find { mi ->
+                        val hit = monthlyData.indices.find { mi ->
                             val barStart = gap + mi * (barWidth + gap)
                             offset.x in (barStart - gap / 2f)..(barStart + barWidth + gap / 2f)
                         }
-                        selectedMonth = if (selectedMonth == hitMonth) -1 else (hitMonth ?: -1)
+                        if (hit != null) {
+                            val target = monthlyData[hit]
+                            onMonthSelected(target.year, target.month)
+                        }
                     }
                 }
         ) {
@@ -126,12 +140,28 @@ internal fun MonthlyPaymentSourceStackedBar(
                 )
             }
 
-            val isAnyMonthSelected = selectedMonth != -1
+            // Option 1: Glass Column Backdrop behind selected month
+            if (selectedIndex != -1) {
+                val selX = gap + selectedIndex * (barWidth + gap)
+                drawRoundRect(
+                    color = CyberBlue.copy(alpha = 0.08f),
+                    topLeft = Offset(selX - gap * 0.35f, 0f),
+                    size = Size(barWidth + gap * 0.7f, h),
+                    cornerRadius = CornerRadius(colCornerPx, colCornerPx)
+                )
+                drawRoundRect(
+                    color = CyberBlue.copy(alpha = 0.22f),
+                    topLeft = Offset(selX - gap * 0.35f, 0f),
+                    size = Size(barWidth + gap * 0.7f, h),
+                    cornerRadius = CornerRadius(colCornerPx, colCornerPx),
+                    style = Stroke(width = colBorderPx)
+                )
+            }
 
             monthlyData.forEachIndexed { mi, month ->
                 val x = gap + mi * (barWidth + gap)
                 var accumulatedTop = h
-                val isThisMonthSelected = selectedMonth == mi
+                val isThisMonthSelected = mi == selectedIndex
                 val barAlpha = when {
                     !isAnyMonthSelected -> 1f
                     isThisMonthSelected -> 1f
@@ -174,48 +204,74 @@ internal fun MonthlyPaymentSourceStackedBar(
                 if (isThisMonthSelected) {
                     val totalHeight = (h - accumulatedTop).coerceAtLeast(4f)
                     drawRoundRect(
-                        color = Color.White.copy(alpha = 0.7f),
+                        color = CyberBlue.copy(alpha = 0.9f),
                         topLeft = Offset(x - 2f, (accumulatedTop - 2f).coerceAtLeast(0f)),
                         size = Size(barWidth + 4f, totalHeight + 4f),
-                        cornerRadius = CornerRadius(4f, 4f),
-                        style = Stroke(width = 2f)
+                        cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx()),
+                        style = Stroke(width = barStrokePx)
                     )
                 }
             }
         }
 
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(8.dp))
 
-        // Month labels — aligned to exact bar centers, clickable to select month
+        // Month labels — aligned to exact bar centers, Option 1 pill highlight
         val count = monthlyData.size
         val gapWeight = 0.3f / (count + 1)
         val barWeight = 0.7f / count
         Row(
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Spacer(Modifier.weight(gapWeight))
             monthlyData.forEachIndexed { mi, month ->
-                val isSelected = mi == selectedMonth
-                Text(
-                    text = month.monthLabel,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                    color = if (isSelected) {
-                        CyberBlue
-                    } else {
-                        TextSecondary
-                    },
+                val isSelected = mi == selectedIndex
+                Box(
                     modifier = Modifier
                         .weight(barWeight)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null
                         ) {
-                            selectedMonth = if (selectedMonth == mi) -1 else mi
+                            onMonthSelected(month.year, month.month)
                         },
-                    textAlign = TextAlign.Center,
-                    maxLines = 1
-                )
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isSelected) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(CyberBlue.copy(alpha = 0.16f))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = month.monthLabel,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = CyberBlue,
+                                maxLines = 1
+                            )
+                            Spacer(Modifier.height(2.dp))
+                            Box(
+                                modifier = Modifier
+                                    .size(4.dp)
+                                    .clip(CircleShape)
+                                    .background(CyberBlue)
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = month.monthLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Normal,
+                            color = TextSecondary,
+                            textAlign = TextAlign.Center,
+                            maxLines = 1
+                        )
+                    }
+                }
                 if (mi < count - 1) {
                     Spacer(Modifier.weight(gapWeight))
                 }
@@ -223,14 +279,14 @@ internal fun MonthlyPaymentSourceStackedBar(
             Spacer(Modifier.weight(gapWeight))
         }
 
-        // Tapped month breakdown
+        // Selected month breakdown
         AnimatedVisibility(
-            visible = selectedMonth in monthlyData.indices,
+            visible = selectedIndex != -1,
             enter = expandVertically() + fadeIn(),
             exit = shrinkVertically() + fadeOut()
         ) {
-            if (selectedMonth in monthlyData.indices) {
-                val selectedData = monthlyData[selectedMonth]
+            if (selectedIndex != -1) {
+                val selectedData = monthlyData[selectedIndex]
                 val allSources = selectedData.slices
                     .flatMap { it.sources }
                     .sortedByDescending { it.amount }
@@ -411,6 +467,9 @@ fun PaymentSourcesCard(
     currentMonthSources: List<PaymentSourceBreakdown>,
     monthlyData: List<MonthlyPaymentSourceData>,
     currency: String,
+    selectedYear: Int = 0,
+    selectedMonth: Int = 0,
+    onMonthSelected: (year: Int, month: Int) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     WalletCard(title = "Payment Sources", modifier = modifier) {
@@ -430,25 +489,18 @@ fun PaymentSourcesCard(
             return@WalletCard
         }
 
-        // Current month detail table
-        if (currentMonthSources.isNotEmpty()) {
-            Text(
-                text = "This Month",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = TextSecondary
-            )
-            PaymentSourceDetailTable(
-                sources = currentMonthSources,
-                currency = currency
-            )
-        }
-
-        // Stacked bar chart
+        // Stacked bar chart with interactive month selection
         if (monthlyData.any { it.slices.isNotEmpty() }) {
-            Spacer(Modifier.height(16.dp))
             MonthlyPaymentSourceStackedBar(
                 monthlyData = monthlyData,
+                currency = currency,
+                selectedYear = selectedYear,
+                selectedMonth = selectedMonth,
+                onMonthSelected = onMonthSelected
+            )
+        } else if (currentMonthSources.isNotEmpty()) {
+            PaymentSourceDetailTable(
+                sources = currentMonthSources,
                 currency = currency
             )
         }

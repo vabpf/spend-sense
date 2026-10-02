@@ -2,22 +2,39 @@ package com.spendsense.presentation.charts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.spendsense.data.local.SecurePreferences
+import com.spendsense.data.local.preferences.SecurePreferences
 import com.spendsense.domain.model.Category
 import com.spendsense.domain.model.Transaction
 import com.spendsense.domain.repository.CategoryRepository
-import com.spendsense.domain.repository.TransactionRepository
 import com.spendsense.domain.repository.ExchangeRateRepository
+import com.spendsense.domain.repository.TransactionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.async
-import kotlinx.coroutines.Dispatchers
 import java.util.Calendar
 import javax.inject.Inject
+
+data class CategorySlice(
+    val category: Category,
+    val amount: Double,
+    val fraction: Float
+)
+
+data class DailyBar(
+    val label: String,
+    val amount: Double,
+    val transactionCount: Int
+)
+
+data class MonthlyPoint(
+    val monthLabel: String,
+    val amount: Double
+)
 
 data class ChartsSummaryState(
     val currency: String = "USD",
@@ -30,23 +47,6 @@ data class ChartsSummaryState(
     val biggestTransaction: Transaction? = null,
     val biggestTransactionCategory: Category? = null,
     val categories: List<Category> = emptyList()
-)
-
-data class CategorySlice(
-    val category: Category,
-    val amount: Double,
-    val fraction: Float
-)
-
-data class DailyBar(
-    val dayLabel: String,
-    val amount: Double,
-    val transactionCount: Int = 0
-)
-
-data class MonthlyPoint(
-    val monthLabel: String, // "Jan", "Feb", etc.
-    val amount: Double
 )
 
 data class PaymentSourceBreakdown(
@@ -64,6 +64,8 @@ data class MonthlyPaymentSourceSlice(
 
 data class MonthlyPaymentSourceData(
     val monthLabel: String,
+    val year: Int = 0,
+    val month: Int = 0,
     val slices: List<MonthlyPaymentSourceSlice>,
     val total: Double
 )
@@ -75,7 +77,18 @@ data class ChartsDataState(
     val monthlyPoints: List<MonthlyPoint> = emptyList(),
     val currentMonthPaymentSources: List<PaymentSourceBreakdown> = emptyList(),
     val monthlyPaymentSources: List<MonthlyPaymentSourceData> = emptyList(),
-    val allTransactions: List<Transaction> = emptyList()
+    val allTransactions: List<Transaction> = emptyList(),
+    val selectedYear: Int = Calendar.getInstance().get(Calendar.YEAR),
+    val selectedMonth: Int = Calendar.getInstance().get(Calendar.MONTH),
+    val selectedMonthLabel: String = "",
+    val isCurrentMonth: Boolean = true
+)
+
+private data class ChartsRawInput(
+    val transactions: List<Transaction>,
+    val categories: List<Category>,
+    val selYear: Int,
+    val selMonth: Int
 )
 
 @HiltViewModel
@@ -85,6 +98,10 @@ class ChartsViewModel @Inject constructor(
     private val securePreferences: SecurePreferences,
     private val exchangeRateRepository: ExchangeRateRepository
 ) : ViewModel() {
+
+    private val now = Calendar.getInstance()
+    private val _selectedYear = MutableStateFlow(now.get(Calendar.YEAR))
+    private val _selectedMonth = MutableStateFlow(now.get(Calendar.MONTH))
 
     private val _state = MutableStateFlow(ChartsDataState())
     val state: StateFlow<ChartsDataState> = _state.asStateFlow()
@@ -96,10 +113,17 @@ class ChartsViewModel @Inject constructor(
         viewModelScope.launch {
             combine(
                 transactionRepository.getAllTransactions(),
-                categoryRepository.getAllCategories()
-            ) { transactions, categories ->
-                transactions to categories
-            }.collect { (transactions, categories) ->
+                categoryRepository.getAllCategories(),
+                _selectedYear,
+                _selectedMonth
+            ) { transactions, categories, selYear, selMonth ->
+                ChartsRawInput(transactions, categories, selYear, selMonth)
+            }.collect { input ->
+                val transactions = input.transactions
+                val categories = input.categories
+                val selectedYear = input.selYear
+                val selectedMonth = input.selMonth
+
                 val currency = securePreferences.getDefaultCurrency()
 
                 // Concurrently convert all transaction amounts to the display currency in parallel
@@ -119,38 +143,63 @@ class ChartsViewModel @Inject constructor(
                 }.map { it.await() }
 
                 val categoryMap = categories.associateBy { it.id }
-                val now = Calendar.getInstance()
+                val currentNow = Calendar.getInstance()
+                val curYear = currentNow.get(Calendar.YEAR)
+                val curMonth = currentNow.get(Calendar.MONTH)
+                val isCurrentMonth = selectedYear == curYear && selectedMonth == curMonth
 
-                val thisMonthStart = monthStart(now, 0)
-                val lastMonthStart = monthStart(now, -1)
-                val sixMonthsAgoStart = monthStart(now, -5)
+                val monthLabels = listOf(
+                    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+                )
+                val fullMonthNames = listOf(
+                    "January", "February", "March", "April", "May", "June",
+                    "July", "August", "September", "October", "November", "December"
+                )
+                val selectedMonthLabel = "${fullMonthNames[selectedMonth]} $selectedYear"
 
-                val thisMonthTxns = convertedTransactions.filter { it.timestamp >= thisMonthStart }
-                val lastMonthTxns = convertedTransactions.filter { it.timestamp in lastMonthStart until thisMonthStart }
+                val selCal = Calendar.getInstance().apply {
+                    set(Calendar.YEAR, selectedYear)
+                    set(Calendar.MONTH, selectedMonth)
+                    set(Calendar.DAY_OF_MONTH, 1)
+                    set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+                }
+                val selMonthStart = selCal.timeInMillis
+                val nextMonthCal = (selCal.clone() as Calendar).apply { add(Calendar.MONTH, 1) }
+                val selMonthEnd = nextMonthCal.timeInMillis
+                val prevMonthCal = (selCal.clone() as Calendar).apply { add(Calendar.MONTH, -1) }
+                val prevMonthStart = prevMonthCal.timeInMillis
 
-                // ── Summary ──────────────────────────────────────────────────
-                val thisMonthTotal = thisMonthTxns.sumOf { it.amount }
-                val lastMonthTotal = lastMonthTxns.sumOf { it.amount }
-                val daysElapsed = now.get(Calendar.DAY_OF_MONTH).coerceAtLeast(1)
-                val daysInLastMonth = Calendar.getInstance().apply { add(Calendar.MONTH, -1) }
-                    .getActualMaximum(Calendar.DAY_OF_MONTH)
-                val dailyAverage = thisMonthTotal / daysElapsed
-                val lastMonthDailyAvg = if (lastMonthTxns.isNotEmpty()) lastMonthTotal / daysInLastMonth else 0.0
+                val selMonthTxns = convertedTransactions.filter { it.timestamp in selMonthStart until selMonthEnd }
+                val prevMonthTxns = convertedTransactions.filter { it.timestamp in prevMonthStart until selMonthStart }
 
-                val categoryTotals = thisMonthTxns.groupBy { it.categoryId }
+                // ── Summary for selected month ───────────────────────────────
+                val selMonthTotal = selMonthTxns.sumOf { it.amount }
+                val prevMonthTotal = prevMonthTxns.sumOf { it.amount }
+                val daysElapsed = if (isCurrentMonth) {
+                    currentNow.get(Calendar.DAY_OF_MONTH).coerceAtLeast(1)
+                } else {
+                    selCal.getActualMaximum(Calendar.DAY_OF_MONTH)
+                }
+                val daysInPrevMonth = prevMonthCal.getActualMaximum(Calendar.DAY_OF_MONTH)
+                val dailyAverage = if (daysElapsed > 0) selMonthTotal / daysElapsed else 0.0
+                val prevMonthDailyAvg = if (prevMonthTxns.isNotEmpty()) prevMonthTotal / daysInPrevMonth else 0.0
+
+                val categoryTotals = selMonthTxns.groupBy { it.categoryId }
                     .mapValues { (_, txns) -> txns.sumOf { it.amount } }
                 val topEntry = categoryTotals.maxByOrNull { it.value }
                 val topCategory = topEntry?.key?.let { categoryMap[it] }
                 val topCategoryAmount = topEntry?.value ?: 0.0
-                val biggestTxn = thisMonthTxns.maxByOrNull { it.amount }
+                val biggestTxn = selMonthTxns.maxByOrNull { it.amount }
                 val biggestTxnCat = biggestTxn?.categoryId?.let { categoryMap[it] }
 
                 val summaryState = ChartsSummaryState(
                     currency = currency,
-                    thisMonthTotal = thisMonthTotal,
-                    lastMonthTotal = lastMonthTotal,
+                    thisMonthTotal = selMonthTotal,
+                    lastMonthTotal = prevMonthTotal,
                     dailyAverage = dailyAverage,
-                    lastMonthDailyAverage = lastMonthDailyAvg,
+                    lastMonthDailyAverage = prevMonthDailyAvg,
                     topCategory = topCategory,
                     topCategoryAmount = topCategoryAmount,
                     biggestTransaction = biggestTxn,
@@ -158,7 +207,7 @@ class ChartsViewModel @Inject constructor(
                     categories = categories
                 )
 
-                // ── Donut: category slices for this month ─────────────────────
+                // ── Donut: category slices for selected month ─────────────────
                 val slices = categoryTotals
                     .mapNotNull { (catId, amount) ->
                         val cat = categoryMap[catId] ?: return@mapNotNull null
@@ -187,8 +236,6 @@ class ChartsViewModel @Inject constructor(
                 }
 
                 // ── Monthly trend: last 6 months ──────────────────────────────
-                val monthLabels = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
                 val monthlyPoints = (5 downTo 0).map { monthsBack ->
                     val mCal = Calendar.getInstance().apply { add(Calendar.MONTH, -monthsBack) }
                     val mStart = monthStart(mCal, 0)
@@ -198,15 +245,15 @@ class ChartsViewModel @Inject constructor(
                     MonthlyPoint(label, total)
                 }
 
-                // ── Payment source: current month breakdown ──────────────────
-                val sourceGroups = thisMonthTxns
+                // ── Payment source: selected month breakdown ──────────────────
+                val sourceGroups = selMonthTxns
                     .groupBy { Pair(it.paymentSourceType, it.paymentSource) }
                     .map { (key, txns) ->
                         PaymentSourceBreakdown(key.first, key.second, txns.sumOf { it.amount })
                     }
                     .sortedByDescending { it.amount }
 
-                // ── Payment source: monthly stacked data ─────────────────────
+                // ── Payment source: monthly stacked data (6 months) ───────────
                 val monthlyPaymentSources = (5 downTo 0).map { monthsBack ->
                     val mCal = Calendar.getInstance().apply { add(Calendar.MONTH, -monthsBack) }
                     val mStart = monthStart(mCal, 0)
@@ -233,6 +280,8 @@ class ChartsViewModel @Inject constructor(
                         .sortedByDescending { it.amount }
                     MonthlyPaymentSourceData(
                         monthLabel = monthLabels[mCal.get(Calendar.MONTH)],
+                        year = mCal.get(Calendar.YEAR),
+                        month = mCal.get(Calendar.MONTH),
                         slices = typeGroups,
                         total = monthTotal
                     )
@@ -245,14 +294,38 @@ class ChartsViewModel @Inject constructor(
                     monthlyPoints = monthlyPoints,
                     currentMonthPaymentSources = sourceGroups,
                     monthlyPaymentSources = monthlyPaymentSources,
-                    allTransactions = convertedTransactions
+                    allTransactions = convertedTransactions,
+                    selectedYear = selectedYear,
+                    selectedMonth = selectedMonth,
+                    selectedMonthLabel = selectedMonthLabel,
+                    isCurrentMonth = isCurrentMonth
                 )
             }
         }
     }
 
+    fun selectMonth(year: Int, month: Int) {
+        val currentNow = Calendar.getInstance()
+        val curYear = currentNow.get(Calendar.YEAR)
+        val curMonth = currentNow.get(Calendar.MONTH)
+        if (_selectedYear.value == year && _selectedMonth.value == month) {
+            // Tapping already-selected month resets to current month if not already on current month
+            if (year != curYear || month != curMonth) {
+                _selectedYear.value = curYear
+                _selectedMonth.value = curMonth
+            }
+        } else {
+            _selectedYear.value = year
+            _selectedMonth.value = month
+        }
+    }
+
+    fun setMonth(year: Int, month: Int) {
+        _selectedYear.value = year
+        _selectedMonth.value = month
+    }
+
     fun refresh() {
-        // Re-trigger currency refresh; the flow will recompute on next emission
         val current = _state.value
         _state.value = current.copy(
             summary = current.summary.copy(currency = securePreferences.getDefaultCurrency())
