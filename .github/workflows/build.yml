@@ -1,18 +1,18 @@
 name: Test & Build Release APK
 
 on:
-  push:
-    branches: [ "main" ]
-    tags: [ "v*" ]
-  pull_request:
-    branches: [ "main" ]
   workflow_dispatch:
     inputs:
-      skip_tests:
-        description: 'Skip tests to speed up build'
-        required: false
-        default: false
-        type: boolean
+      target:
+        description: 'What do you want to run?'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - 'all'
+          - 'test'
+          - 'build'
+
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -26,7 +26,7 @@ jobs:
   test:
     name: Run Unit Tests
     runs-on: ubuntu-latest
-    if: ${{ !inputs.skip_tests }}
+    if: ${{ inputs.target == 'all' || inputs.target == 'test' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -50,8 +50,8 @@ jobs:
     name: Build Release APK
     runs-on: ubuntu-latest
     needs: [test]
-    # Run even if test was skipped via input
-    if: always() && (needs.test.result == 'success' || needs.test.result == 'skipped')
+    if: always() && (inputs.target == 'all' || inputs.target == 'build') && (needs.test.result == 'success' || needs.test.result == 'skipped')
+
     permissions:
       contents: write
     steps:
