@@ -4,7 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -327,43 +327,17 @@ fun CategoryDonutChart(
         }
         val progress = sweep.value
 
-        var selectedIndex by remember { mutableStateOf(-1) }
-        var tooltipOffset by remember { mutableStateOf(Offset.Zero) }
-        var canvasSize by remember { mutableStateOf(IntSize.Zero) }
-        var rowSize by remember { mutableStateOf(IntSize.Zero) }
-
-        val hitRegions = remember(slices, currency, canvasSize) {
-            computeDonutHitRegions(slices, currency, canvasSize)
-        }
-
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .onSizeChanged { rowSize = it },
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Box(modifier = Modifier.size(120.dp)) {
+            Box(
+                modifier = Modifier.size(112.dp),
+                contentAlignment = Alignment.Center
+            ) {
                 Canvas(
-                    modifier = Modifier
-                        .size(120.dp)
-                        .onSizeChanged { canvasSize = it }
-                        .pointerInput(hitRegions) {
-                            detectDragGesturesAfterLongPress(
-                                onDragStart = { offset ->
-                                    val hit = hitRegions.find { it.hitTest(offset) }
-                                    selectedIndex = hit?.index ?: -1
-                                    tooltipOffset = offset
-                                },
-                                onDrag = { change, _ ->
-                                    val hit = hitRegions.find { it.hitTest(change.position) }
-                                    selectedIndex = hit?.index ?: -1
-                                    tooltipOffset = change.position
-                                },
-                                onDragEnd = { selectedIndex = -1 },
-                                onDragCancel = { selectedIndex = -1 }
-                            )
-                        }
+                    modifier = Modifier.size(112.dp)
                 ) {
                     val stroke = size.minDimension * 0.18f
                     val inset = stroke / 2f
@@ -372,26 +346,19 @@ fun CategoryDonutChart(
                     var startAngle = -90f
                     val gap = 2f
 
-                    slices.forEachIndexed { i, slice ->
+                    slices.forEach { slice ->
                         val sweepAngle = (slice.fraction * 360f - gap) * progress
-                        val isSelected = i == selectedIndex
-
                         val segColor = parseColor(slice.category.colorHex)
-                        val segAlpha = if (isSelected) 1f else 0.75f
-                        val segStrokeWidth = if (isSelected) stroke * 1.25f else stroke
 
                         drawArc(
-                            color = segColor.copy(alpha = segAlpha),
+                            color = segColor.copy(alpha = 0.85f),
                             startAngle = startAngle,
                             sweepAngle = sweepAngle.coerceAtLeast(0f),
                             useCenter = false,
-                            topLeft = Offset(
-                                arcOffset.x - (segStrokeWidth - stroke) / 2f,
-                                arcOffset.y - (segStrokeWidth - stroke) / 2f
-                            ),
+                            topLeft = arcOffset,
                             size = arcSize,
                             style = Stroke(
-                                width = segStrokeWidth,
+                                width = stroke,
                                 cap = StrokeCap.Butt
                             )
                         )
@@ -411,44 +378,46 @@ fun CategoryDonutChart(
                         )
                     }
                 }
-
-                val selectedHit = hitRegions.find { it.index == selectedIndex }
-                if (selectedHit != null) {
-                    ChartTooltipOverlay(
-                        content = selectedHit.content,
-                        touchOffset = tooltipOffset,
-                        parentSize = rowSize
-                    )
-                }
             }
 
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                slices.take(5).forEachIndexed { i, slice ->
+            // Legend Table: Category Name, Money Spent, Percentage
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                slices.forEach { slice ->
+                    val catColor = parseColor(slice.category.colorHex)
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Canvas(modifier = Modifier.size(8.dp)) {
-                            drawCircle(color = parseColor(slice.category.colorHex))
+                            drawCircle(color = catColor)
                         }
+                        Spacer(Modifier.width(6.dp))
                         Text(
                             text = slice.category.name,
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false)
+                            modifier = Modifier.weight(1f)
                         )
-                        Spacer(Modifier.width(4.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = formatAmount(slice.amount, currency),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(Modifier.width(8.dp))
                         Text(
                             text = "${(slice.fraction * 100).toInt()}%",
                             style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (i == selectedIndex) {
-                                parseColor(slice.category.colorHex)
-                            } else {
-                                parseColor(slice.category.colorHex).copy(alpha = 0.6f)
-                            }
+                            fontWeight = FontWeight.Bold,
+                            color = catColor,
+                            modifier = Modifier.width(36.dp),
+                            textAlign = TextAlign.End
                         )
                     }
                 }
@@ -500,20 +469,11 @@ fun DailySpendingBarChart(
                         .height(120.dp)
                         .onSizeChanged { canvasSize = it }
                         .pointerInput(hitRegions) {
-                            detectDragGesturesAfterLongPress(
-                                onDragStart = { offset ->
-                                    val hit = hitRegions.find { it.hitTest(offset) }
-                                    selectedIndex = hit?.index ?: -1
-                                    tooltipOffset = offset
-                                },
-                                onDrag = { change, _ ->
-                                    val hit = hitRegions.find { it.hitTest(change.position) }
-                                    selectedIndex = hit?.index ?: -1
-                                    tooltipOffset = change.position
-                                },
-                                onDragEnd = { selectedIndex = -1 },
-                                onDragCancel = { selectedIndex = -1 }
-                            )
+                            detectTapGestures { offset ->
+                                val hit = hitRegions.find { it.hitTest(offset) }
+                                selectedIndex = if (selectedIndex == hit?.index) -1 else (hit?.index ?: -1)
+                                tooltipOffset = offset
+                            }
                         }
                 ) {
                     val barCount = bars.size
@@ -622,38 +582,14 @@ fun MonthlyTrendLineChart(
         val maxAmount = points.maxOf { it.amount }.takeIf { it > 0 } ?: 1.0
         val lineColor = CyberBlue
 
-        var selectedIndex by remember { mutableStateOf(-1) }
-        var tooltipOffset by remember { mutableStateOf(Offset.Zero) }
-        var canvasSize by remember { mutableStateOf(IntSize.Zero) }
-
-        val hitRegions = remember(points, maxAmount, currency, canvasSize) {
-            computeLineHitRegions(points, maxAmount, currency, canvasSize)
-        }
-
         Column {
             Box {
                 Canvas(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(120.dp)
-                        .onSizeChanged { canvasSize = it }
-                        .pointerInput(hitRegions) {
-                            detectDragGesturesAfterLongPress(
-                                onDragStart = { offset ->
-                                    val hit = hitRegions.find { it.hitTest(offset) }
-                                    selectedIndex = hit?.index ?: -1
-                                    tooltipOffset = offset
-                                },
-                                onDrag = { change, _ ->
-                                    val hit = hitRegions.find { it.hitTest(change.position) }
-                                    selectedIndex = hit?.index ?: -1
-                                    tooltipOffset = change.position
-                                },
-                                onDragEnd = { selectedIndex = -1 },
-                                onDragCancel = { selectedIndex = -1 }
-                            )
-                        }
                 ) {
+
                     val n = points.size
                     if (n < 2) return@Canvas
 
@@ -715,24 +651,14 @@ fun MonthlyTrendLineChart(
                     )
 
                     for (i in 0 until n) {
-                        val isSelected = i == selectedIndex
-                        val dotRadius = if (isSelected) 8f else 4f
-
-                        if (isSelected) {
-                            drawCircle(
-                                color = lineColor.copy(alpha = 0.2f),
-                                radius = 14f,
-                                center = Offset(xAt(i), yAt(i))
-                            )
-                        }
                         drawCircle(
                             color = lineColor,
-                            radius = dotRadius,
+                            radius = 4f,
                             center = Offset(xAt(i), yAt(i))
                         )
                         drawCircle(
                             color = Color.Black.copy(alpha = 0.6f),
-                            radius = if (isSelected) 4f else 2f,
+                            radius = 2f,
                             center = Offset(xAt(i), yAt(i))
                         )
 
@@ -766,15 +692,6 @@ fun MonthlyTrendLineChart(
                         }
                     }
                 }
-
-                val selectedHit = hitRegions.find { it.index == selectedIndex }
-                if (selectedHit != null) {
-                    ChartTooltipOverlay(
-                        content = selectedHit.content,
-                        touchOffset = tooltipOffset,
-                        parentSize = canvasSize
-                    )
-                }
             }
 
             Spacer(Modifier.height(6.dp))
@@ -783,17 +700,18 @@ fun MonthlyTrendLineChart(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                points.forEachIndexed { i, point ->
+                points.forEach { point ->
                     Text(
                         text = point.monthLabel,
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (i == selectedIndex) CyberBlue else TextSecondary
+                        color = TextSecondary
                     )
                 }
             }
         }
     }
 }
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared card wrapper
