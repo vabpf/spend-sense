@@ -5,12 +5,19 @@
 **CRITICAL RULE: DO NOT RUN GRADLE TASKS LOCALLY (`./gradlew`)**. All building, testing, and assembling must be performed remotely via GitHub Actions to preserve local CPU and RAM.
 
 ### 1. Trigger Remote Build or Run Tests
-- **Automatic on push**: Any push to `main` automatically triggers the test suite and release build.
-- **Manual trigger (via `gh` CLI)**:
+- **Run Unit Tests Only**:
   ```bash
-  gh workflow run build.yml
+  gh workflow run test.yml
   ```
-- **Check build status**:
+- **Build Release APK Only** (fastest, skips tests):
+  ```bash
+  gh workflow run build.yml -f target=build
+  ```
+- **Run Both (Test & Build APK)**:
+  ```bash
+  gh workflow run build.yml -f target=all
+  ```
+- **Check status / watch progress**:
   ```bash
   gh run list --limit 3
   gh run watch
