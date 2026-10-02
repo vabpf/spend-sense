@@ -227,7 +227,7 @@ private fun computeBarHitRegions(
         val left = gap + i * (barWidth + gap)
         val right = left + barWidth
         val content = TooltipContent(
-            title = bar.dayLabel,
+            title = bar.label,
             subtitle = "${bar.transactionCount} transaction${if (bar.transactionCount != 1) "s" else ""}",
             amount = formatAmount(bar.amount, currency)
         )
@@ -539,7 +539,7 @@ fun DailySpendingBarChart(
                 Spacer(Modifier.weight(barGapWeight))
                 bars.forEachIndexed { i, bar ->
                     Text(
-                        text = bar.dayLabel,
+                        text = bar.label,
                         style = MaterialTheme.typography.labelSmall,
                         color = if (i == selectedIndex) CyberBlue else TextSecondary,
                         modifier = Modifier.weight(barLabelWeight),
