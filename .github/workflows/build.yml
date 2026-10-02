@@ -18,6 +18,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  GRADLE_OPTS: "-Dorg.gradle.jvmargs=\"-Xmx12288m -XX:+UseG1GC -Dfile.encoding=UTF-8\" -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=4"
+  JAVA_OPTS: "-Xmx12288m"
+
 jobs:
   test:
     name: Run Unit Tests
