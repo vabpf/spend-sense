@@ -34,6 +34,12 @@ interface ProviderModelDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(models: List<ProviderModelEntity>)
 
+    @Query("SELECT * FROM provider_models")
+    suspend fun getAll(): List<ProviderModelEntity>
+
+    @Query("DELETE FROM provider_models")
+    suspend fun deleteAll()
+
     @Query("SELECT COUNT(*) FROM provider_models")
     fun onModelsChanged(): Flow<Int>
 }

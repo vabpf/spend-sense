@@ -70,6 +70,34 @@ fun SettingsScreen(
         }
     }
 
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json")
+    ) { uri: Uri? ->
+        if (uri != null) {
+            try {
+                context.contentResolver.openOutputStream(uri)?.let { outputStream ->
+                    viewModel.exportBackup(outputStream)
+                }
+            } catch (_: Exception) {}
+        }
+    }
+
+    val importBackupLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            try {
+                context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                    val reader = BufferedReader(InputStreamReader(inputStream))
+                    val content = reader.readText()
+                    viewModel.onBackupFileSelected(content)
+                }
+            } catch (_: Exception) {}
+        }
+    }
+
+    var replaceExistingData by remember { mutableStateOf(false) }
+
     val lifecycleOwner = LocalLifecycleOwner.current
     var isAccessGranted by remember { mutableStateOf(false) }
 
@@ -191,6 +219,44 @@ fun SettingsScreen(
                         description = "${selectedCurrency.symbol} ${selectedCurrency.code} — ${selectedCurrency.name}",
                         onClick = { showCurrencySelector = true }
                     )
+
+                    HorizontalDivider()
+
+                    SettingsSwitchItem(
+                        icon = Icons.Rounded.NotificationsActive,
+                        title = "Daily Spent Summary",
+                        description = "Get a daily push notification reporting total spending",
+                        checked = state.isDailyReportEnabled,
+                        onCheckedChange = { enabled ->
+                            viewModel.updateDailyReportEnabled(enabled, context)
+                        }
+                    )
+
+                    if (state.isDailyReportEnabled) {
+                        HorizontalDivider()
+
+                        SettingsItem(
+                            icon = Icons.Rounded.Schedule,
+                            title = "Report Delivery Time",
+                            description = "Scheduled at ${state.dailyReportTime}",
+                            onClick = {
+                                val parts = state.dailyReportTime.split(":")
+                                val currentHour = parts.getOrNull(0)?.toIntOrNull() ?: 20
+                                val currentMinute = parts.getOrNull(1)?.toIntOrNull() ?: 0
+
+                                android.app.TimePickerDialog(
+                                    context,
+                                    { _, hourOfDay, minute ->
+                                        val formattedTime = String.format("%02d:%02d", hourOfDay, minute)
+                                        viewModel.updateDailyReportTime(formattedTime, context)
+                                    },
+                                    currentHour,
+                                    currentMinute,
+                                    true
+                                ).show()
+                            }
+                        )
+                    }
                 }
             }
 
@@ -259,11 +325,54 @@ fun SettingsScreen(
                         description = "Manage expense categories",
                         onClick = onNavigateToCategories
                     )
+                }
+            }
+
+            // Data & Backup Section
+            Text(
+                text = "Data & Backup",
+                style = MaterialTheme.typography.titleLarge.copy(fontSize = 14.sp),
+                modifier = Modifier.padding(top = 12.dp)
+            )
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .glassEffect(
+                        shape = MaterialTheme.shapes.large,
+                        containerColor = GlassSurface.copy(alpha = 0.8f),
+                        borderAlpha = 0.24f
+                    ),
+                shape = MaterialTheme.shapes.medium,
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.Transparent,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                )
+            ) {
+                Column {
+                    SettingsItem(
+                        icon = Icons.Rounded.CloudDownload,
+                        title = "Export All Data",
+                        description = "Export transactions, categories, regexes & settings to JSON",
+                        onClick = {
+                            val timestamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault()).format(java.util.Date())
+                            exportLauncher.launch("spendsense_backup_$timestamp.json")
+                        }
+                    )
 
                     HorizontalDivider()
 
                     SettingsItem(
                         icon = Icons.Rounded.CloudUpload,
+                        title = "Import All Data",
+                        description = "Restore full app data from a SpendSense backup JSON",
+                        onClick = { importBackupLauncher.launch("*/*") }
+                    )
+
+                    HorizontalDivider()
+
+                    SettingsItem(
+                        icon = Icons.Rounded.History,
                         title = "Import Notifications",
                         description = "Import and process historical CSV/JSON files",
                         onClick = { filePickerLauncher.launch("*/*") }
@@ -493,6 +602,293 @@ fun SettingsScreen(
             }
         )
     }
+
+    // Full Backup Restore Confirmation Dialog
+    state.pendingRestorePayload?.let { payload ->
+        GlassAlertDialog(
+            onDismissRequest = { viewModel.dismissRestoreConfirmDialog() },
+            title = {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Backup,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text("Restore Backup")
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    val dateText = if (payload.exportedAtFormatted.isNotBlank()) {
+                        payload.exportedAtFormatted
+                    } else if (payload.exportedAt > 0) {
+                        java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date(payload.exportedAt))
+                    } else "Unknown"
+
+                    Text(
+                        text = "Backup dated: $dateText",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    HorizontalDivider()
+
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Transactions", style = MaterialTheme.typography.bodyMedium)
+                        Text("${payload.transactions.size}", fontWeight = FontWeight.Bold)
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Categories", style = MaterialTheme.typography.bodyMedium)
+                        Text("${payload.categories.size}", fontWeight = FontWeight.Bold)
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Regex Patterns", style = MaterialTheme.typography.bodyMedium)
+                        Text("${payload.notificationPatterns.size}", fontWeight = FontWeight.Bold)
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Whitelisted Apps", style = MaterialTheme.typography.bodyMedium)
+                        Text("${payload.whitelistedApps.size}", fontWeight = FontWeight.Bold)
+                    }
+                    if (payload.providerAccounts.isNotEmpty()) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("AI Provider Accounts", style = MaterialTheme.typography.bodyMedium)
+                            Text("${payload.providerAccounts.size}", fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    HorizontalDivider()
+
+                    Text(
+                        text = "Restore Strategy",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    Surface(
+                        onClick = { replaceExistingData = false },
+                        color = if (!replaceExistingData) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f) else Color.Transparent,
+                        shape = MaterialTheme.shapes.small
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = !replaceExistingData,
+                                onClick = { replaceExistingData = false }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text("Merge with existing data", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                Text("Keeps current data and imports new items without overwriting", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+
+                    Surface(
+                        onClick = { replaceExistingData = true },
+                        color = if (replaceExistingData) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f) else Color.Transparent,
+                        shape = MaterialTheme.shapes.small
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = replaceExistingData,
+                                onClick = { replaceExistingData = true }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text("Replace existing data", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.error)
+                                Text("Clears current records and performs a clean restore", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.executeRestore(replaceExisting = replaceExistingData)
+                    },
+                    colors = if (replaceExistingData) ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error) else ButtonDefaults.buttonColors()
+                ) {
+                    Text("Restore")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissRestoreConfirmDialog() }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Restoring / Exporting Progress Dialog
+    if (state.isRestoring || state.isExporting) {
+        GlassAlertDialog(
+            onDismissRequest = {},
+            title = {
+                Text(if (state.isRestoring) "Restoring Data" else "Exporting Data")
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                    Text(
+                        text = if (state.isRestoring) "Restoring your SpendSense data archive. Please wait..." else "Generating and saving your backup archive. Please wait...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
+    // Restore Success Dialog
+    state.restoreSummary?.let { summary ->
+        GlassAlertDialog(
+            onDismissRequest = { viewModel.clearRestoreSummary() },
+            title = {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.CheckCircle,
+                        contentDescription = null,
+                        tint = Color(0xFF81C784)
+                    )
+                    Text("Restore Complete")
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = "Your SpendSense backup has been successfully restored:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    HorizontalDivider()
+
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Transactions Restored", style = MaterialTheme.typography.bodyMedium)
+                        Text("${summary.transactionsRestored}", fontWeight = FontWeight.Bold, color = Color(0xFF81C784))
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Categories Restored", style = MaterialTheme.typography.bodyMedium)
+                        Text("${summary.categoriesRestored}", fontWeight = FontWeight.Bold)
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Regex Patterns Restored", style = MaterialTheme.typography.bodyMedium)
+                        Text("${summary.patternsRestored}", fontWeight = FontWeight.Bold)
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Whitelisted Apps Restored", style = MaterialTheme.typography.bodyMedium)
+                        Text("${summary.appsRestored}", fontWeight = FontWeight.Bold)
+                    }
+                    if (summary.providerAccountsRestored > 0) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("AI Providers Restored", style = MaterialTheme.typography.bodyMedium)
+                            Text("${summary.providerAccountsRestored}", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = { viewModel.clearRestoreSummary() }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
+
+    // Export Success Dialog
+    state.exportSuccessMessage?.let { msg ->
+        GlassAlertDialog(
+            onDismissRequest = { viewModel.clearExportMessage() },
+            title = {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.CheckCircle,
+                        contentDescription = null,
+                        tint = Color(0xFF81C784)
+                    )
+                    Text("Export Complete")
+                }
+            },
+            text = {
+                Text(
+                    text = msg,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            confirmButton = {
+                Button(onClick = { viewModel.clearExportMessage() }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
+
+    // Error Dialog (Restore or Export error)
+    val errorMessage = state.restoreError ?: state.exportError
+    errorMessage?.let { err ->
+        GlassAlertDialog(
+            onDismissRequest = {
+                viewModel.clearRestoreError()
+                viewModel.clearExportMessage()
+            },
+            title = {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Error,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                    Text("Backup Error")
+                }
+            },
+            text = {
+                Text(
+                    text = err,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    viewModel.clearRestoreError()
+                    viewModel.clearExportMessage()
+                }) {
+                    Text("Dismiss")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -538,6 +934,53 @@ fun SettingsItem(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+        }
+    }
+}
+
+@Composable
+fun SettingsSwitchItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    description: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Surface(
+        color = Color.Transparent,
+        onClick = { onCheckedChange(!checked) }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = MaterialTheme.colorScheme.primary,
+                    checkedTrackColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                )
+            )
         }
     }
 }

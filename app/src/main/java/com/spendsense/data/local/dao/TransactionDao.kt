@@ -9,6 +9,9 @@ interface TransactionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(transaction: TransactionEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(transactions: List<TransactionEntity>)
+
     @Update
     suspend fun update(transaction: TransactionEntity)
 
@@ -20,6 +23,12 @@ interface TransactionDao {
 
     @Query("SELECT * FROM transactions ORDER BY timestamp DESC")
     fun getAllFlow(): Flow<List<TransactionEntity>>
+
+    @Query("SELECT * FROM transactions ORDER BY timestamp DESC")
+    suspend fun getAll(): List<TransactionEntity>
+
+    @Query("DELETE FROM transactions")
+    suspend fun deleteAll()
 
     @Query("SELECT * FROM transactions WHERE categoryId = :categoryId ORDER BY timestamp DESC")
     fun getByCategoryFlow(categoryId: Long): Flow<List<TransactionEntity>>

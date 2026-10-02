@@ -23,7 +23,9 @@ object DatabaseModule {
             SpendSenseDatabase::class.java,
             SpendSenseDatabase.DATABASE_NAME
         )
+            .enableMultiInstanceInvalidation()
             .fallbackToDestructiveMigration()
+            .fallbackToDestructiveMigrationOnDowngrade()
             .build()
     }
 

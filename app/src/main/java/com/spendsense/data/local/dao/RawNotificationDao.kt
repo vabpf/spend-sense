@@ -27,6 +27,9 @@ interface RawNotificationDao {
     @Query("SELECT * FROM raw_notifications WHERE isProcessed = 0 AND packageName = :packageName AND title = :title")
     suspend fun getUnprocessedForPackageAndTitle(packageName: String, title: String): List<RawNotificationEntity>
 
+    @Query("SELECT * FROM raw_notifications WHERE isProcessed = 0 AND packageName = :packageName ORDER BY timestamp DESC")
+    suspend fun getUnprocessedForPackage(packageName: String): List<RawNotificationEntity>
+
     @Query("SELECT * FROM raw_notifications WHERE isProcessed = 1 AND packageName = :packageName ORDER BY timestamp DESC")
     suspend fun getProcessedForPackage(packageName: String): List<RawNotificationEntity>
 
@@ -43,6 +46,15 @@ interface RawNotificationDao {
         )
     """)
     suspend fun pruneProcessedForPackage(packageName: String, limit: Int = 100)
+
+    @Query("SELECT * FROM raw_notifications ORDER BY timestamp DESC")
+    suspend fun getAll(): List<RawNotificationEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(notifications: List<RawNotificationEntity>)
+
+    @Query("DELETE FROM raw_notifications")
+    suspend fun deleteAll()
 
     @Query("DELETE FROM raw_notifications WHERE isProcessed = 0")
     suspend fun deleteAllUnprocessed()

@@ -62,6 +62,7 @@ fun NotificationPatternsScreen(
     val editSelectedAppIndex by viewModel.editSelectedAppIndex.collectAsState()
     val editPaymentSource by viewModel.editPaymentSource.collectAsState()
     val editPaymentSourceType by viewModel.editPaymentSourceType.collectAsState()
+    val editPackageName by viewModel.editPackageName.collectAsState()
 
     val selectedPatternForHistory by viewModel.selectedPatternForHistory.collectAsState()
     val matchedNotifications by viewModel.matchedNotifications.collectAsState()
@@ -237,6 +238,7 @@ fun NotificationPatternsScreen(
         EditPatternDialog(
             availableApps = availableApps,
             selectedAppIndex = editSelectedAppIndex,
+            packageName = editPackageName,
             title = editTitle,
             regex = editRegex,
             isTransaction = editIsTransaction,
@@ -595,6 +597,7 @@ private fun AddPatternDialog(
 private fun EditPatternDialog(
     availableApps: List<RegexTargetApp>,
     selectedAppIndex: Int,
+    packageName: String,
     title: String,
     regex: String,
     isTransaction: Boolean,
@@ -641,13 +644,16 @@ private fun EditPatternDialog(
                                 Text(
                                     text = if (selectedAppIndex in availableApps.indices)
                                         availableApps[selectedAppIndex].appName
-                                    else "Select app",
+                                    else {
+                                        if (packageName == "__ALL_WHITELISTED__") "All Whitelisted Apps"
+                                        else packageName.split(".").lastOrNull()?.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.getDefault()) else it.toString() } ?: packageName
+                                    },
                                     style = MaterialTheme.typography.bodyLarge
                                 )
                                 Text(
                                     text = if (selectedAppIndex in availableApps.indices)
                                         availableApps[selectedAppIndex].packageName
-                                    else "Choose a whitelisted app",
+                                    else packageName,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -789,7 +795,7 @@ private fun EditPatternDialog(
         confirmButton = {
             TextButton(
                 onClick = onSave,
-                enabled = title.isNotBlank() && selectedAppIndex >= 0 && (!isTransaction || paymentSource.isNotBlank())
+                enabled = title.isNotBlank() && packageName.isNotBlank() && (!isTransaction || paymentSource.isNotBlank())
             ) {
                 Text("Save")
             }

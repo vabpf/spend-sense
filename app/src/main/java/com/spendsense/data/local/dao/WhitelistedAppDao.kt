@@ -30,6 +30,12 @@ interface WhitelistedAppDao {
     @Query("SELECT * FROM whitelisted_apps ORDER BY appName ASC")
     fun getAllFlow(): Flow<List<WhitelistedAppEntity>>
 
+    @Query("SELECT * FROM whitelisted_apps ORDER BY appName ASC")
+    suspend fun getAll(): List<WhitelistedAppEntity>
+
+    @Query("DELETE FROM whitelisted_apps")
+    suspend fun deleteAll()
+
     @Query("UPDATE whitelisted_apps SET isEnabled = :isEnabled WHERE packageName = :packageName")
     suspend fun setEnabled(packageName: String, isEnabled: Boolean)
 }

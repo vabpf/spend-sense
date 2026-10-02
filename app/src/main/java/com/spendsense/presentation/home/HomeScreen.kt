@@ -478,7 +478,7 @@ fun HomeScreen(
                                                     .fillMaxHeight()
                                                     .fillMaxWidth()
                                                     .padding(horizontal = 8.dp, vertical = 6.dp)
-                                                    .background(Color.Red, MaterialTheme.shapes.medium)
+                                                    .background(MaterialTheme.colorScheme.error, MaterialTheme.shapes.medium)
                                                     .align(Alignment.Center)
                                             ) {
                                                 Row(

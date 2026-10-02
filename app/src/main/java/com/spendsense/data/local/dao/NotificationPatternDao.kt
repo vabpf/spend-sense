@@ -12,8 +12,20 @@ interface NotificationPatternDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(pattern: NotificationPatternEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(patterns: List<NotificationPatternEntity>)
+
+    @Query("SELECT * FROM notification_patterns ORDER BY packageName ASC, notificationTitle ASC")
+    suspend fun getAll(): List<NotificationPatternEntity>
+
+    @Query("DELETE FROM notification_patterns")
+    suspend fun deleteAll()
+
     @Query("SELECT * FROM notification_patterns WHERE packageName = :packageName AND notificationTitle = :title")
     suspend fun getByPackageAndTitle(packageName: String, title: String): NotificationPatternEntity?
+
+    @Query("SELECT * FROM notification_patterns WHERE packageName = :packageName AND notificationTitle = :title AND paymentSource = :paymentSource")
+    suspend fun getByPackageTitleAndSource(packageName: String, title: String, paymentSource: String): NotificationPatternEntity?
 
     @Query("SELECT * FROM notification_patterns WHERE id = :id")
     suspend fun getById(id: Long): NotificationPatternEntity?

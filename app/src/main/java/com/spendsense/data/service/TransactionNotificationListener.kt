@@ -18,6 +18,8 @@ import com.spendsense.presentation.MainActivity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collect
+import java.text.NumberFormat
+import java.util.Currency
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -43,22 +45,35 @@ class TransactionNotificationListener : NotificationListenerService(), Notificat
     override fun onListenerConnected() {
         super.onListenerConnected()
         Log.d(TAG, "NotificationListener connected")
+        refreshWhitelistedPackages()
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         super.onNotificationPosted(sbn)
         
         val packageName = sbn.packageName
-        
-        // Check if this app is whitelisted
-        if (!whitelistedPackages.contains(packageName)) {
-            return
-        }
-
-        Log.d(TAG, "Processing notification from whitelisted app: $packageName")
+        val isFastWhitelisted = whitelistedPackages.contains(packageName)
 
         serviceScope.launch(Dispatchers.IO) {
             try {
+                val isWhitelisted = if (isFastWhitelisted) {
+                    true
+                } else {
+                    // Fallback query to Room DB in case memory cache is warming up or missed an update
+                    val app = whitelistedAppDao.getByPackageName(packageName)
+                    if (app?.isEnabled == true) {
+                        whitelistedPackages = whitelistedPackages + packageName
+                        true
+                    } else {
+                        false
+                    }
+                }
+
+                if (!isWhitelisted) {
+                    return@launch
+                }
+
+                Log.d(TAG, "Processing notification from whitelisted app: $packageName")
                 processNotification(sbn)
             } catch (e: Exception) {
                 Log.e(TAG, "Error processing notification", e)
@@ -113,8 +128,11 @@ class TransactionNotificationListener : NotificationListenerService(), Notificat
     }
 
     private fun extractNotificationTitle(notification: android.app.Notification): String? {
-        return notification.extras?.getCharSequence(android.app.Notification.EXTRA_TITLE)?.toString()
-            ?.takeIf { it.isNotBlank() }
+        val extras = notification.extras ?: return null
+        val title = extras.getCharSequence(android.app.Notification.EXTRA_TITLE)?.toString()?.trim()
+        if (!title.isNullOrBlank()) return title
+        val bigTitle = extras.getCharSequence(android.app.Notification.EXTRA_TITLE_BIG)?.toString()?.trim()
+        return bigTitle?.takeIf { it.isNotBlank() }
     }
 
     private fun postTransactionNotification(
@@ -130,10 +148,11 @@ class TransactionNotificationListener : NotificationListenerService(), Notificat
     ) {
         val notificationId = notificationIdCounter++
 
+        val formattedAmount = formatNotificationAmount(amount, currencyCode)
         val bodyText = if (suggestedCategoryName != null) {
-            "$$amount auto-saved to $suggestedCategoryName"
+            "$formattedAmount auto-saved to $suggestedCategoryName"
         } else {
-            "$$amount auto-saved (Tap to categorize)"
+            "$formattedAmount auto-saved (Tap to categorize)"
         }
 
         // Edit action — opens main app with data, passing transactionId for updating
@@ -181,6 +200,54 @@ class TransactionNotificationListener : NotificationListenerService(), Notificat
         Log.d(TAG, "Transaction notification auto-saved & posted: $merchant — $amount (rawId=$rawNotificationId, transactionId=$transactionId)")
     }
 
+    private fun formatNotificationAmount(amount: Double, currencyCode: String): String {
+        val cleanCurrencyCode = currencyCode.trim().uppercase()
+        if (cleanCurrencyCode == "VND") {
+            return try {
+                val formatter = NumberFormat.getNumberInstance().apply {
+                    if (amount % 1.0 == 0.0) {
+                        this.minimumFractionDigits = 0
+                        this.maximumFractionDigits = 0
+                    } else {
+                        this.minimumFractionDigits = 0
+                        this.maximumFractionDigits = 2
+                    }
+                }
+                val formattedNumber = formatter.format(amount)
+                "$formattedNumber₫"
+            } catch (e: Exception) {
+                "${formatDoublePlain(amount)}₫"
+            }
+        }
+        return try {
+            val currency = Currency.getInstance(cleanCurrencyCode)
+            val formatter = NumberFormat.getCurrencyInstance().apply {
+                this.currency = currency
+                if (amount % 1.0 == 0.0) {
+                    this.minimumFractionDigits = 0
+                    this.maximumFractionDigits = 0
+                }
+            }
+            formatter.format(amount)
+        } catch (e: Exception) {
+            val cleanCode = currencyCode.trim()
+            val symbol = try {
+                Currency.getInstance(cleanCode.uppercase()).symbol
+            } catch (_: Exception) {
+                if (cleanCode.isNotBlank()) cleanCode else "$"
+            }
+            "$symbol ${formatDoublePlain(amount)}"
+        }
+    }
+
+    private fun formatDoublePlain(value: Double): String {
+        return if (value % 1.0 == 0.0) {
+            value.toLong().toString()
+        } else {
+            java.math.BigDecimal.valueOf(value).toPlainString()
+        }
+    }
+
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = android.app.NotificationChannel(
@@ -196,14 +263,17 @@ class TransactionNotificationListener : NotificationListenerService(), Notificat
     }
 
     private fun extractNotificationText(notification: android.app.Notification): String? {
-        val extras = notification.extras ?: return null
-        
-        val text = extras.getCharSequence(android.app.Notification.EXTRA_TEXT)?.toString() ?: ""
-        val bigText = extras.getCharSequence(android.app.Notification.EXTRA_BIG_TEXT)?.toString() ?: ""
-        
-        // Prefer bigText (expanded content) over text (collapsed content) to avoid duplication
-        val body = if (bigText.isNotBlank()) bigText else text
-        return body.takeIf { it.isNotBlank() }
+        val extras = notification.extras
+        val text = extras?.getCharSequence(android.app.Notification.EXTRA_TEXT)?.toString()?.trim() ?: ""
+        val bigText = extras?.getCharSequence(android.app.Notification.EXTRA_BIG_TEXT)?.toString()?.trim() ?: ""
+        val textLines = extras?.getCharSequenceArray(android.app.Notification.EXTRA_TEXT_LINES)
+            ?.joinToString("\n") { it.toString() }?.trim() ?: ""
+        val subText = extras?.getCharSequence(android.app.Notification.EXTRA_SUB_TEXT)?.toString()?.trim() ?: ""
+        val tickerText = notification.tickerText?.toString()?.trim() ?: ""
+
+        val candidates = listOf(bigText, text, textLines, tickerText, subText)
+        val bestText = candidates.filter { it.isNotBlank() }.maxByOrNull { it.length }
+        return bestText?.takeIf { it.isNotBlank() }
     }
 
     private fun getAppName(packageName: String): String {
@@ -216,7 +286,20 @@ class TransactionNotificationListener : NotificationListenerService(), Notificat
         }
     }
 
+    private fun refreshWhitelistedPackages() {
+        serviceScope.launch(Dispatchers.IO) {
+            try {
+                val apps = whitelistedAppDao.getEnabledApps()
+                whitelistedPackages = apps.map { it.packageName }.toSet()
+                Log.d(TAG, "Preloaded ${whitelistedPackages.size} whitelisted packages")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error preloading whitelisted packages", e)
+            }
+        }
+    }
+
     private fun observeWhitelistedPackages() {
+        refreshWhitelistedPackages()
         serviceScope.launch(Dispatchers.IO) {
             try {
                 whitelistedAppDao.getEnabledAppsFlow().collect { apps ->

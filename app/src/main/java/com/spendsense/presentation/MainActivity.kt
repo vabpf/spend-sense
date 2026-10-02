@@ -123,18 +123,31 @@ class MainActivity : ComponentActivity() {
                         isEnabled = true
                     )
                 )
-                if (notificationPatternDao.getAllForPackage("com.android.shell").isEmpty()) {
-                    notificationPatternDao.upsert(
-                        com.spendsense.data.local.entity.NotificationPatternEntity(
-                            packageName = "com.android.shell",
-                            notificationTitle = "Chase",
-                            paymentSource = "Chase",
-                            regex = "Spent (?<amount>\\d+\\.\\d{2}) at (?<merchant>[\\w\\s\\-\\#\\.\\,\\&]+)",
-                            isTransaction = true,
-                            currencyCode = "USD"
-                        )
+                // Clean existing debug patterns to start fresh
+                val existingShellPatterns = notificationPatternDao.getAllForPackage("com.android.shell")
+                existingShellPatterns.forEach { notificationPatternDao.deleteById(it.id) }
+
+                notificationPatternDao.upsert(
+                    com.spendsense.data.local.entity.NotificationPatternEntity(
+                        id = 10001L,
+                        packageName = "com.android.shell",
+                        notificationTitle = "Chase",
+                        paymentSource = "Chase",
+                        regex = "Spent (?<amount>\\d+\\.\\d{2}) at (?<merchant>[\\w\\s\\-\\#\\.\\,\\&]+)",
+                        isTransaction = true,
+                        currencyCode = "USD"
                     )
-                }
+                )
+                notificationPatternDao.upsert(
+                    com.spendsense.data.local.entity.NotificationPatternEntity(
+                        id = 10002L,
+                        packageName = "com.android.shell",
+                        notificationTitle = "Chase OTP",
+                        paymentSource = "",
+                        regex = "OTP: (?<code>\\d+)",
+                        isTransaction = false
+                    )
+                )
             }
         }
         

@@ -163,14 +163,24 @@ class NotificationPatternsViewModel @Inject constructor(
         if (title.isBlank() || packageName.isBlank()) return
 
         viewModelScope.launch {
+            val paymentSrc = _newPaymentSource.value.trim()
+            val existing = notificationPatternDao.getByPackageTitleAndSource(
+                packageName = packageName,
+                title = title,
+                paymentSource = paymentSrc
+            )
             val pattern = NotificationPatternEntity(
+                id = existing?.id ?: 0L,
                 packageName = packageName,
                 notificationTitle = title,
-                paymentSource = _newPaymentSource.value.trim(),
+                paymentSource = paymentSrc,
                 paymentSourceType = _newPaymentSourceType.value.trim(),
                 regex = _newRegex.value.trim().takeIf { it.isNotBlank() },
                 currencyCode = _newCurrencyCode.value,
-                isTransaction = _newIsTransaction.value
+                isTransaction = _newIsTransaction.value,
+                createdAt = existing?.createdAt ?: System.currentTimeMillis(),
+                lastMatchedAt = existing?.lastMatchedAt,
+                matchCount = existing?.matchCount ?: 0
             )
             notificationPatternDao.upsert(pattern)
             

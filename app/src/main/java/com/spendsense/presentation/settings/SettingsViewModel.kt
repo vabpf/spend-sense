@@ -2,6 +2,9 @@ package com.spendsense.presentation.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.spendsense.data.backup.BackupPayload
+import com.spendsense.data.backup.BackupRestoreManager
+import com.spendsense.data.backup.RestoreSummary
 import com.spendsense.data.local.SecurePreferences
 import com.spendsense.data.local.dao.WhitelistedAppDao
 import com.spendsense.data.service.NotificationProcessor
@@ -14,6 +17,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
+import java.io.OutputStream
 import javax.inject.Inject
 
 data class ImportResult(
@@ -26,15 +30,25 @@ data class ImportResult(
 
 data class SettingsState(
     val defaultCurrency: String = "USD",
+    val isDailyReportEnabled: Boolean = false,
+    val dailyReportTime: String = "20:00",
     val isImporting: Boolean = false,
-    val importResult: ImportResult? = null
+    val importResult: ImportResult? = null,
+    val isExporting: Boolean = false,
+    val exportSuccessMessage: String? = null,
+    val exportError: String? = null,
+    val isRestoring: Boolean = false,
+    val pendingRestorePayload: BackupPayload? = null,
+    val restoreSummary: RestoreSummary? = null,
+    val restoreError: String? = null
 )
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val securePreferences: SecurePreferences,
     private val whitelistedAppDao: WhitelistedAppDao,
-    private val notificationProcessor: NotificationProcessor
+    private val notificationProcessor: NotificationProcessor,
+    private val backupRestoreManager: BackupRestoreManager
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SettingsState())
@@ -42,7 +56,9 @@ class SettingsViewModel @Inject constructor(
 
     init {
         _state.value = SettingsState(
-            defaultCurrency = securePreferences.getDefaultCurrency()
+            defaultCurrency = securePreferences.getDefaultCurrency(),
+            isDailyReportEnabled = securePreferences.isDailyReportEnabled(),
+            dailyReportTime = securePreferences.getDailyReportTime()
         )
     }
 
@@ -51,8 +67,92 @@ class SettingsViewModel @Inject constructor(
         _state.value = _state.value.copy(defaultCurrency = currencyCode)
     }
 
+    fun updateDailyReportEnabled(enabled: Boolean, context: android.content.Context) {
+        securePreferences.setDailyReportEnabled(enabled)
+        _state.value = _state.value.copy(isDailyReportEnabled = enabled)
+        com.spendsense.data.service.DailySpentReportWorker.schedule(context, _state.value.dailyReportTime, enabled)
+    }
+
+    fun updateDailyReportTime(time: String, context: android.content.Context) {
+        securePreferences.setDailyReportTime(time)
+        _state.value = _state.value.copy(dailyReportTime = time)
+        com.spendsense.data.service.DailySpentReportWorker.schedule(context, time, _state.value.isDailyReportEnabled)
+    }
+
     fun clearImportResult() {
         _state.value = _state.value.copy(importResult = null)
+    }
+
+    fun exportBackup(outputStream: OutputStream) {
+        _state.value = _state.value.copy(isExporting = true, exportError = null, exportSuccessMessage = null)
+        viewModelScope.launch {
+            try {
+                val json = backupRestoreManager.createBackupJson()
+                withContext(Dispatchers.IO) {
+                    outputStream.use { os ->
+                        os.write(json.toByteArray(Charsets.UTF_8))
+                        os.flush()
+                    }
+                }
+                _state.value = _state.value.copy(
+                    isExporting = false,
+                    exportSuccessMessage = "Full backup successfully saved!"
+                )
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(
+                    isExporting = false,
+                    exportError = e.message ?: "Failed to export data"
+                )
+            }
+        }
+    }
+
+    fun onBackupFileSelected(content: String) {
+        _state.value = _state.value.copy(restoreError = null)
+        try {
+            val payload = backupRestoreManager.parseBackupJson(content)
+            _state.value = _state.value.copy(pendingRestorePayload = payload)
+        } catch (e: Exception) {
+            _state.value = _state.value.copy(restoreError = e.message ?: "Invalid backup file")
+        }
+    }
+
+    fun dismissRestoreConfirmDialog() {
+        _state.value = _state.value.copy(pendingRestorePayload = null)
+    }
+
+    fun executeRestore(replaceExisting: Boolean) {
+        val payload = _state.value.pendingRestorePayload ?: return
+        _state.value = _state.value.copy(isRestoring = true, pendingRestorePayload = null, restoreError = null)
+        viewModelScope.launch {
+            try {
+                val summary = backupRestoreManager.restoreBackup(payload, replaceExisting)
+                _state.value = _state.value.copy(
+                    isRestoring = false,
+                    restoreSummary = summary,
+                    defaultCurrency = securePreferences.getDefaultCurrency(),
+                    isDailyReportEnabled = securePreferences.isDailyReportEnabled(),
+                    dailyReportTime = securePreferences.getDailyReportTime()
+                )
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(
+                    isRestoring = false,
+                    restoreError = "Failed to restore backup: ${e.message}"
+                )
+            }
+        }
+    }
+
+    fun clearExportMessage() {
+        _state.value = _state.value.copy(exportSuccessMessage = null, exportError = null)
+    }
+
+    fun clearRestoreSummary() {
+        _state.value = _state.value.copy(restoreSummary = null)
+    }
+
+    fun clearRestoreError() {
+        _state.value = _state.value.copy(restoreError = null)
     }
 
     fun importNotificationsFromFile(content: String) {

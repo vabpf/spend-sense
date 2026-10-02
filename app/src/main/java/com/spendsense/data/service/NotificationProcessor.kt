@@ -133,65 +133,63 @@ class NotificationProcessor @Inject constructor(
             }
         }
 
-        // Stage 1: Scan for configured paymentSource identifiers in notification text
-        val configuredPaymentSources = appPatterns
-            .filter { it.isTransaction && it.paymentSource.isNotBlank() }
+        val transactionPatterns = appPatterns.filter { it.isTransaction }
+        if (transactionPatterns.isEmpty()) {
+            saveToInbox(packageName, title, text, timestamp, null, existingRawNotificationId, appName, listener)
+            Log.d(TAG, "No transaction patterns configured for $packageName — saved to inbox")
+            return@withContext ProcessResult.INBOX_CREATED
+        }
+
+        // Stage 1: Scan for configured paymentSource identifiers in notification text or title
+        val configuredPaymentSources = transactionPatterns
+            .filter { it.paymentSource.isNotBlank() }
             .map { it.paymentSource }
             .distinct()
             .sortedByDescending { it.length }
 
         val matchedPaymentSource = configuredPaymentSources.firstOrNull { source ->
-            text.contains(source, ignoreCase = true)
+            text.contains(source, ignoreCase = true) || (title != null && title.contains(source, ignoreCase = true))
         }
 
-        if (matchedPaymentSource == null) {
-            // No matching payment source, move directly to pending inbox
-            saveToInbox(packageName, title, text, timestamp, null, existingRawNotificationId, appName, listener)
-            Log.d(TAG, "No configured payment source found in notification text for $packageName — saved to inbox")
-            return@withContext ProcessResult.INBOX_CREATED
-        }
+        // Stage 2: Prioritize candidate patterns:
+        // 1. Patterns matching detected paymentSource
+        // 2. Patterns matching notificationTitle
+        // 3. Patterns with blank paymentSource
+        // 4. Any other transaction pattern for this package
+        val prioritizedPatterns = transactionPatterns.sortedWith(
+            compareByDescending<NotificationPatternEntity> { pattern ->
+                matchedPaymentSource != null && pattern.paymentSource.equals(matchedPaymentSource, ignoreCase = true)
+            }.thenByDescending { pattern ->
+                title != null && pattern.notificationTitle.isNotBlank() && title.contains(pattern.notificationTitle, ignoreCase = true)
+            }.thenByDescending { pattern ->
+                pattern.paymentSource.isBlank()
+            }.thenByDescending { pattern ->
+                pattern.notificationTitle.length
+            }
+        )
 
-        // Stage 2: Match with each pattern of that specific payment source
-        val candidatePatterns = appPatterns.filter { pattern ->
-            pattern.isTransaction &&
-            pattern.paymentSource.equals(matchedPaymentSource, ignoreCase = true) &&
-            (title.isNullOrBlank() || title.contains(pattern.notificationTitle, ignoreCase = true))
-        }.sortedByDescending { it.notificationTitle.length }
+        var hasStalePattern = false
+        var stalePatternId: Long? = null
 
-        if (candidatePatterns.isNotEmpty()) {
-            var hasStalePattern = false
-            var stalePatternId: Long? = null
-            var hasNoRegexPattern = false
-
-            for (pattern in candidatePatterns) {
-                if (pattern.regex != null) {
-                    val matched = tryMatchPattern(pattern, text, packageName, appName, timestamp, listener, existingRawNotificationId)
-                    if (matched) {
-                        return@withContext ProcessResult.TRANSACTION_CREATED
-                    }
+        for (pattern in prioritizedPatterns) {
+            if (pattern.regex != null) {
+                val matched = tryMatchPattern(pattern, text, packageName, appName, timestamp, listener, existingRawNotificationId)
+                if (matched) {
+                    return@withContext ProcessResult.TRANSACTION_CREATED
+                }
+                
+                val isRelevant = (matchedPaymentSource != null && pattern.paymentSource.equals(matchedPaymentSource, ignoreCase = true)) ||
+                        (title != null && pattern.notificationTitle.isNotBlank() && title.contains(pattern.notificationTitle, ignoreCase = true))
+                if (isRelevant) {
                     hasStalePattern = true
                     stalePatternId = pattern.id
-                } else {
-                    hasNoRegexPattern = true
                 }
-            }
-
-            if (hasNoRegexPattern) {
-                saveToInbox(packageName, title, text, timestamp, null, existingRawNotificationId, appName, listener)
-                Log.d(TAG, "No regex for matched pattern ($packageName, $matchedPaymentSource) — saved to inbox")
-                return@withContext ProcessResult.INBOX_CREATED
-            }
-
-            if (hasStalePattern) {
-                saveToInbox(packageName, title, text, timestamp, stalePatternId, existingRawNotificationId, appName, listener)
-                Log.d(TAG, "Stale pattern $stalePatternId for $packageName ($matchedPaymentSource) — saved to inbox")
-                return@withContext ProcessResult.INBOX_CREATED
             }
         }
 
-        // If no matching pattern format is found for this known payment source, route to pending inbox
-        saveToInbox(packageName, title, text, timestamp, null, existingRawNotificationId, appName, listener)
-        Log.d(TAG, "No matching patterns for $packageName and source $matchedPaymentSource — saved to inbox")
+        // If no regex matched, route to pending inbox
+        saveToInbox(packageName, title, text, timestamp, stalePatternId, existingRawNotificationId, appName, listener)
+        Log.d(TAG, "No matching pattern regex for $packageName (stalePatternId=$stalePatternId) — saved to inbox")
         return@withContext ProcessResult.INBOX_CREATED
     }
 
@@ -200,10 +198,15 @@ class NotificationProcessor @Inject constructor(
         appName: String = "App"
     ): Int = withContext(Dispatchers.IO) {
         var recoveredCount = 0
-        val unprocessed = rawNotificationDao.getUnprocessedForPackageAndTitle(
-            packageName = pattern.packageName,
-            title = pattern.notificationTitle
-        )
+        val unprocessed = if (pattern.notificationTitle.isNotBlank()) {
+            val byTitle = rawNotificationDao.getUnprocessedForPackageAndTitle(
+                packageName = pattern.packageName,
+                title = pattern.notificationTitle
+            )
+            if (byTitle.isNotEmpty()) byTitle else rawNotificationDao.getUnprocessedForPackage(pattern.packageName)
+        } else {
+            rawNotificationDao.getUnprocessedForPackage(pattern.packageName)
+        }
         
         for (notif in unprocessed) {
             val outcome = process(

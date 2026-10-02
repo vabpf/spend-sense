@@ -421,15 +421,24 @@ Return ONLY valid JSON with no markdown formatting:
 
         viewModelScope.launch {
             try {
+                val paymentSrc = currentState.paymentSource.trim()
+                val existing = notificationPatternDao.getByPackageTitleAndSource(
+                    packageName = currentState.selectedAppPackage,
+                    title = currentState.notificationTitle,
+                    paymentSource = paymentSrc
+                )
                 val pattern = NotificationPatternEntity(
-                    id = currentState.editingPatternId ?: 0L,
+                    id = currentState.editingPatternId ?: existing?.id ?: 0L,
                     packageName = currentState.selectedAppPackage,
                     notificationTitle = currentState.notificationTitle,
-                    paymentSource = currentState.paymentSource.trim(),
+                    paymentSource = paymentSrc,
                     paymentSourceType = currentState.paymentSourceType.trim(),
                     regex = patternToSave,
                     currencyCode = currentState.currencyCode,
-                    isTransaction = currentState.isTransaction
+                    isTransaction = currentState.isTransaction,
+                    createdAt = existing?.createdAt ?: System.currentTimeMillis(),
+                    lastMatchedAt = existing?.lastMatchedAt,
+                    matchCount = existing?.matchCount ?: 0
                 )
                 notificationPatternDao.upsert(pattern)
 
@@ -505,15 +514,24 @@ Return ONLY valid JSON with no markdown formatting:
         viewModelScope.launch {
             try {
                 // 1. Save pattern
+                val paymentSrc = currentState.paymentSource.trim()
+                val existing = notificationPatternDao.getByPackageTitleAndSource(
+                    packageName = currentState.selectedAppPackage,
+                    title = currentState.notificationTitle,
+                    paymentSource = paymentSrc
+                )
                 val pattern = NotificationPatternEntity(
-                    id = currentState.editingPatternId ?: 0L,
+                    id = currentState.editingPatternId ?: existing?.id ?: 0L,
                     packageName = currentState.selectedAppPackage,
                     notificationTitle = currentState.notificationTitle,
-                    paymentSource = currentState.paymentSource.trim(),
+                    paymentSource = paymentSrc,
                     paymentSourceType = currentState.paymentSourceType.trim(),
                     regex = patternToSave,
                     currencyCode = currentState.currencyCode,
-                    isTransaction = currentState.isTransaction
+                    isTransaction = currentState.isTransaction,
+                    createdAt = existing?.createdAt ?: System.currentTimeMillis(),
+                    lastMatchedAt = existing?.lastMatchedAt,
+                    matchCount = existing?.matchCount ?: 0
                 )
                 val savedPatternId = notificationPatternDao.upsert(pattern)
 

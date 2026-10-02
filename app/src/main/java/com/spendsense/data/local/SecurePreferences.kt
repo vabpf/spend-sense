@@ -47,6 +47,24 @@ class SecurePreferences @Inject constructor(
         prefs.edit().remove("api_key_group_$providerKey").apply()
     }
 
+    fun getAllApiKeys(): Map<String, String> {
+        val result = mutableMapOf<String, String>()
+        for ((key, value) in prefs.all) {
+            if (key.startsWith("api_key_") && value is String) {
+                result[key] = value
+            }
+        }
+        return result
+    }
+
+    fun restoreApiKeys(keys: Map<String, String>) {
+        val editor = prefs.edit()
+        for ((key, value) in keys) {
+            editor.putString(key, value)
+        }
+        editor.apply()
+    }
+
     fun setDefaultCurrency(currencyCode: String) {
         prefs.edit().putString("default_currency", currencyCode).apply()
     }
@@ -81,5 +99,21 @@ class SecurePreferences @Inject constructor(
 
     fun getSelectedProviderId(): Long {
         return prefs.getLong("regex_selected_provider", -1L)
+    }
+
+    fun setDailyReportEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean("daily_report_enabled", enabled).apply()
+    }
+
+    fun isDailyReportEnabled(): Boolean {
+        return prefs.getBoolean("daily_report_enabled", false)
+    }
+
+    fun setDailyReportTime(time: String) {
+        prefs.edit().putString("daily_report_time", time).apply()
+    }
+
+    fun getDailyReportTime(): String {
+        return prefs.getString("daily_report_time", "20:00") ?: "20:00"
     }
 }

@@ -23,6 +23,9 @@ interface ProviderAccountDao {
     @Query("SELECT * FROM provider_accounts ORDER BY name ASC")
     suspend fun getAll(): List<ProviderAccountEntity>
 
+    @Query("DELETE FROM provider_accounts")
+    suspend fun deleteAll()
+
     @Query("SELECT * FROM provider_accounts WHERE id = :id")
     suspend fun getById(id: Long): ProviderAccountEntity?
 
