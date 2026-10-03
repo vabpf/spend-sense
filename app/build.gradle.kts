@@ -90,7 +90,6 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("dev.chrisbanes.haze:haze:1.7.2")
     implementation("dev.chrisbanes.haze:haze-materials:1.7.2")
-    implementation("io.github.fletchmckee.liquid:liquid:1.1.1")
     
     // Navigation
     implementation("androidx.navigation:navigation-compose:2.8.7")

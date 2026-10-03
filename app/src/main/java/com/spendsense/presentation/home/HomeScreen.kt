@@ -68,12 +68,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.border
 import androidx.compose.ui.layout.onGloballyPositioned
-import com.spendsense.presentation.theme.AppBackground
 import com.spendsense.presentation.theme.CyberBlue
 import com.spendsense.presentation.theme.NeonRose
-import com.spendsense.presentation.util.LocalLiquidState
-import io.github.fletchmckee.liquid.rememberLiquidState
-import io.github.fletchmckee.liquid.liquefiable
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
@@ -202,7 +198,6 @@ fun HomeScreen(
     var pendingBatchChanges by remember { mutableStateOf<BatchChanges?>(null) }
     val context = LocalContext.current
 
-    val homeLiquidState = rememberLiquidState()
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     var searchQuery by remember { mutableStateOf("") }
     var filterState by remember { mutableStateOf(TransactionFilterState()) }
@@ -309,58 +304,44 @@ fun HomeScreen(
         list
     }
 
-    CompositionLocalProvider(LocalLiquidState provides homeLiquidState) {
-        Scaffold(
-            containerColor = Color.Transparent,
-            contentWindowInsets = WindowInsets(0),
-            floatingActionButton = {
-                Box(
-                    modifier = Modifier
-                        .offset(y = (-112).dp)
-                        .size(56.dp)
-                        .glassEffect(
-                            shape = CircleShape,
-                            containerColor = GlassSurface.copy(alpha = 0.85f),
-                            borderWidth = 1.dp,
-                            borderAlpha = 0.24f
-                        )
-                        .prismEdge(
-                            shape = CircleShape,
-                            accentColor = CyberBlue,
-                            intensity = 0.6f
-                        )
-                        .clickable { isAddingTransaction = true },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Rounded.Add,
-                        contentDescription = "Add Transaction",
-                        tint = CyberBlue,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-        ) { padding ->
+    Scaffold(
+        containerColor = Color.Transparent,
+        contentWindowInsets = WindowInsets(0),
+        floatingActionButton = {
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = padding.calculateBottomPadding())
+                    .offset(y = (-112).dp)
+                    .size(56.dp)
+                    .glassEffect(
+                        shape = CircleShape,
+                        containerColor = GlassSurface.copy(alpha = 0.85f),
+                        borderWidth = 1.dp,
+                        borderAlpha = 0.24f,
+                        liveBlur = true
+                    )
+                    .prismEdge(
+                        shape = CircleShape,
+                        accentColor = CyberBlue,
+                        intensity = 0.6f
+                    )
+                    .clickable { isAddingTransaction = true },
+                contentAlignment = Alignment.Center
             ) {
-                // Sibling 1: Background captured by homeLiquidState
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .liquefiable(homeLiquidState)
-                ) {
-                    AppBackground()
-                }
-
-                // Sibling 2: Content (OUTSIDE liquefiable)
-                Box(
-                    modifier = Modifier.fillMaxSize()
-                ) {
-
-                if (filteredTransactions.isEmpty()) {
+                Icon(
+                    Icons.Rounded.Add,
+                    contentDescription = "Add Transaction",
+                    tint = CyberBlue,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+    ) { padding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = padding.calculateBottomPadding())
+        ) {
+            if (filteredTransactions.isEmpty()) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -557,7 +538,6 @@ fun HomeScreen(
                         }
                     }
                 }
-            }
 
             Column(
                 modifier = Modifier
@@ -764,7 +744,8 @@ fun HomeScreen(
                         .glassEffect(
                             shape = RoundedCornerShape(20.dp),
                             containerColor = GlassSurface.copy(alpha = 0.92f),
-                            borderAlpha = 0.20f
+                            borderAlpha = 0.20f,
+                            liveBlur = true
                         )
                         .padding(horizontal = 16.dp, vertical = 10.dp)
 
@@ -1116,7 +1097,6 @@ fun HomeScreen(
             )
         }
     }
-}
 }
 
 @Composable

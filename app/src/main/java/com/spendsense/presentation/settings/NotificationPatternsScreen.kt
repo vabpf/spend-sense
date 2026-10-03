@@ -19,7 +19,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.spendsense.data.local.Currencies
 import com.spendsense.data.local.entity.NotificationPatternEntity
-import com.spendsense.presentation.theme.AppBackground
 import com.spendsense.presentation.theme.GlassSurface
 import com.spendsense.presentation.theme.CyberBlue
 import com.spendsense.presentation.util.GlassAlertDialog
@@ -30,9 +29,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Brush
-import com.spendsense.presentation.util.LocalLiquidState
-import io.github.fletchmckee.liquid.rememberLiquidState
-import io.github.fletchmckee.liquid.liquefiable
 import com.spendsense.presentation.util.SpendSenseTopBar
 import com.spendsense.presentation.util.glassEffect
 import androidx.compose.foundation.BorderStroke
@@ -69,59 +65,42 @@ fun NotificationPatternsScreen(
     val matchedNotifications by viewModel.matchedNotifications.collectAsState()
     val isLoadingHistory by viewModel.isLoadingHistory.collectAsState()
 
-    val patternsLiquidState = rememberLiquidState()
- 
-    CompositionLocalProvider(LocalLiquidState provides patternsLiquidState) {
-        Scaffold(
-            containerColor = Color.Transparent,
-            contentWindowInsets = WindowInsets(0),
-            floatingActionButton = {
-                Box(
-                    modifier = Modifier
-                        .offset(y = (-20).dp)
-                        .size(56.dp)
-                        .glassEffect(
-                            shape = FloatingActionButtonDefaults.shape,
-                            containerColor = GlassSurface.copy(alpha = 0.15f),
-                            borderAlpha = 0.25f
-                        )
-                        .border(
-                            width = 1.dp,
-                            color = CyberBlue,
-                            shape = FloatingActionButtonDefaults.shape
-                        )
-                        .clickable { viewModel.showAddDialog() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Rounded.Add,
-                        contentDescription = "Add pattern",
-                        tint = CyberBlue,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-        ) { padding ->
+    Scaffold(
+        containerColor = Color.Transparent,
+        contentWindowInsets = WindowInsets(0),
+        floatingActionButton = {
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = padding.calculateBottomPadding())
+                    .offset(y = (-20).dp)
+                    .size(56.dp)
+                    .glassEffect(
+                        shape = FloatingActionButtonDefaults.shape,
+                        containerColor = GlassSurface.copy(alpha = 0.15f),
+                        borderAlpha = 0.25f
+                    )
+                    .border(
+                        width = 1.dp,
+                        color = CyberBlue,
+                        shape = FloatingActionButtonDefaults.shape
+                    )
+                    .clickable { viewModel.showAddDialog() },
+                contentAlignment = Alignment.Center
             ) {
-                // Sibling 1: Background captured by patternsLiquidState
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .liquefiable(patternsLiquidState)
-                ) {
-                    AppBackground()
-                }
-
-                // Sibling 2: Content (OUTSIDE liquefiable)
-                Box(
-                    modifier = Modifier.fillMaxSize()
-                ) {
- 
-                if (patterns.isEmpty()) {
+                Icon(
+                    Icons.Rounded.Add,
+                    contentDescription = "Add pattern",
+                    tint = CyberBlue,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+    ) { padding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = padding.calculateBottomPadding())
+        ) {
+            if (patterns.isEmpty()) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize(),
@@ -203,9 +182,8 @@ fun NotificationPatternsScreen(
                 onNavigationClick = onNavigateBack,
                 navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack
             )
-        } // Sibling 2 Box
-    } // outer Box
-} // Scaffold
+        }
+    }
 
     if (showAddDialog) {
         AddPatternDialog(
@@ -368,7 +346,6 @@ fun NotificationPatternsScreen(
             }
         )
     }
-}
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

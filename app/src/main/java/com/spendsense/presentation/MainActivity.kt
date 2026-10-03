@@ -80,15 +80,11 @@ import com.spendsense.presentation.theme.SpendSenseTheme
 import com.spendsense.R
 import com.spendsense.presentation.theme.NeonRose
 import com.spendsense.presentation.util.LocalGlassHazeState
-import com.spendsense.presentation.util.LocalLiquidState
 import com.spendsense.presentation.util.glassEffect
 import com.spendsense.presentation.whitelistedapps.WhitelistedAppsScreen
 import dagger.hilt.android.AndroidEntryPoint
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
-import io.github.fletchmckee.liquid.liquid
-import io.github.fletchmckee.liquid.liquefiable
-import io.github.fletchmckee.liquid.rememberLiquidState
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -164,33 +160,20 @@ class MainActivity : ComponentActivity() {
             SpendSenseTheme {
                 val navController = rememberNavController()
                 val hazeState = rememberHazeState()
-                val liquidState = rememberLiquidState()
-                val bottomNavLiquidState = rememberLiquidState()
                 val backgroundTheme by securePreferences.backgroundThemeFlow.collectAsState()
                 val customBackgroundPath by securePreferences.customBackgroundPathFlow.collectAsState()
 
                 CompositionLocalProvider(
                     LocalGlassHazeState provides hazeState,
-                    LocalLiquidState provides liquidState,
                     LocalAppBackgroundTheme provides backgroundTheme,
                     LocalCustomBackgroundPath provides customBackgroundPath
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        Box(
+                        AppBackground(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .liquefiable(liquidState = bottomNavLiquidState)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .liquefiable(liquidState = liquidState)
-                            ) {
-                                AppBackground(
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            }
-                        }
+                                .hazeSource(state = hazeState)
+                        )
 
                         // Sibling 2: Content (Scaffold + NavHost) — NOT inside liquefiable
                         Box(modifier = Modifier.fillMaxSize()) {
@@ -430,11 +413,11 @@ class MainActivity : ComponentActivity() {
                                     )
                                     .glassEffect(
                                         shape = RoundedCornerShape(999.dp),
-                                        containerColor = GlassSurface.copy(alpha = 0.86f),
-                                        borderAlpha = 0.16f,
-                                        sheenAlpha = 0.06f,
-                                        hazeState = hazeState,
-                                        liquidState = bottomNavLiquidState
+                                        containerColor = GlassSurface.copy(alpha = 0.70f),
+                                        borderAlpha = 0.20f,
+                                        sheenAlpha = 0.08f,
+                                        liveBlur = true,
+                                        hazeState = hazeState
                                     )
                                     .padding(horizontal = 8.dp, vertical = 8.dp)
                             ) {

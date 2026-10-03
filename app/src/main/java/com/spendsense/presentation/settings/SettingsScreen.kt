@@ -32,16 +32,12 @@ import com.spendsense.presentation.theme.GlassSurface
 import com.spendsense.presentation.util.GlassAlertDialog
 import com.spendsense.presentation.util.SpendSenseTopBar
 import com.spendsense.presentation.util.glassEffect
-import com.spendsense.presentation.util.LocalLiquidState
-import io.github.fletchmckee.liquid.rememberLiquidState
-import io.github.fletchmckee.liquid.liquefiable
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
-import com.spendsense.presentation.theme.AppBackground
 import com.spendsense.presentation.theme.AppBackgroundOption
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -61,7 +57,6 @@ fun SettingsScreen(
     val context = LocalContext.current
     var showCurrencySelector by remember { mutableStateOf(false) }
     var showBackgroundSelector by remember { mutableStateOf(false) }
-    val settingsLiquidState = rememberLiquidState()
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -128,31 +123,16 @@ fun SettingsScreen(
         }
     }
 
-    CompositionLocalProvider(LocalLiquidState provides settingsLiquidState) {
-        Scaffold(
-            containerColor = Color.Transparent,
-            contentWindowInsets = WindowInsets(0)
-        ) { padding ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = padding.calculateBottomPadding())
-            ) {
-                // Sibling 1: Background captured by settingsLiquidState
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .liquefiable(settingsLiquidState)
-                ) {
-                    AppBackground()
-                }
-
-                // Sibling 2: Content (OUTSIDE liquefiable)
-                Box(
-                    modifier = Modifier.fillMaxSize()
-                ) {
-
-                Column(
+    Scaffold(
+        containerColor = Color.Transparent,
+        contentWindowInsets = WindowInsets(0)
+    ) { padding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = padding.calculateBottomPadding())
+        ) {
+            Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .verticalScroll(rememberScrollState())
@@ -480,9 +460,8 @@ fun SettingsScreen(
                 onNavigationClick = onNavigateBack,
                 navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack
             )
-        } // Sibling 2 Box
-    } // outer Box
-} // Scaffold
+        }
+    }
 
     if (showCurrencySelector) {
         GlassAlertDialog(
@@ -1057,7 +1036,6 @@ fun SettingsScreen(
             }
         )
     }
-}
 }
 
 @Composable

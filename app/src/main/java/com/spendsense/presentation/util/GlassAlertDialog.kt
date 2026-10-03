@@ -59,7 +59,8 @@ fun GlassAlertDialog(
                 .glassEffect(
                     shape = shape,
                     containerColor = containerColor,
-                    borderAlpha = borderAlpha
+                    borderAlpha = borderAlpha,
+                    liveBlur = true
                 )
                 .padding(24.dp)
         ) {

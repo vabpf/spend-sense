@@ -19,7 +19,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.spendsense.presentation.theme.AppBackground
 import com.spendsense.presentation.theme.GlassSurface
 import com.spendsense.data.local.Currencies
 import com.spendsense.presentation.util.GlassAlertDialog
@@ -27,9 +26,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Brush
-import com.spendsense.presentation.util.LocalLiquidState
-import io.github.fletchmckee.liquid.rememberLiquidState
-import io.github.fletchmckee.liquid.liquefiable
 import com.spendsense.presentation.util.SpendSenseTopBar
 import com.spendsense.presentation.util.glassEffect
 import androidx.compose.foundation.clickable
@@ -78,32 +74,16 @@ fun RegexGeneratorScreen(
         }
     }
 
-    val regexLiquidState = rememberLiquidState()
-
-    CompositionLocalProvider(LocalLiquidState provides regexLiquidState) {
-        Scaffold(
-            containerColor = Color.Transparent,
-            contentWindowInsets = WindowInsets(0)
-        ) { padding ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = padding.calculateBottomPadding())
-            ) {
-                // Sibling 1: Background captured by regexLiquidState
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .liquefiable(regexLiquidState)
-                ) {
-                    AppBackground()
-                }
-
-                // Sibling 2: Content (OUTSIDE liquefiable)
-                Box(
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    Column(
+    Scaffold(
+        containerColor = Color.Transparent,
+        contentWindowInsets = WindowInsets(0)
+    ) { padding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = padding.calculateBottomPadding())
+        ) {
+            Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState())
@@ -839,9 +819,8 @@ fun RegexGeneratorScreen(
                 onNavigationClick = onNavigateBack,
                 navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack
             )
-        } // Sibling 2 Box
-    } // outer Box
-} // Scaffold close
+        }
+    }
 
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState(
@@ -948,7 +927,6 @@ fun RegexGeneratorScreen(
             }
         )
     }
-}
 }
 
 @Composable

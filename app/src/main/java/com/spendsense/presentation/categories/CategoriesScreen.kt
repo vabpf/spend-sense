@@ -39,10 +39,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Brush
-import com.spendsense.presentation.util.LocalLiquidState
-import io.github.fletchmckee.liquid.rememberLiquidState
-import io.github.fletchmckee.liquid.liquefiable
-import com.spendsense.presentation.theme.AppBackground
 import com.spendsense.presentation.util.SpendSenseTopBar
 import com.spendsense.presentation.util.glassEffect
 
@@ -53,58 +49,42 @@ fun CategoriesScreen(
     viewModel: CategoriesViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
-    val categoriesLiquidState = rememberLiquidState()
- 
-    CompositionLocalProvider(LocalLiquidState provides categoriesLiquidState) {
-        Scaffold(
-            containerColor = Color.Transparent,
-            contentWindowInsets = WindowInsets(0),
-            floatingActionButton = {
-                Box(
-                    modifier = Modifier
-                        .offset(y = (-24).dp)
-                        .size(56.dp)
-                        .glassEffect(
-                            shape = FloatingActionButtonDefaults.shape,
-                            containerColor = GlassSurface.copy(alpha = 0.15f),
-                            borderAlpha = 0.25f
-                        )
-                        .border(
-                            width = 1.dp,
-                            color = CyberBlue,
-                            shape = FloatingActionButtonDefaults.shape
-                        )
-                        .clickable { viewModel.showAddEditDialog(null) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Rounded.Add,
-                        contentDescription = "Add Category",
-                        tint = CyberBlue,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-        ) { padding ->
+    Scaffold(
+        containerColor = Color.Transparent,
+        contentWindowInsets = WindowInsets(0),
+        floatingActionButton = {
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(bottom = padding.calculateBottomPadding())
+                    .offset(y = (-24).dp)
+                    .size(56.dp)
+                    .glassEffect(
+                        shape = FloatingActionButtonDefaults.shape,
+                        containerColor = GlassSurface.copy(alpha = 0.15f),
+                        borderAlpha = 0.25f
+                    )
+                    .border(
+                        width = 1.dp,
+                        color = CyberBlue,
+                        shape = FloatingActionButtonDefaults.shape
+                    )
+                    .clickable { viewModel.showAddEditDialog(null) },
+                contentAlignment = Alignment.Center
             ) {
-                // Sibling 1: Background captured by categoriesLiquidState
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .liquefiable(categoriesLiquidState)
-                ) {
-                    AppBackground()
-                }
-
-                // Sibling 2: Content (OUTSIDE liquefiable)
-                Box(
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    LazyColumn(
+                Icon(
+                    Icons.Rounded.Add,
+                    contentDescription = "Add Category",
+                    tint = CyberBlue,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+    ) { padding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = padding.calculateBottomPadding())
+        ) {
+            LazyColumn(
                         modifier = Modifier
                             .fillMaxSize(),
                         contentPadding = PaddingValues(
@@ -148,7 +128,6 @@ fun CategoriesScreen(
                     )
                 }
             }
-        }
 
         if (state.isAddingOrEditing) {
             AddEditCategoryDialog(
@@ -158,7 +137,6 @@ fun CategoriesScreen(
             )
         }
     }
-}
 
 @Composable
 fun CategoryItem(

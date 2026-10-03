@@ -20,14 +20,10 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.spendsense.presentation.theme.AppBackground
 import com.spendsense.presentation.theme.GlassSurface
 import com.spendsense.presentation.util.GlassAlertDialog
-import com.spendsense.presentation.util.LocalLiquidState
 import com.spendsense.presentation.util.SpendSenseTopBar
 import com.spendsense.presentation.util.glassEffect
-import io.github.fletchmckee.liquid.rememberLiquidState
-import io.github.fletchmckee.liquid.liquefiable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,9 +38,6 @@ fun ProviderDetailScreen(
         viewModel.load(accountId)
     }
 
-    val detailLiquidState = rememberLiquidState()
-
-    CompositionLocalProvider(LocalLiquidState provides detailLiquidState) {
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
@@ -60,16 +53,6 @@ fun ProviderDetailScreen(
                     .fillMaxSize()
                     .padding(top = padding.calculateTopPadding())
             ) {
-                // Sibling 1: Background captured by detailLiquidState
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .liquefiable(detailLiquidState)
-                ) {
-                    AppBackground()
-                }
-
-                // Sibling 2: Content (OUTSIDE liquefiable)
                 Column(
                     modifier = Modifier.fillMaxSize()
                 ) {
@@ -247,7 +230,6 @@ fun ProviderDetailScreen(
             }
         )
     }
-}
 }
 
 @Composable

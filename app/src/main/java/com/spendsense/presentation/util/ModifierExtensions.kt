@@ -6,12 +6,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import android.os.Build
 import com.spendsense.presentation.theme.BorderSubtle
 import com.spendsense.presentation.theme.BorderMedium
 import com.spendsense.presentation.theme.CyberBlue
@@ -19,8 +19,6 @@ import com.spendsense.presentation.theme.GlassSurface
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.materials.HazeMaterials
-import io.github.fletchmckee.liquid.LiquidState
-import io.github.fletchmckee.liquid.liquid
 import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.clickable
@@ -35,7 +33,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 
 val LocalGlassHazeState = compositionLocalOf<HazeState?> { null }
-val LocalLiquidState = compositionLocalOf<LiquidState?> { null }
+@Deprecated("Liquid refraction is deprecated in favor of Haze Frosted Glass", ReplaceWith("LocalGlassHazeState"))
+val LocalLiquidState = compositionLocalOf<Any?> { null }
 
 /**
  * Design tokens for the Liquid Glass effect.
@@ -54,62 +53,51 @@ object LiquidTokens {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Applies a premium glassmorphism effect with:
- * - Frosted glass translucency (semi-transparent background)
+ * Applies a premium frosted glass effect with:
+ * - Frosted glass translucency via Haze
  * - Gradient sheen for depth
- * - Prism edge - subtle rainbow color bleeding on edges (chromatic aberration)
+ * - Prism edge - subtle rainbow color bleeding on edges
  * - High corner radius support
- * - REAL LIQUID GLASS sampling on API 33+ (via Liquid library)
- *
- * @see [Liquid Glass Guide](docs/liquid-glass.md)
- *
- * This creates the "frosted glass" look where elements appear as 
- * semi-transparent layers over the background with subtle rainbow highlights.
  */
 @Composable
 fun Modifier.glassEffect(
     shape: Shape,
-    containerColor: Color = GlassSurface.copy(alpha = 0.75f),
+    containerColor: Color = GlassSurface.copy(alpha = 0.65f),
     borderWidth: Dp = 1.dp,
-    borderAlpha: Float = 0.15f,
+    borderAlpha: Float = 0.20f,
     sheenAlpha: Float = 0.08f,
     prismAlpha: Float = 0.04f,
+    liveBlur: Boolean = false,
     hazeState: HazeState? = LocalGlassHazeState.current,
-    liquidState: LiquidState? = LocalLiquidState.current,
+    liquidState: Any? = null,
     contentModifier: Modifier = Modifier
 ): Modifier {
     var modifier: Modifier = this
-
-    // Apply Liquid effect on API 33+ if state is provided
-    // IMPORTANT: liquid() should be applied early in the chain
-    // Parameters from docs/design.md §"Liquid Glass (API 33+)" and docs/liquid-glass.md §3
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && liquidState != null) {
-        modifier = modifier
-            .liquid(
-                liquidState = liquidState
-            ) {
-                frost = LiquidTokens.frost
-                edge = LiquidTokens.edge
-                tint = LiquidTokens.tint
-                curve = LiquidTokens.curve
-                this.shape = shape
-            }
-    } else if (hazeState != null) {
-        // Fallback to Haze for older versions or if Liquid is not set up
+    if (liveBlur && hazeState != null) {
         modifier = modifier.hazeEffect(
             state = hazeState,
             style = HazeMaterials.thin()
         )
     }
-
-    // Clip must be AFTER liquid to ensure proper rendering
     modifier = modifier.clip(shape)
-
-    val hasShader = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && liquidState != null) || hazeState != null
-    val glassAlpha = if (hasShader) containerColor.alpha.coerceAtMost(0.35f) else containerColor.alpha
+    val effectiveColor = if (liveBlur && hazeState != null) {
+        containerColor.copy(alpha = containerColor.alpha.coerceAtMost(0.35f))
+    } else {
+        containerColor
+    }
     return modifier
-        .background(
-            color = containerColor.copy(alpha = glassAlpha)
+        .background(color = effectiveColor)
+        .then(
+            if (sheenAlpha > 0f) {
+                Modifier.drawBehind {
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            0f to Color.White.copy(alpha = sheenAlpha),
+                            0.5f to Color.Transparent
+                        )
+                    )
+                }
+            } else Modifier
         )
         .then(contentModifier)
         .border(
