@@ -35,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -198,7 +199,7 @@ internal fun MonthlyPaymentSourceStackedBar(
             listOf(0.25f, 0.5f, 0.75f, 1f).forEach { fraction ->
                 val y = baseY - availH * fraction
                 drawLine(
-                    color = Color.White.copy(alpha = 0.05f),
+                    color = Color(0xFFF1F5F9),
                     start = Offset(chartStartX, y),
                     end = Offset(w, y),
                     strokeWidth = 1f
@@ -215,7 +216,7 @@ internal fun MonthlyPaymentSourceStackedBar(
                         style = TextStyle(
                             fontSize = 8.5.sp,
                             fontWeight = FontWeight.Medium,
-                            color = TextSecondary.copy(alpha = 0.65f)
+                            color = Color(0xFF94A3B8)
                         )
                     )
                     drawText(
@@ -229,72 +230,17 @@ internal fun MonthlyPaymentSourceStackedBar(
             }
 
             if (chartMode == SpendingChartMode.BAR) {
-                // Glowing Column Backdrop behind selected month
+                // Soft Column Backdrop behind selected month
                 if (selectedIndex != -1) {
                     val selX = chartStartX + gap + selectedIndex * (barWidth + gap)
                     val colLeft = selX - gap * 0.35f
                     val colWidth = barWidth + gap * 0.7f
 
-                    // Layer 1: Ambient outer vertical glow bloom
                     drawRoundRect(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                CyberBlue.copy(alpha = 0.20f),
-                                CyberBlue.copy(alpha = 0.08f),
-                                Color.Transparent
-                            ),
-                            startY = 0f,
-                            endY = h
-                        ),
-                        topLeft = Offset(colLeft - 3.dp.toPx(), 0f),
-                        size = Size(colWidth + 6.dp.toPx(), h),
-                        cornerRadius = CornerRadius(colCornerPx + 3.dp.toPx(), colCornerPx + 3.dp.toPx())
-                    )
-
-                    // Layer 2: Main vertical neon light-beam pillar
-                    drawRoundRect(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                CyberBlue.copy(alpha = 0.25f),
-                                CyberBlue.copy(alpha = 0.12f),
-                                CyberBlue.copy(alpha = 0.03f)
-                            ),
-                            startY = 0f,
-                            endY = h
-                        ),
+                        color = Color(0xFFF0F9FF),
                         topLeft = Offset(colLeft, 0f),
                         size = Size(colWidth, h),
-                        cornerRadius = CornerRadius(colCornerPx, colCornerPx)
-                    )
-
-                    // Layer 3: Diffused outer border aura
-                    drawRoundRect(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                CyberBlue.copy(alpha = 0.40f),
-                                CyberBlue.copy(alpha = 0.18f),
-                                Color.Transparent
-                            )
-                        ),
-                        topLeft = Offset(colLeft, 0f),
-                        size = Size(colWidth, h),
-                        cornerRadius = CornerRadius(colCornerPx, colCornerPx),
-                        style = Stroke(width = colBorderPx * 2.5f)
-                    )
-
-                    // Layer 4: Sharp neon inner border
-                    drawRoundRect(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(
-                                CyberBlueLight.copy(alpha = 0.85f),
-                                CyberBlue.copy(alpha = 0.45f),
-                                CyberBlue.copy(alpha = 0.12f)
-                            )
-                        ),
-                        topLeft = Offset(colLeft, 0f),
-                        size = Size(colWidth, h),
-                        cornerRadius = CornerRadius(colCornerPx, colCornerPx),
-                        style = Stroke(width = colBorderPx)
+                        cornerRadius = CornerRadius(colCornerPx + 4.dp.toPx(), colCornerPx + 4.dp.toPx())
                     )
                 }
 
@@ -610,31 +556,14 @@ internal fun MonthlyPaymentSourceStackedBar(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier
                                 .clip(CircleShape)
-                                .background(
-                                    Brush.verticalGradient(
-                                        listOf(
-                                            CyberBlue.copy(alpha = 0.30f),
-                                            CyberBlue.copy(alpha = 0.14f)
-                                        )
-                                    )
-                                )
-                                .border(
-                                    width = 1.dp,
-                                    brush = Brush.verticalGradient(
-                                        listOf(
-                                            CyberBlueLight.copy(alpha = 0.85f),
-                                            CyberBlue.copy(alpha = 0.35f)
-                                        )
-                                    ),
-                                    shape = CircleShape
-                                )
-                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                                .background(CyberBlue)
+                                .padding(horizontal = 10.dp, vertical = 4.dp)
                         ) {
                             Text(
                                 text = month.monthLabel,
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = CyberBlueLight,
+                                color = Color.White,
                                 maxLines = 1
                             )
                         }
@@ -642,8 +571,8 @@ internal fun MonthlyPaymentSourceStackedBar(
                         Text(
                             text = month.monthLabel,
                             style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Normal,
-                            color = TextSecondary,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF64748B),
                             textAlign = TextAlign.Center,
                             maxLines = 1
                         )
@@ -685,15 +614,15 @@ internal fun MonthlyPaymentSourceStackedBar(
                     ) {
                         Text(
                             text = "${selectedData.monthLabel} Breakdown",
-                            style = MaterialTheme.typography.labelMedium,
+                            style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = Color(0xFF0F172A)
                         )
                         Text(
                             text = formatAmount(selectedData.total, currency),
-                            style = MaterialTheme.typography.labelMedium,
+                            style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
-                            color = NeonMint
+                            color = CyberBlue
                         )
                     }
 
@@ -706,7 +635,7 @@ internal fun MonthlyPaymentSourceStackedBar(
                         Text(
                             text = "No payment source details for ${selectedData.monthLabel}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary,
+                            color = Color(0xFF64748B),
                             modifier = Modifier.padding(vertical = 4.dp)
                         )
                     }
@@ -738,14 +667,14 @@ internal fun PaymentSourceDetailTable(
                 text = "Source",
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = TextSecondary,
+                color = Color(0xFF64748B),
                 modifier = Modifier.weight(1f)
             )
             Text(
                 text = "Type",
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = TextSecondary,
+                color = Color(0xFF64748B),
                 modifier = Modifier.width(100.dp),
                 textAlign = TextAlign.Start
             )
@@ -753,13 +682,13 @@ internal fun PaymentSourceDetailTable(
                 text = "Amount",
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = TextSecondary,
+                color = Color(0xFF64748B),
                 modifier = Modifier.width(80.dp),
                 textAlign = TextAlign.End
             )
         }
 
-        HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+        HorizontalDivider(color = Color(0xFFE2E8F0))
 
         sources.forEach { source ->
             Row(
@@ -772,7 +701,7 @@ internal fun PaymentSourceDetailTable(
                 Text(
                     text = source.identifier,
                     style = MaterialTheme.typography.bodySmall,
-                    color = paymentSourceTypeColor(source.type),
+                    color = Color(0xFF2563EB),
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -781,7 +710,7 @@ internal fun PaymentSourceDetailTable(
                 Text(
                     text = source.type,
                     style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary,
+                    color = Color(0xFF64748B),
                     modifier = Modifier.width(100.dp),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -789,14 +718,14 @@ internal fun PaymentSourceDetailTable(
                 Text(
                     text = formatAmount(source.amount, currency),
                     style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF0F172A),
                     modifier = Modifier.width(80.dp),
                     textAlign = TextAlign.End
                 )
             }
 
-            HorizontalDivider(color = Color.White.copy(alpha = 0.04f))
+            HorizontalDivider(color = Color(0xFFF1F5F9))
         }
     }
 }
@@ -815,12 +744,16 @@ private fun WalletCard(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .glassEffect(
-                shape = MaterialTheme.shapes.large
+            .shadow(
+                elevation = 2.dp,
+                shape = RoundedCornerShape(24.dp),
+                ambientColor = Color.Black.copy(alpha = 0.04f),
+                spotColor = Color.Black.copy(alpha = 0.08f)
             )
-            .padding(16.dp)
+            .background(Color.White, shape = RoundedCornerShape(24.dp))
+            .padding(18.dp)
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -828,9 +761,9 @@ private fun WalletCard(
             ) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF0F172A)
                 )
                 headerAction?.invoke()
             }
@@ -852,12 +785,7 @@ private fun ChartModeSelector(
     Row(
         modifier = modifier
             .clip(CircleShape)
-            .background(Color.White.copy(alpha = 0.06f))
-            .border(
-                width = 1.dp,
-                color = Color.White.copy(alpha = 0.12f),
-                shape = CircleShape
-            )
+            .background(Color(0xFFF1F5F9))
             .padding(3.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -867,43 +795,21 @@ private fun ChartModeSelector(
             Box(
                 modifier = Modifier
                     .clip(CircleShape)
-                    .background(
-                        if (isSelected) {
-                            Brush.verticalGradient(
-                                listOf(
-                                    CyberBlue.copy(alpha = 0.35f),
-                                    CyberBlue.copy(alpha = 0.18f)
-                                )
-                            )
-                        } else {
-                            Brush.verticalGradient(listOf(Color.Transparent, Color.Transparent))
-                        }
-                    )
-                    .then(
-                        if (isSelected) {
-                            Modifier.border(
-                                width = 1.dp,
-                                color = CyberBlueLight.copy(alpha = 0.60f),
-                                shape = CircleShape
-                            )
-                        } else {
-                            Modifier
-                        }
-                    )
+                    .background(if (isSelected) CyberBlue else Color.Transparent)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
                     ) {
                         onModeSelected(mode)
                     }
-                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                    .padding(horizontal = 14.dp, vertical = 5.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = if (mode == SpendingChartMode.BAR) "Bar" else "Line",
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                    color = if (isSelected) CyberBlueLight else TextSecondary,
+                    color = if (isSelected) Color.White else Color(0xFF64748B),
                     fontSize = 11.sp
                 )
             }

@@ -37,7 +37,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.platform.LocalDensity
+import com.spendsense.presentation.util.fadingEdge
 import com.spendsense.presentation.theme.AppBackgroundOption
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -123,6 +128,12 @@ fun SettingsScreen(
         }
     }
 
+    val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val headerHeight = statusBarPadding + 64.dp
+    val density = LocalDensity.current
+    val headerPx = with(density) { headerHeight.toPx() }
+    val fadePx = with(density) { 32.dp.toPx() }
+
     Scaffold(
         containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0)
@@ -132,305 +143,286 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .padding(bottom = padding.calculateBottomPadding())
         ) {
-            Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
-                        .padding(
-                            start = 16.dp,
-                            end = 16.dp,
-                            top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 88.dp
-                        ),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-            Text(
-                text = "Customize capture, AI, and defaults",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            // Permissions Section
-            Text(
-                text = "Permissions",
-                style = MaterialTheme.typography.titleLarge.copy(fontSize = 14.sp),
-                modifier = Modifier.padding(top = 12.dp)
-            )
-
-            Card(
+            // Background scrim: transparent at top wallpaper, fades into #F8FAFC right below header
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .glassEffect(
-                        shape = MaterialTheme.shapes.large
-                    ),
-                shape = MaterialTheme.shapes.medium,
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.Transparent,
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                )
-            ) {
-                Column {
-                    SettingsItem(
-                        icon = Icons.Rounded.Notifications,
-                        title = "Notification Access",
-                        description = if (isAccessGranted) "Access granted" else "Required to read banking notifications",
-                        descriptionColor = if (isAccessGranted) Color(0xFF81C784) else Color(0xFFE57373),
-                        onClick = {
-                            context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-                        }
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color(0xFFF8FAFC)
+                            ),
+                            startY = headerPx,
+                            endY = headerPx + fadePx
+                        )
                     )
+            )
+
+            // Scrollable settings cards with dissolve effect at transition line
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .fadingEdge(
+                        topFadeStart = headerHeight,
+                        topFadeHeight = 32.dp
+                    ),
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = headerHeight + 12.dp,
+                    bottom = 120.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                // Permissions Section
+                item {
+                    SettingsSectionHeader("Permissions")
                 }
-            }
-
-            // Configuration Section
-            Text(
-                text = "Preferences",
-                style = MaterialTheme.typography.titleLarge.copy(fontSize = 14.sp),
-                modifier = Modifier.padding(top = 12.dp)
-            )
-
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .glassEffect(
-                        shape = MaterialTheme.shapes.large
-                    ),
-                shape = MaterialTheme.shapes.medium,
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.Transparent,
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                )
-            ) {
-                Column {
-                    val selectedCurrency = Currencies.find(state.defaultCurrency)
-                    SettingsItem(
-                        icon = Icons.Rounded.CurrencyExchange,
-                        title = "Default Currency",
-                        description = "${selectedCurrency.symbol} ${selectedCurrency.code} — ${selectedCurrency.name}",
-                        onClick = { showCurrencySelector = true }
-                    )
-
-                    HorizontalDivider()
-
-                    SettingsSwitchItem(
-                        icon = Icons.Rounded.NotificationsActive,
-                        title = "Daily Spent Summary",
-                        description = "Get a daily push notification reporting total spending",
-                        checked = state.isDailyReportEnabled,
-                        onCheckedChange = { enabled ->
-                            viewModel.updateDailyReportEnabled(enabled, context)
-                        }
-                    )
-
-                    if (state.isDailyReportEnabled) {
-                        HorizontalDivider()
-
+                item {
+                    SettingsGroupCard {
                         SettingsItem(
-                            icon = Icons.Rounded.Schedule,
-                            title = "Report Delivery Time",
-                            description = "Scheduled at ${state.dailyReportTime}",
+                            icon = Icons.Rounded.Notifications,
+                            title = "Notification Access",
+                            description = if (isAccessGranted) "Access granted" else "Required to read banking notifications",
+                            iconBadgeBg = Color(0xFFDBEAFE),
+                            iconTint = Color(0xFF2563EB),
+                            descriptionColor = if (isAccessGranted) Color(0xFF16A34A) else Color(0xFFDC2626),
                             onClick = {
-                                val parts = state.dailyReportTime.split(":")
-                                val currentHour = parts.getOrNull(0)?.toIntOrNull() ?: 20
-                                val currentMinute = parts.getOrNull(1)?.toIntOrNull() ?: 0
-
-                                android.app.TimePickerDialog(
-                                    context,
-                                    { _, hourOfDay, minute ->
-                                        val formattedTime = String.format("%02d:%02d", hourOfDay, minute)
-                                        viewModel.updateDailyReportTime(formattedTime, context)
-                                    },
-                                    currentHour,
-                                    currentMinute,
-                                    true
-                                ).show()
+                                context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
                             }
                         )
                     }
                 }
-            }
 
-            // Appearance Section
-            Text(
-                text = "Appearance",
-                style = MaterialTheme.typography.titleLarge.copy(fontSize = 14.sp),
-                modifier = Modifier.padding(top = 12.dp)
-            )
-
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .glassEffect(
-                        shape = MaterialTheme.shapes.large
-                    ),
-                shape = MaterialTheme.shapes.medium,
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.Transparent,
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                )
-            ) {
-                Column {
-                    val currentTheme = AppBackgroundOption.entries.find { it.key == state.backgroundTheme } ?: AppBackgroundOption.CYBERPUNK
-                    SettingsItem(
-                        icon = Icons.Rounded.Wallpaper,
-                        title = "App Background",
-                        description = "${currentTheme.title} — ${currentTheme.description}",
-                        onClick = { showBackgroundSelector = true }
-                    )
+                // Preferences Section
+                item {
+                    SettingsSectionHeader("Preferences")
                 }
-            }
+                item {
+                    SettingsGroupCard {
+                        val selectedCurrency = Currencies.find(state.defaultCurrency)
+                        SettingsItem(
+                            icon = Icons.Rounded.CurrencyExchange,
+                            title = "Default Currency",
+                            description = "${selectedCurrency.symbol} ${selectedCurrency.code} — ${selectedCurrency.name}",
+                            iconBadgeBg = Color(0xFFD1FAE5),
+                            iconTint = Color(0xFF059669),
+                            onClick = { showCurrencySelector = true }
+                        )
 
-            // Configuration Section
-            Text(
-                text = "Configuration",
-                style = MaterialTheme.typography.titleLarge.copy(fontSize = 14.sp),
-                modifier = Modifier.padding(top = 12.dp)
-            )
+                        HorizontalDivider(color = Color(0xFFF1F5F9))
 
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .glassEffect(
-                        shape = MaterialTheme.shapes.large
-                    ),
-                shape = MaterialTheme.shapes.medium,
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.Transparent,
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                )
-            ) {
-                Column {
-                    SettingsItem(
-                        icon = Icons.Rounded.SmartToy,
-                        title = "AI Providers",
-                        description = "Configure AI models and API keys",
-                        onClick = onNavigateToAiProviders
-                    )
+                        SettingsSwitchItem(
+                            icon = Icons.Rounded.NotificationsActive,
+                            title = "Daily Spent Summary",
+                            description = "Get a daily push notification reporting total spending",
+                            checked = state.isDailyReportEnabled,
+                            iconBadgeBg = Color(0xFFEDE9FE),
+                            iconTint = Color(0xFF7C3AED),
+                            onCheckedChange = { enabled ->
+                                viewModel.updateDailyReportEnabled(enabled, context)
+                            }
+                        )
 
-                    HorizontalDivider()
+                        if (state.isDailyReportEnabled) {
+                            HorizontalDivider(color = Color(0xFFF1F5F9))
 
-                    SettingsItem(
-                        icon = Icons.Rounded.AutoAwesome,
-                        title = "Regex Generator",
-                        description = "Create AI-powered regex patterns",
-                        onClick = onNavigateToRegexGenerator
-                    )
+                            SettingsItem(
+                                icon = Icons.Rounded.Schedule,
+                                title = "Report Delivery Time",
+                                description = "Scheduled at ${state.dailyReportTime}",
+                                iconBadgeBg = Color(0xFFFFEDD5),
+                                iconTint = Color(0xFFEA580C),
+                                onClick = {
+                                    val parts = state.dailyReportTime.split(":")
+                                    val currentHour = parts.getOrNull(0)?.toIntOrNull() ?: 20
+                                    val currentMinute = parts.getOrNull(1)?.toIntOrNull() ?: 0
 
-                    HorizontalDivider()
-
-                    SettingsItem(
-                        icon = Icons.Rounded.Pattern,
-                        title = "Notification Patterns",
-                        description = "View and manage (app × title) pattern rules",
-                        onClick = onNavigateToNotificationPatterns
-                    )
-
-                    HorizontalDivider()
-
-                    
-                    SettingsItem(
-                        icon = Icons.Rounded.Apps,
-                        title = "Whitelisted Apps",
-                        description = "Manage apps to monitor",
-                        onClick = onNavigateToWhitelistedApps
-                    )
-                    
-                    HorizontalDivider()
-                    
-                    SettingsItem(
-                        icon = Icons.Rounded.Category,
-                        title = "Categories",
-                        description = "Manage expense categories",
-                        onClick = onNavigateToCategories
-                    )
-                }
-            }
-
-            // Data & Backup Section
-            Text(
-                text = "Data & Backup",
-                style = MaterialTheme.typography.titleLarge.copy(fontSize = 14.sp),
-                modifier = Modifier.padding(top = 12.dp)
-            )
-
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .glassEffect(
-                        shape = MaterialTheme.shapes.large
-                    ),
-                shape = MaterialTheme.shapes.medium,
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.Transparent,
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                )
-            ) {
-                Column {
-                    SettingsItem(
-                        icon = Icons.Rounded.CloudDownload,
-                        title = "Export All Data",
-                        description = "Export transactions, categories, regexes & settings to JSON",
-                        onClick = {
-                            val timestamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault()).format(java.util.Date())
-                            exportLauncher.launch("spendsense_backup_$timestamp.json")
+                                    android.app.TimePickerDialog(
+                                        context,
+                                        { _, hourOfDay, minute ->
+                                            val formattedTime = String.format("%02d:%02d", hourOfDay, minute)
+                                            viewModel.updateDailyReportTime(formattedTime, context)
+                                        },
+                                        currentHour,
+                                        currentMinute,
+                                        true
+                                    ).show()
+                                }
+                            )
                         }
-                    )
+                    }
+                }
 
-                    HorizontalDivider()
+                // Appearance Section
+                item {
+                    SettingsSectionHeader("Appearance")
+                }
+                item {
+                    SettingsGroupCard {
+                        val currentTheme = AppBackgroundOption.entries.find { it.key == state.backgroundTheme } ?: AppBackgroundOption.CYBERPUNK
+                        SettingsItem(
+                            icon = Icons.Rounded.Image,
+                            title = "App Background",
+                            description = "${currentTheme.title} — ${currentTheme.description}",
+                            iconBadgeBg = Color(0xFFFFE4E6),
+                            iconTint = Color(0xFFE11D48),
+                            onClick = { showBackgroundSelector = true }
+                        )
+                    }
+                }
 
-                    SettingsItem(
-                        icon = Icons.Rounded.CloudUpload,
-                        title = "Import All Data",
-                        description = "Restore full app data from a SpendSense backup JSON",
-                        onClick = { importBackupLauncher.launch("*/*") }
-                    )
+                // Configuration Section
+                item {
+                    SettingsSectionHeader("Configuration")
+                }
+                item {
+                    SettingsGroupCard {
+                        SettingsItem(
+                            icon = Icons.Rounded.SmartToy,
+                            title = "AI Providers",
+                            description = "Configure AI models and API keys",
+                            iconBadgeBg = Color(0xFFDBEAFE),
+                            iconTint = Color(0xFF2563EB),
+                            onClick = onNavigateToAiProviders
+                        )
 
-                    HorizontalDivider()
+                        HorizontalDivider(color = Color(0xFFF1F5F9))
 
-                    SettingsItem(
-                        icon = Icons.Rounded.History,
-                        title = "Import Notifications",
-                        description = "Import and process historical CSV/JSON files",
-                        onClick = { filePickerLauncher.launch("*/*") }
-                    )
+                        SettingsItem(
+                            icon = Icons.Rounded.AutoAwesome,
+                            title = "Regex Generator",
+                            description = "Create AI-powered regex patterns",
+                            iconBadgeBg = Color(0xFFF3E8FF),
+                            iconTint = Color(0xFF9333EA),
+                            onClick = onNavigateToRegexGenerator
+                        )
+
+                        HorizontalDivider(color = Color(0xFFF1F5F9))
+
+                        SettingsItem(
+                            icon = Icons.Rounded.Pattern,
+                            title = "Notification Patterns",
+                            description = "View and manage (app × title) pattern rules",
+                            iconBadgeBg = Color(0xFFE0F2FE),
+                            iconTint = Color(0xFF0284C7),
+                            onClick = onNavigateToNotificationPatterns
+                        )
+
+                        HorizontalDivider(color = Color(0xFFF1F5F9))
+
+                        SettingsItem(
+                            icon = Icons.Rounded.Apps,
+                            title = "Whitelisted Apps",
+                            description = "Manage apps to monitor",
+                            iconBadgeBg = Color(0xFFD1FAE5),
+                            iconTint = Color(0xFF059669),
+                            onClick = onNavigateToWhitelistedApps
+                        )
+
+                        HorizontalDivider(color = Color(0xFFF1F5F9))
+
+                        SettingsItem(
+                            icon = Icons.Rounded.Category,
+                            title = "Categories",
+                            description = "Manage expense categories",
+                            iconBadgeBg = Color(0xFFFEF3C7),
+                            iconTint = Color(0xFFD97706),
+                            onClick = onNavigateToCategories
+                        )
+                    }
+                }
+
+                // Data & Backup Section
+                item {
+                    SettingsSectionHeader("Data & Backup")
+                }
+                item {
+                    SettingsGroupCard {
+                        SettingsItem(
+                            icon = Icons.Rounded.CloudDownload,
+                            title = "Export All Data",
+                            description = "Export transactions, categories, regexes & settings to JSON",
+                            iconBadgeBg = Color(0xFFE0F2FE),
+                            iconTint = Color(0xFF0284C7),
+                            onClick = {
+                                val timestamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.getDefault()).format(java.util.Date())
+                                exportLauncher.launch("spendsense_backup_$timestamp.json")
+                            }
+                        )
+
+                        HorizontalDivider(color = Color(0xFFF1F5F9))
+
+                        SettingsItem(
+                            icon = Icons.Rounded.CloudUpload,
+                            title = "Import All Data",
+                            description = "Restore full app data from a SpendSense backup JSON",
+                            iconBadgeBg = Color(0xFFF1F5F9),
+                            iconTint = Color(0xFF475569),
+                            onClick = { importBackupLauncher.launch("*/*") }
+                        )
+
+                        HorizontalDivider(color = Color(0xFFF1F5F9))
+
+                        SettingsItem(
+                            icon = Icons.Rounded.History,
+                            title = "Import Notifications",
+                            description = "Import and process historical CSV/JSON files",
+                            iconBadgeBg = Color(0xFFEDE9FE),
+                            iconTint = Color(0xFF7C3AED),
+                            onClick = { filePickerLauncher.launch("*/*") }
+                        )
+                    }
+                }
+
+                // About Section
+                item {
+                    SettingsSectionHeader("About")
+                }
+                item {
+                    SettingsGroupCard {
+                        SettingsItem(
+                            icon = Icons.Rounded.Info,
+                            title = "Version",
+                            description = "1.1.0",
+                            iconBadgeBg = Color(0xFFF1F5F9),
+                            iconTint = Color(0xFF64748B),
+                            onClick = null
+                        )
+                    }
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(80.dp))
                 }
             }
 
-            // About Section
-            Text(
-                text = "About",
-                style = MaterialTheme.typography.titleLarge.copy(fontSize = 14.sp),
-                modifier = Modifier.padding(top = 12.dp)
-            )
-
-            Card(
+            // Pinned Header (Settings title + subtitle, no back button)
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .glassEffect(
-                        shape = MaterialTheme.shapes.large
-                    ),
-                shape = MaterialTheme.shapes.medium,
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.Transparent,
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                )
-            ) {
-                Column {
-                    SettingsItem(
-                        icon = Icons.Rounded.Info,
-                        title = "Version",
-                        description = "1.0.0",
-                        onClick = null
+                    .padding(
+                        top = statusBarPadding + 10.dp,
+                        start = 20.dp,
+                        end = 20.dp,
+                        bottom = 10.dp
                     )
-                }
+                    .align(Alignment.TopStart)
+            ) {
+                Text(
+                    text = "Settings",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "Customize capture, AI, and defaults",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.85f)
+                )
             }
-
-            Spacer(modifier = Modifier.height(120.dp))
-            } // Column
-            SpendSenseTopBar(
-                title = "Settings",
-                onNavigationClick = onNavigateBack,
-                navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack
-            )
         }
     }
 
@@ -1010,11 +1002,45 @@ fun SettingsScreen(
 }
 
 @Composable
+fun SettingsGroupCard(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .shadow(
+                elevation = 2.dp,
+                shape = RoundedCornerShape(20.dp),
+                ambientColor = Color.Black.copy(alpha = 0.04f),
+                spotColor = Color.Black.copy(alpha = 0.08f)
+            )
+            .background(Color.White, shape = RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(20.dp))
+    ) {
+        Column(content = content)
+    }
+}
+
+@Composable
+fun SettingsSectionHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.Bold,
+        color = Color(0xFF475569),
+        modifier = Modifier.padding(start = 4.dp, top = 14.dp, bottom = 6.dp)
+    )
+}
+
+@Composable
 fun SettingsItem(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String,
     description: String,
-    descriptionColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    iconBadgeBg: Color = Color(0xFFDBEAFE),
+    iconTint: Color = Color(0xFF2563EB),
+    descriptionColor: Color = Color(0xFF64748B),
     onClick: (() -> Unit)?
 ) {
     Surface(
@@ -1025,20 +1051,32 @@ fun SettingsItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
-            )
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(iconBadgeBg),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF0F172A)
                 )
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = description,
                     style = MaterialTheme.typography.bodySmall,
@@ -1049,7 +1087,8 @@ fun SettingsItem(
                 Icon(
                     Icons.Rounded.ChevronRight,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = Color(0xFF94A3B8),
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
@@ -1062,6 +1101,8 @@ fun SettingsSwitchItem(
     title: String,
     description: String,
     checked: Boolean,
+    iconBadgeBg: Color = Color(0xFFEDE9FE),
+    iconTint: Color = Color(0xFF7C3AED),
     onCheckedChange: (Boolean) -> Unit
 ) {
     Surface(
@@ -1071,32 +1112,46 @@ fun SettingsSwitchItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
-            )
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(iconBadgeBg),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF0F172A)
                 )
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = description,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = Color(0xFF64748B)
                 )
             }
             Switch(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
                 colors = SwitchDefaults.colors(
-                    checkedThumbColor = MaterialTheme.colorScheme.primary,
-                    checkedTrackColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = Color(0xFF0284C7),
+                    uncheckedThumbColor = Color.White,
+                    uncheckedTrackColor = Color(0xFFCBD5E1)
                 )
             )
         }

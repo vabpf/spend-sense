@@ -34,6 +34,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import kotlin.math.abs
@@ -274,11 +275,16 @@ fun HomeScreen(
         list
     }
 
-    val (weeklySpending, currentDayIndex) = remember(transactions) {
+    var weeklySpending by remember { mutableStateOf<List<Pair<String, Double>>>(emptyList()) }
+    val currentDayIndex = remember {
         val cal = Calendar.getInstance()
         val dayOfWeek = cal.get(Calendar.DAY_OF_WEEK)
-        val currentIdx = if (dayOfWeek == Calendar.SUNDAY) 6 else dayOfWeek - 2
+        if (dayOfWeek == Calendar.SUNDAY) 6 else dayOfWeek - 2
+    }
+    var dayTotals by remember { mutableStateOf<Map<Long, Double>>(emptyMap()) }
 
+    LaunchedEffect(transactions, defaultCurrency) {
+        val cal = Calendar.getInstance()
         cal.firstDayOfWeek = Calendar.MONDAY
         cal.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
         cal.set(Calendar.HOUR_OF_DAY, 0)
@@ -294,22 +300,36 @@ fun HomeScreen(
             cal.add(Calendar.DAY_OF_MONTH, 1)
             val endOfDay = cal.timeInMillis - 1
 
-            val sum = transactions
-                .filter { it.timestamp in startOfDay..endOfDay }
-                .sumOf { viewModel.convertAmount(it.amount, it.currencyCode, it.timestamp) }
+            val dayTxns = transactions.filter { it.timestamp in startOfDay..endOfDay }
+            var sum = 0.0
+            for (txn in dayTxns) {
+                sum += viewModel.convertAmount(txn.amount, txn.currencyCode, txn.timestamp)
+            }
             list.add(dayLabels[i] to sum)
         }
-        Pair(list, currentIdx)
+        weeklySpending = list
+
+        val days = transactions.map { normalizeToDay(it.timestamp) }.distinct()
+        val totals = mutableMapOf<Long, Double>()
+        for (day in days) {
+            val dayTxns = transactions.filter { normalizeToDay(it.timestamp) == day }
+            var sum = 0.0
+            for (txn in dayTxns) {
+                sum += viewModel.convertAmount(txn.amount, txn.currencyCode, txn.timestamp)
+            }
+            totals[day] = sum
+        }
+        dayTotals = totals
     }
 
-    val listItems = remember(filteredTransactions, filterState.sortOrder) {
+    val listItems = remember(filteredTransactions, filterState.sortOrder, dayTotals) {
         when (filterState.sortOrder) {
             SortOrder.NEWEST_FIRST -> {
                 filteredTransactions.groupBy { normalizeToDay(it.timestamp) }
                     .mapValues { (_, txns) -> txns.sortedByDescending { it.timestamp } }
                     .toSortedMap(compareByDescending { it })
                     .flatMap { (date, txns) ->
-                        val dayTotal = txns.sumOf { viewModel.convertAmount(it.amount, it.currencyCode, it.timestamp) }
+                        val dayTotal = dayTotals[date] ?: 0.0
                         listOf(TransactionListItem.Header(date, dayTotal)) + txns.map { TransactionListItem.Item(it) }
                     }
             }
@@ -318,7 +338,7 @@ fun HomeScreen(
                     .mapValues { (_, txns) -> txns.sortedBy { it.timestamp } }
                     .toSortedMap(compareBy { it })
                     .flatMap { (date, txns) ->
-                        val dayTotal = txns.sumOf { viewModel.convertAmount(it.amount, it.currencyCode, it.timestamp) }
+                        val dayTotal = dayTotals[date] ?: 0.0
                         listOf(TransactionListItem.Header(date, dayTotal)) + txns.map { TransactionListItem.Item(it) }
                     }
             }

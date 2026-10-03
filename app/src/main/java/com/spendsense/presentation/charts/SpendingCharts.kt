@@ -5,7 +5,9 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -316,6 +318,8 @@ fun CategoryDonutChart(
     monthLabel: String? = null
 ) {
     val title = if (monthLabel.isNullOrBlank()) "Spending by Category" else "Spending by Category ($monthLabel)"
+    val totalAmount = slices.sumOf { it.amount }
+
     ChartCard(title = title, modifier = modifier) {
         if (slices.isEmpty()) {
             EmptyChart(if (monthLabel.isNullOrBlank()) "No transactions this month" else "No transactions in $monthLabel")
@@ -335,25 +339,25 @@ fun CategoryDonutChart(
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Box(
-                modifier = Modifier.size(112.dp),
+                modifier = Modifier.size(118.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Canvas(
-                    modifier = Modifier.size(112.dp)
+                    modifier = Modifier.size(118.dp)
                 ) {
-                    val stroke = size.minDimension * 0.18f
+                    val stroke = size.minDimension * 0.17f
                     val inset = stroke / 2f
                     val arcSize = Size(size.width - stroke, size.height - stroke)
-                    val arcOffset = Offset(inset / 2f, inset / 2f)
+                    val arcOffset = Offset(inset, inset)
                     var startAngle = -90f
-                    val gap = 2f
+                    val gap = 2.5f
 
                     slices.forEach { slice ->
                         val sweepAngle = (slice.fraction * 360f - gap) * progress
                         val segColor = parseColor(slice.category.colorHex)
 
                         drawArc(
-                            color = segColor.copy(alpha = 0.85f),
+                            color = segColor,
                             startAngle = startAngle,
                             sweepAngle = sweepAngle.coerceAtLeast(0f),
                             useCenter = false,
@@ -361,7 +365,7 @@ fun CategoryDonutChart(
                             size = arcSize,
                             style = Stroke(
                                 width = stroke,
-                                cap = StrokeCap.Butt
+                                cap = StrokeCap.Round
                             )
                         )
 
@@ -370,22 +374,42 @@ fun CategoryDonutChart(
 
                     if (progress < 1f) {
                         drawArc(
-                            color = Color.White.copy(alpha = 0.05f),
+                            color = Color(0xFFF1F5F9),
                             startAngle = 0f,
                             sweepAngle = 360f,
                             useCenter = false,
                             topLeft = arcOffset,
                             size = arcSize,
-                            style = Stroke(width = stroke, cap = StrokeCap.Butt)
+                            style = Stroke(width = stroke, cap = StrokeCap.Round)
                         )
                     }
+                }
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = formatAmount(totalAmount, currency),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF0F172A),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "Total",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF64748B)
+                    )
                 }
             }
 
             // Legend Table: Category Name, Money Spent, Percentage
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 slices.forEach { slice ->
                     val catColor = parseColor(slice.category.colorHex)
@@ -399,8 +423,9 @@ fun CategoryDonutChart(
                         Spacer(Modifier.width(6.dp))
                         Text(
                             text = slice.category.name,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurface,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF1E293B),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f)
@@ -408,14 +433,14 @@ fun CategoryDonutChart(
                         Spacer(Modifier.width(8.dp))
                         Text(
                             text = formatAmount(slice.amount, currency),
-                            style = MaterialTheme.typography.labelSmall,
+                            style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = Color(0xFF0F172A)
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
                             text = "${(slice.fraction * 100).toInt()}%",
-                            style = MaterialTheme.typography.labelSmall,
+                            style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Bold,
                             color = catColor,
                             modifier = Modifier.width(36.dp),
@@ -728,17 +753,21 @@ private fun ChartCard(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .glassEffect(
-                shape = MaterialTheme.shapes.large
+            .shadow(
+                elevation = 2.dp,
+                shape = RoundedCornerShape(24.dp),
+                ambientColor = Color.Black.copy(alpha = 0.04f),
+                spotColor = Color.Black.copy(alpha = 0.08f)
             )
-            .padding(16.dp)
+            .background(Color.White, shape = RoundedCornerShape(24.dp))
+            .padding(18.dp)
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF0F172A)
             )
             content()
         }

@@ -348,20 +348,24 @@ fun Modifier.combinedBounceClickable(
 
 /**
  * Smoothly dissolves/fades content edges (top and/or bottom) using GPU-accelerated alpha blend masks.
+ * [topFadeStart] allows keeping an area transparent before starting the fade into content (e.g. pinned headers).
  */
 fun Modifier.fadingEdge(
     topFadeHeight: Dp = 0.dp,
-    bottomFadeHeight: Dp = 0.dp
+    bottomFadeHeight: Dp = 0.dp,
+    topFadeStart: Dp = 0.dp
 ): Modifier = this
     .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
     .drawWithContent {
         drawContent()
-        val topFadePx = topFadeHeight.toPx()
-        if (topFadePx > 0f) {
+        val startPx = topFadeStart.toPx()
+        val fadePx = topFadeHeight.toPx()
+        if (fadePx > 0f) {
             drawRect(
                 brush = Brush.verticalGradient(
                     0f to Color.Transparent,
-                    topFadePx to Color.Black
+                    startPx to Color.Transparent,
+                    (startPx + fadePx) to Color.Black
                 ),
                 blendMode = BlendMode.DstIn
             )
