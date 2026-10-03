@@ -41,6 +41,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
+import com.spendsense.presentation.theme.AppBackground
 import com.spendsense.presentation.theme.AppBackgroundOption
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -127,18 +128,29 @@ fun SettingsScreen(
         }
     }
 
-    Scaffold(
-        containerColor = Color.Transparent,
-        contentWindowInsets = WindowInsets(0)
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(bottom = padding.calculateBottomPadding())
-        ) {
+    CompositionLocalProvider(LocalLiquidState provides settingsLiquidState) {
+        Scaffold(
+            containerColor = Color.Transparent,
+            contentWindowInsets = WindowInsets(0)
+        ) { padding ->
             Box(
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = padding.calculateBottomPadding())
             ) {
+                // Sibling 1: Background captured by settingsLiquidState
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .liquefiable(settingsLiquidState)
+                ) {
+                    AppBackground()
+                }
+
+                // Sibling 2: Content (OUTSIDE liquefiable)
+                Box(
+                    modifier = Modifier.fillMaxSize()
+                ) {
 
                 Column(
                     modifier = Modifier
@@ -445,9 +457,8 @@ fun SettingsScreen(
             }
 
             Spacer(modifier = Modifier.height(120.dp))
-            } // inner Column
-            } // inner liquefiable Box
-
+            } // Column
+ 
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -464,15 +475,15 @@ fun SettingsScreen(
                     .align(Alignment.TopCenter)
             )
 
-            CompositionLocalProvider(LocalLiquidState provides settingsLiquidState) {
-                SpendSenseTopBar(
-                    title = "Settings",
-                    onNavigationClick = onNavigateBack,
-                    navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack
-                )
-            }
-        } // outer Box
-    }
+            SpendSenseTopBar(
+                title = "Settings",
+                onNavigationClick = onNavigateBack,
+                navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack
+            )
+        } // Sibling 2 Box
+    } // outer Box
+} // Scaffold
+} // CompositionLocalProvider
 
     if (showCurrencySelector) {
         GlassAlertDialog(

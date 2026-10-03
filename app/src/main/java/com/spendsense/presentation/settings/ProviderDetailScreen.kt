@@ -20,10 +20,14 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.spendsense.presentation.theme.AppBackground
 import com.spendsense.presentation.theme.GlassSurface
 import com.spendsense.presentation.util.GlassAlertDialog
+import com.spendsense.presentation.util.LocalLiquidState
 import com.spendsense.presentation.util.SpendSenseTopBar
 import com.spendsense.presentation.util.glassEffect
+import io.github.fletchmckee.liquid.rememberLiquidState
+import io.github.fletchmckee.liquid.liquefiable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,21 +42,37 @@ fun ProviderDetailScreen(
         viewModel.load(accountId)
     }
 
-    Scaffold(
-        containerColor = Color.Transparent,
-        topBar = {
-            SpendSenseTopBar(
-                title = state.account?.name ?: "Provider",
-                onNavigationClick = onNavigateBack,
-                navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack
-            )
-        }
+    val detailLiquidState = rememberLiquidState()
+
+    CompositionLocalProvider(LocalLiquidState provides detailLiquidState) {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                SpendSenseTopBar(
+                    title = state.account?.name ?: "Provider",
+                    onNavigationClick = onNavigateBack,
+                    navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack
+                )
+            }
         ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = padding.calculateTopPadding())
-        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = padding.calculateTopPadding())
+            ) {
+                // Sibling 1: Background captured by detailLiquidState
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .liquefiable(detailLiquidState)
+                ) {
+                    AppBackground()
+                }
+
+                // Sibling 2: Content (OUTSIDE liquefiable)
+                Column(
+                    modifier = Modifier.fillMaxSize()
+                ) {
             // Header
             Text(
                 text = "Available Models",
@@ -191,6 +211,7 @@ fun ProviderDetailScreen(
             }
         }
     }
+}
 
     // API Key dialog
     if (state.showKeyDialog) {
@@ -226,6 +247,7 @@ fun ProviderDetailScreen(
             }
         )
     }
+}
 }
 
 @Composable

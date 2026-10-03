@@ -21,8 +21,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import com.spendsense.presentation.theme.AppBackground
+import com.spendsense.presentation.util.LocalLiquidState
+import io.github.fletchmckee.liquid.rememberLiquidState
+import io.github.fletchmckee.liquid.liquefiable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -50,13 +55,25 @@ fun ChartsScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val summary = state.summary
+    val chartsLiquidState = rememberLiquidState()
 
-    Scaffold(containerColor = Color.Transparent) { _ ->
-        Box(modifier = Modifier.fillMaxSize()) {
-            LazyColumn(
-                modifier = modifier
-                    .fillMaxSize()
-                    .padding(start = 16.dp, end = 16.dp),
+    CompositionLocalProvider(LocalLiquidState provides chartsLiquidState) {
+        Scaffold(containerColor = Color.Transparent) { _ ->
+            Box(modifier = Modifier.fillMaxSize()) {
+                // Sibling 1: Background captured by chartsLiquidState
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .liquefiable(chartsLiquidState)
+                ) {
+                    AppBackground()
+                }
+
+                // Sibling 2: Content (OUTSIDE liquefiable)
+                LazyColumn(
+                    modifier = modifier
+                        .fillMaxSize()
+                        .padding(start = 16.dp, end = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 item { Spacer(modifier = Modifier.height(40.dp)) }
@@ -166,6 +183,7 @@ fun ChartsScreen(
             )
         }
     }
+}
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

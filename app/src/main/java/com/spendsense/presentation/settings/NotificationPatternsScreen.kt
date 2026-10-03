@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.spendsense.data.local.Currencies
 import com.spendsense.data.local.entity.NotificationPatternEntity
+import com.spendsense.presentation.theme.AppBackground
 import com.spendsense.presentation.theme.GlassSurface
 import com.spendsense.presentation.theme.CyberBlue
 import com.spendsense.presentation.util.GlassAlertDialog
@@ -70,11 +71,11 @@ fun NotificationPatternsScreen(
 
     val patternsLiquidState = rememberLiquidState()
  
-    Scaffold(
-        containerColor = Color.Transparent,
-        contentWindowInsets = WindowInsets(0),
-        floatingActionButton = {
-            CompositionLocalProvider(LocalLiquidState provides patternsLiquidState) {
+    CompositionLocalProvider(LocalLiquidState provides patternsLiquidState) {
+        Scaffold(
+            containerColor = Color.Transparent,
+            contentWindowInsets = WindowInsets(0),
+            floatingActionButton = {
                 Box(
                     modifier = Modifier
                         .offset(y = (-20).dp)
@@ -100,29 +101,25 @@ fun NotificationPatternsScreen(
                     )
                 }
             }
-        }
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(bottom = padding.calculateBottomPadding())
-        ) {
+        ) { padding ->
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .liquefiable(patternsLiquidState)
+                    .padding(bottom = padding.calculateBottomPadding())
             ) {
-                Image(
-                    painter = painterResource(id = com.spendsense.R.drawable.bg_pexel),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
+                // Sibling 1: Background captured by patternsLiquidState
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.30f))
-                )
+                        .liquefiable(patternsLiquidState)
+                ) {
+                    AppBackground()
+                }
+
+                // Sibling 2: Content (OUTSIDE liquefiable)
+                Box(
+                    modifier = Modifier.fillMaxSize()
+                ) {
  
                 if (patterns.isEmpty()) {
                     Box(
@@ -184,7 +181,6 @@ fun NotificationPatternsScreen(
                         item { Spacer(modifier = Modifier.height(40.dp)) }
                     }
                 }
-            }
  
             Box(
                 modifier = Modifier
@@ -202,15 +198,15 @@ fun NotificationPatternsScreen(
                     .align(Alignment.TopCenter)
             )
  
-            CompositionLocalProvider(LocalLiquidState provides patternsLiquidState) {
-                SpendSenseTopBar(
-                    title = "Notification Patterns",
-                    onNavigationClick = onNavigateBack,
-                    navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack
-                )
-            }
-        }
-    }
+            SpendSenseTopBar(
+                title = "Notification Patterns",
+                onNavigationClick = onNavigateBack,
+                navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack
+            )
+        } // Sibling 2 Box
+    } // outer Box
+} // Scaffold
+} // CompositionLocalProvider
 
     if (showAddDialog) {
         AddPatternDialog(

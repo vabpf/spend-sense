@@ -14,7 +14,11 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import com.spendsense.R
+import androidx.compose.runtime.compositionLocalOf
 import java.io.File
+
+val LocalAppBackgroundTheme = compositionLocalOf { "CYBERPUNK_DEFAULT" }
+val LocalCustomBackgroundPath = compositionLocalOf<String?> { null }
 
 enum class AppBackgroundOption(
     val key: String,
@@ -30,9 +34,9 @@ enum class AppBackgroundOption(
 
 @Composable
 fun AppBackground(
-    themeKey: String,
-    customImagePath: String?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    themeKey: String = LocalAppBackgroundTheme.current,
+    customImagePath: String? = LocalCustomBackgroundPath.current
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         when (themeKey) {

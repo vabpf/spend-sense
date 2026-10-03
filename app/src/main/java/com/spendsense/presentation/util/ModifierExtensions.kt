@@ -74,13 +74,11 @@ fun Modifier.glassEffect(
     borderAlpha: Float = 0.15f,
     sheenAlpha: Float = 0.08f,
     prismAlpha: Float = 0.04f,
-    hazeState: HazeState? = null,
-    liquidState: LiquidState? = null,
+    hazeState: HazeState? = LocalGlassHazeState.current,
+    liquidState: LiquidState? = LocalLiquidState.current,
     contentModifier: Modifier = Modifier
 ): Modifier {
     var modifier: Modifier = this
-
-    val hasShader = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && liquidState != null) || hazeState != null
 
     // Apply Liquid effect on API 33+ if state is provided
     // IMPORTANT: liquid() should be applied early in the chain
@@ -107,16 +105,11 @@ fun Modifier.glassEffect(
     // Clip must be AFTER liquid to ensure proper rendering
     modifier = modifier.clip(shape)
 
-    // Glass effect: if real-time blur shader is applied, cap overlay alpha at 0.35f
-    // so the blur shows through. If no shader is active (fast surface glass), use the full containerColor.
-    val finalColor = if (hasShader) {
-        containerColor.copy(alpha = containerColor.alpha.coerceAtMost(0.35f))
-    } else {
-        containerColor
-    }
+    val hasShader = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && liquidState != null) || hazeState != null
+    val glassAlpha = if (hasShader) containerColor.alpha.coerceAtMost(0.35f) else containerColor.alpha
     return modifier
         .background(
-            color = finalColor
+            color = containerColor.copy(alpha = glassAlpha)
         )
         .then(contentModifier)
         .border(

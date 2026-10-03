@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.Brush
 import com.spendsense.presentation.util.LocalLiquidState
 import io.github.fletchmckee.liquid.rememberLiquidState
 import io.github.fletchmckee.liquid.liquefiable
+import com.spendsense.presentation.theme.AppBackground
 import com.spendsense.presentation.util.SpendSenseTopBar
 import com.spendsense.presentation.util.glassEffect
 
@@ -54,11 +55,11 @@ fun CategoriesScreen(
     val state by viewModel.state.collectAsState()
     val categoriesLiquidState = rememberLiquidState()
  
-    Scaffold(
-        containerColor = Color.Transparent,
-        contentWindowInsets = WindowInsets(0),
-        floatingActionButton = {
-            CompositionLocalProvider(LocalLiquidState provides categoriesLiquidState) {
+    CompositionLocalProvider(LocalLiquidState provides categoriesLiquidState) {
+        Scaffold(
+            containerColor = Color.Transparent,
+            contentWindowInsets = WindowInsets(0),
+            floatingActionButton = {
                 Box(
                     modifier = Modifier
                         .offset(y = (-24).dp)
@@ -84,76 +85,71 @@ fun CategoriesScreen(
                     )
                 }
             }
-        }
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(bottom = padding.calculateBottomPadding())
-        ) {
+        ) { padding ->
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .liquefiable(categoriesLiquidState)
+                    .padding(bottom = padding.calculateBottomPadding())
             ) {
-                Image(
-                    painter = painterResource(id = com.spendsense.R.drawable.bg_pexel),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
+                // Sibling 1: Background captured by categoriesLiquidState
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.30f))
-                )
-
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize(),
-                    contentPadding = PaddingValues(
-                        start = 16.dp, 
-                        end = 16.dp, 
-                        top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 88.dp, 
-                        bottom = 120.dp
-                    ),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                        .liquefiable(categoriesLiquidState)
                 ) {
-                    items(state.categories) { category ->
-                        CategoryItem(
-                            category = category,
-                            onEdit = { viewModel.showAddEditDialog(category) },
-                            onDelete = { viewModel.deleteCategory(category) }
-                        )
+                    AppBackground()
+                }
+
+                // Sibling 2: Content (OUTSIDE liquefiable)
+                Box(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize(),
+                        contentPadding = PaddingValues(
+                            start = 16.dp, 
+                            end = 16.dp, 
+                            top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 88.dp, 
+                            bottom = 120.dp
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(state.categories) { category ->
+                            CategoryItem(
+                                category = category,
+                                onEdit = { viewModel.showAddEditDialog(category) },
+                                onDelete = { viewModel.deleteCategory(category) }
+                            )
+                        }
+                        item { Spacer(modifier = Modifier.height(40.dp)) }
                     }
-                    item { Spacer(modifier = Modifier.height(40.dp)) }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 96.dp)
+                            .background(
+                                Brush.verticalGradient(
+                                    0.0f to MaterialTheme.colorScheme.background,
+                                    0.3f to MaterialTheme.colorScheme.background.copy(alpha = 0.9f),
+                                    0.55f to MaterialTheme.colorScheme.background.copy(alpha = 0.65f),
+                                    0.75f to MaterialTheme.colorScheme.background.copy(alpha = 0.25f),
+                                    1.0f to Color.Transparent
+                                )
+                            )
+                            .align(Alignment.TopCenter)
+                    )
+
+                    SpendSenseTopBar(
+                        title = "Categories",
+                        onNavigationClick = onNavigateBack,
+                        navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack
+                    )
                 }
             }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 96.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            0.0f to MaterialTheme.colorScheme.background,
-                            0.3f to MaterialTheme.colorScheme.background.copy(alpha = 0.9f),
-                            0.55f to MaterialTheme.colorScheme.background.copy(alpha = 0.65f),
-                            0.75f to MaterialTheme.colorScheme.background.copy(alpha = 0.25f),
-                            1.0f to Color.Transparent
-                        )
-                    )
-                    .align(Alignment.TopCenter)
-            )
-
-            CompositionLocalProvider(LocalLiquidState provides categoriesLiquidState) {
-                SpendSenseTopBar(
-                    title = "Categories",
-                    onNavigationClick = onNavigateBack,
-                    navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack
-                )
-            }
         }
+    }
  
         if (state.isAddingOrEditing) {
             AddEditCategoryDialog(

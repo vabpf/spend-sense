@@ -73,6 +73,9 @@ import com.spendsense.presentation.settings.NotificationPatternsScreen
 import com.spendsense.presentation.theme.CyberBlue
 import com.spendsense.presentation.theme.DeepCharcoal
 import com.spendsense.presentation.theme.GlassSurface
+import com.spendsense.presentation.theme.AppBackground
+import com.spendsense.presentation.theme.LocalAppBackgroundTheme
+import com.spendsense.presentation.theme.LocalCustomBackgroundPath
 import com.spendsense.presentation.theme.SpendSenseTheme
 import com.spendsense.R
 import com.spendsense.presentation.theme.NeonRose
@@ -168,7 +171,9 @@ class MainActivity : ComponentActivity() {
 
                 CompositionLocalProvider(
                     LocalGlassHazeState provides hazeState,
-                    LocalLiquidState provides liquidState
+                    LocalLiquidState provides liquidState,
+                    LocalAppBackgroundTheme provides backgroundTheme,
+                    LocalCustomBackgroundPath provides customBackgroundPath
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         Box(
@@ -176,11 +181,15 @@ class MainActivity : ComponentActivity() {
                                 .fillMaxSize()
                                 .liquefiable(liquidState = bottomNavLiquidState)
                         ) {
-                            com.spendsense.presentation.theme.AppBackground(
-                                themeKey = backgroundTheme,
-                                customImagePath = customBackgroundPath,
-                                modifier = Modifier.fillMaxSize()
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .liquefiable(liquidState = liquidState)
+                            ) {
+                                AppBackground(
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
                         }
 
                         // Sibling 2: Content (Scaffold + NavHost) — NOT inside liquefiable

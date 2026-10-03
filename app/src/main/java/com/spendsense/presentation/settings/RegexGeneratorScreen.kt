@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.spendsense.presentation.theme.AppBackground
 import com.spendsense.presentation.theme.GlassSurface
 import com.spendsense.data.local.Currencies
 import com.spendsense.presentation.util.GlassAlertDialog
@@ -79,44 +80,41 @@ fun RegexGeneratorScreen(
 
     val regexLiquidState = rememberLiquidState()
 
-    Scaffold(
-        containerColor = Color.Transparent,
-        contentWindowInsets = WindowInsets(0)
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(bottom = padding.calculateBottomPadding())
-        ) {
+    CompositionLocalProvider(LocalLiquidState provides regexLiquidState) {
+        Scaffold(
+            containerColor = Color.Transparent,
+            contentWindowInsets = WindowInsets(0)
+        ) { padding ->
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .liquefiable(regexLiquidState)
+                    .padding(bottom = padding.calculateBottomPadding())
             ) {
-                Image(
-                    painter = painterResource(id = com.spendsense.R.drawable.bg_pexel),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
+                // Sibling 1: Background captured by regexLiquidState
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.30f))
-                )
-
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(
-                            start = 16.dp,
-                            end = 16.dp,
-                            top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 88.dp,
-                            bottom = 120.dp
-                        ),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        .liquefiable(regexLiquidState)
                 ) {
+                    AppBackground()
+                }
+
+                // Sibling 2: Content (OUTSIDE liquefiable)
+                Box(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(
+                                start = 16.dp,
+                                end = 16.dp,
+                                top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 88.dp,
+                                bottom = 120.dp
+                            ),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
             // Info Card
             Card(
                 modifier = Modifier
@@ -817,9 +815,7 @@ fun RegexGeneratorScreen(
                         }
                     }
                 }
-            }
             } // inner Column
-            } // inner liquefiable Box
 
             Box(
                 modifier = Modifier
@@ -837,15 +833,15 @@ fun RegexGeneratorScreen(
                     .align(Alignment.TopCenter)
             )
 
-            CompositionLocalProvider(LocalLiquidState provides regexLiquidState) {
-                SpendSenseTopBar(
-                    title = "AI Regex Generator",
-                    onNavigationClick = onNavigateBack,
-                    navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack
-                )
-            }
-        } // outer Box
-    } // Scaffold close
+            SpendSenseTopBar(
+                title = "AI Regex Generator",
+                onNavigationClick = onNavigateBack,
+                navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack
+            )
+        } // Sibling 2 Box
+    } // outer Box
+} // Scaffold close
+} // CompositionLocalProvider
 
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState(

@@ -19,11 +19,15 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.spendsense.presentation.theme.AppBackground
 import com.spendsense.presentation.theme.GlassSurface
+import com.spendsense.presentation.util.LocalLiquidState
 import com.spendsense.presentation.util.SpendSenseTopBar
 import com.spendsense.presentation.util.glassEffect
 import com.spendsense.presentation.util.shimmer
 import com.spendsense.domain.repository.AppItem
+import io.github.fletchmckee.liquid.rememberLiquidState
+import io.github.fletchmckee.liquid.liquefiable
 
 @Composable
 private fun rememberDrawablePainter(drawable: Drawable): Painter {
@@ -39,6 +43,7 @@ fun WhitelistedAppsScreen(
     viewModel: WhitelistedAppsViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
+    val appsLiquidState = rememberLiquidState()
     val suggestedPackageNames = remember(state.suggestedApps) {
         state.suggestedApps.map { it.packageName }.toSet()
     }
@@ -46,22 +51,36 @@ fun WhitelistedAppsScreen(
         state.filteredApps.filterNot { it.packageName in suggestedPackageNames }
     }
 
-    Scaffold(
-        containerColor = Color.Transparent,
-        contentColor = MaterialTheme.colorScheme.onBackground,
-        topBar = {
-            SpendSenseTopBar(
-                title = "Whitelisted Apps",
-                onNavigationClick = onNavigateBack,
-                navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack
-            )
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = padding.calculateTopPadding())
-        ) {
+    CompositionLocalProvider(LocalLiquidState provides appsLiquidState) {
+        Scaffold(
+            containerColor = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onBackground,
+            topBar = {
+                SpendSenseTopBar(
+                    title = "Whitelisted Apps",
+                    onNavigationClick = onNavigateBack,
+                    navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack
+                )
+            }
+        ) { padding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = padding.calculateTopPadding())
+            ) {
+                // Sibling 1: Background captured by appsLiquidState
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .liquefiable(appsLiquidState)
+                ) {
+                    AppBackground()
+                }
+
+                // Sibling 2: Content (OUTSIDE liquefiable)
+                Column(
+                    modifier = Modifier.fillMaxSize()
+                ) {
             if (state.isLoading) {
                 Column(
                     modifier = Modifier
@@ -152,6 +171,7 @@ fun WhitelistedAppsScreen(
             }
         }
     }
+}
 }
 
 @Composable

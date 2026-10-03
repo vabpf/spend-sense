@@ -68,6 +68,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.border
 import androidx.compose.ui.layout.onGloballyPositioned
+import com.spendsense.presentation.theme.AppBackground
 import com.spendsense.presentation.theme.CyberBlue
 import com.spendsense.presentation.theme.NeonRose
 import com.spendsense.presentation.util.LocalLiquidState
@@ -308,11 +309,11 @@ fun HomeScreen(
         list
     }
 
-    Scaffold(
-        containerColor = Color.Transparent,
-        contentWindowInsets = WindowInsets(0),
-        floatingActionButton = {
-            CompositionLocalProvider(LocalLiquidState provides homeLiquidState) {
+    CompositionLocalProvider(LocalLiquidState provides homeLiquidState) {
+        Scaffold(
+            containerColor = Color.Transparent,
+            contentWindowInsets = WindowInsets(0),
+            floatingActionButton = {
                 Box(
                     modifier = Modifier
                         .offset(y = (-112).dp)
@@ -339,16 +340,25 @@ fun HomeScreen(
                     )
                 }
             }
-        }
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(bottom = padding.calculateBottomPadding())
-        ) {
+        ) { padding ->
             Box(
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = padding.calculateBottomPadding())
             ) {
+                // Sibling 1: Background captured by homeLiquidState
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .liquefiable(homeLiquidState)
+                ) {
+                    AppBackground()
+                }
+
+                // Sibling 2: Content (OUTSIDE liquefiable)
+                Box(
+                    modifier = Modifier.fillMaxSize()
+                ) {
 
                 if (filteredTransactions.isEmpty()) {
                     Box(
@@ -549,10 +559,9 @@ fun HomeScreen(
                 }
             }
 
-            CompositionLocalProvider(LocalLiquidState provides homeLiquidState) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
                         .align(Alignment.TopCenter)
                         .padding(top = statusBarPadding + 16.dp)
                         .onGloballyPositioned { coordinates ->
@@ -851,6 +860,7 @@ fun HomeScreen(
             }
         }
     }
+}
 
     editingTransaction?.let { transaction ->
         EditTransactionDialog(
