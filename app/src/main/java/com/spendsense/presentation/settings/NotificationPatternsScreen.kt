@@ -32,15 +32,13 @@ import androidx.compose.ui.graphics.Brush
 import com.spendsense.presentation.util.SpendSenseTopBar
 import com.spendsense.presentation.util.glassEffect
 import androidx.compose.foundation.BorderStroke
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.spendsense.presentation.util.fadingEdge
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationPatternsScreen(
     viewModel: NotificationPatternsViewModel = hiltViewModel(),

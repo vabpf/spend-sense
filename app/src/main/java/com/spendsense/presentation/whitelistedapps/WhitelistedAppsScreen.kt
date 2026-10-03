@@ -201,7 +201,7 @@ fun WhitelistedAppsScreen(
                     Icon(
                         imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                         contentDescription = "Back",
-                        tint = Color.White
+                        tint = Color(0xFF0F172A)
                     )
                 }
                 Column {
@@ -209,14 +209,16 @@ fun WhitelistedAppsScreen(
                         text = "Whitelisted Apps",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = Color(0xFF0F172A)
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = "Manage apps monitored for banking alerts",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.85f)
+                        color = Color(0xFF64748B)
                     )
+                }
+            }
         }
     }
 }

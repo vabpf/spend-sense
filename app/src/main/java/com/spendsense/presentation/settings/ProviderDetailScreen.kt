@@ -220,6 +220,8 @@ fun ProviderDetailScreen(
                     }
                 }
             }
+            } // Close Column
+
             // Pinned Header
             Row(
                 modifier = Modifier
@@ -238,7 +240,7 @@ fun ProviderDetailScreen(
                     Icon(
                         imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                         contentDescription = "Back",
-                        tint = Color.White
+                        tint = Color(0xFF0F172A)
                     )
                 }
                 Column {
@@ -246,13 +248,13 @@ fun ProviderDetailScreen(
                         text = state.account?.name ?: "Provider",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = Color(0xFF0F172A)
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = "Manage provider models and configuration",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.85f)
+                        color = Color(0xFF64748B)
                     )
                 }
             }
@@ -296,7 +298,7 @@ fun ProviderDetailScreen(
 }
 
 @Composable
-private fun ModelItem(
+fun ModelItem(
     model: com.spendsense.data.local.entity.ProviderModelEntity,
     onClick: () -> Unit
 ) {
@@ -334,7 +336,7 @@ private fun ModelItem(
     }
 }
 
-private fun formatTimeAgo(millis: Long): String {
+fun formatTimeAgo(millis: Long): String {
     val minutes = (System.currentTimeMillis() - millis) / 60_000
     return when {
         minutes < 1 -> "Just now"
