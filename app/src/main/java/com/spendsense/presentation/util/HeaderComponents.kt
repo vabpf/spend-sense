@@ -24,8 +24,6 @@ fun SpendSenseTopBar(
 ) {
     val barShape = RoundedCornerShape(28.dp)
     val brandShape = RoundedCornerShape(16.dp)
-    val hazeState = LocalGlassHazeState.current
-
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -42,8 +40,7 @@ fun SpendSenseTopBar(
             )
             .glassEffect(
                 shape = barShape,
-                liveBlur = true,
-                hazeState = hazeState
+                liveBlur = true
             ),
         contentAlignment = Alignment.Center
     ) {
@@ -73,8 +70,7 @@ fun SpendSenseTopBar(
                             shape = brandShape,
                             containerColor = CyberBlue.copy(alpha = 0.14f),
                             borderAlpha = 0.22f,
-                            sheenAlpha = 0.06f,
-                            hazeState = hazeState
+                            sheenAlpha = 0.06f
                         ),
                     contentAlignment = Alignment.Center
                 ) {

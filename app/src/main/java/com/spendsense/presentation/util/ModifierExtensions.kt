@@ -1,5 +1,6 @@
 package com.spendsense.presentation.util
 
+import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.runtime.Composable
@@ -12,13 +13,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.spendsense.presentation.theme.BorderSubtle
-import com.spendsense.presentation.theme.BorderMedium
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
 import com.spendsense.presentation.theme.CyberBlue
 import com.spendsense.presentation.theme.GlassSurface
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.materials.HazeMaterials
 import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.clickable
@@ -32,8 +33,10 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 
-val LocalGlassHazeState = compositionLocalOf<HazeState?> { null }
-@Deprecated("Liquid refraction is deprecated in favor of Haze Frosted Glass", ReplaceWith("LocalGlassHazeState"))
+val LocalBackdrop = compositionLocalOf<Backdrop?> { null }
+/** Backward-compat alias for call-sites that still reference LocalGlassHazeState. */
+val LocalGlassHazeState = LocalBackdrop
+@Deprecated("Liquid refraction is deprecated in favor of Backdrop", ReplaceWith("LocalBackdrop"))
 val LocalLiquidState = compositionLocalOf<Any?> { null }
 
 /**
@@ -67,10 +70,16 @@ object FrostGlassDefaults {
 
 /**
  * Applies a premium frosted glass effect with:
- * - Frosted glass translucency via Haze
+ * - Real Liquid Glass backdrop sampling via [io.github.kyant0:backdrop]
+ * - Vibrancy → Blur → Lens refraction (on API 33+) pipeline for liveBlur surfaces
  * - Gradient sheen for depth
  * - Prism edge - subtle rainbow color bleeding on edges
  * - High corner radius support
+ *
+ * @param liveBlur When true, uses [drawBackdrop] for real-time blur sampling (floating chrome,
+ *   dialogs, top bar). When false, renders a lightweight static frosted surface for 120 FPS
+ *   LazyColumn scrolling.
+ * @param hazeState Kept for source compatibility; unused — pass null or omit.
  */
 @Composable
 fun Modifier.glassEffect(
@@ -81,19 +90,12 @@ fun Modifier.glassEffect(
     sheenAlpha: Float = FrostGlassDefaults.sheenAlpha,
     prismAlpha: Float = FrostGlassDefaults.prismAlpha,
     liveBlur: Boolean = false,
-    hazeState: HazeState? = LocalGlassHazeState.current,
+    hazeState: Any? = null, // kept for call-site source-compat; ignored
     liquidState: Any? = null,
     contentModifier: Modifier = Modifier
 ): Modifier {
-    var modifier: Modifier = this
-    if (liveBlur && hazeState != null) {
-        modifier = modifier.hazeEffect(
-            state = hazeState,
-            style = HazeMaterials.thin()
-        )
-    }
-    modifier = modifier.clip(shape)
-    val effectiveColor = if (liveBlur && hazeState != null) {
+    val backdrop = LocalBackdrop.current
+    val effectiveColor = if (liveBlur && backdrop != null) {
         if (containerColor == FrostGlassDefaults.containerColor) {
             FrostGlassDefaults.liveBlurContainerColor
         } else {
@@ -102,11 +104,25 @@ fun Modifier.glassEffect(
     } else {
         containerColor
     }
-    return modifier
-        .background(color = effectiveColor)
-        .then(
-            if (sheenAlpha > 0f) {
-                Modifier.drawBehind {
+
+    return if (liveBlur && backdrop != null) {
+        // Live blur path: full Backdrop pipeline with specular surface drawn inside drawBackdrop
+        this.drawBackdrop(
+            backdrop = backdrop,
+            shape = { shape },
+            effects = {
+                vibrancy()
+                blur(12f.dp.toPx())
+                // Lens refraction is API 33+ and requires CornerBasedShape
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    lens(refractionHeight = 16f.dp.toPx(), refractionAmount = 32f.dp.toPx())
+                }
+            },
+            onDrawSurface = {
+                // Frosted tint
+                drawRect(effectiveColor)
+                // Specular sheen gradient
+                if (sheenAlpha > 0f) {
                     drawRect(
                         brush = Brush.verticalGradient(
                             0f to Color.White.copy(alpha = sheenAlpha),
@@ -114,21 +130,51 @@ fun Modifier.glassEffect(
                         )
                     )
                 }
-            } else Modifier
+            }
         )
-        .then(contentModifier)
-        .border(
-            width = borderWidth,
-            brush = Brush.linearGradient(
-                colors = listOf(
-                    Color.White.copy(alpha = borderAlpha),
-                    Color.White.copy(alpha = borderAlpha * 0.6f),
-                    Color.Transparent,
-                    Color.White.copy(alpha = borderAlpha * 0.4f)
-                )
-            ),
-            shape = shape
-        )
+            .then(contentModifier)
+            .border(
+                width = borderWidth,
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = borderAlpha),
+                        Color.White.copy(alpha = borderAlpha * 0.6f),
+                        Color.Transparent,
+                        Color.White.copy(alpha = borderAlpha * 0.4f)
+                    )
+                ),
+                shape = shape
+            )
+    } else {
+        // Static glass path: lightweight, zero-overhead for list items and cards
+        this.clip(shape)
+            .background(color = effectiveColor)
+            .then(
+                if (sheenAlpha > 0f) {
+                    Modifier.drawBehind {
+                        drawRect(
+                            brush = Brush.verticalGradient(
+                                0f to Color.White.copy(alpha = sheenAlpha),
+                                0.5f to Color.Transparent
+                            )
+                        )
+                    }
+                } else Modifier
+            )
+            .then(contentModifier)
+            .border(
+                width = borderWidth,
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = borderAlpha),
+                        Color.White.copy(alpha = borderAlpha * 0.6f),
+                        Color.Transparent,
+                        Color.White.copy(alpha = borderAlpha * 0.4f)
+                    )
+                ),
+                shape = shape
+            )
+    }
 }
 
 /**

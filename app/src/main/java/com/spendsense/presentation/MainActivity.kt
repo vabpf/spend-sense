@@ -79,12 +79,12 @@ import com.spendsense.presentation.theme.LocalCustomBackgroundPath
 import com.spendsense.presentation.theme.SpendSenseTheme
 import com.spendsense.R
 import com.spendsense.presentation.theme.NeonRose
-import com.spendsense.presentation.util.LocalGlassHazeState
+import com.spendsense.presentation.util.LocalBackdrop
 import com.spendsense.presentation.util.glassEffect
 import com.spendsense.presentation.whitelistedapps.WhitelistedAppsScreen
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.layerBackdrop
 import dagger.hilt.android.AndroidEntryPoint
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -159,21 +159,21 @@ class MainActivity : ComponentActivity() {
         setContent {
             SpendSenseTheme {
                 val navController = rememberNavController()
-                val hazeState = rememberHazeState()
+                val backdrop = rememberLayerBackdrop()
                 val backgroundTheme by securePreferences.backgroundThemeFlow.collectAsState()
                 val customBackgroundPath by securePreferences.customBackgroundPathFlow.collectAsState()
 
                 CompositionLocalProvider(
-                    LocalGlassHazeState provides hazeState,
+                    LocalBackdrop provides backdrop,
                     LocalAppBackgroundTheme provides backgroundTheme,
                     LocalCustomBackgroundPath provides customBackgroundPath
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        // 1. Background + Content layer inside hazeSource for real-time backdrop blur
+                        // 1. Background + Content layer inside layerBackdrop for real-time backdrop sampling
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .hazeSource(state = hazeState)
+                                .layerBackdrop(backdrop)
                         ) {
                             AppBackground(
                                 modifier = Modifier.fillMaxSize()
@@ -399,8 +399,7 @@ class MainActivity : ComponentActivity() {
                                     )
                                     .glassEffect(
                                         shape = RoundedCornerShape(999.dp),
-                                        liveBlur = true,
-                                        hazeState = hazeState
+                                        liveBlur = true
                                     )
                                     .padding(horizontal = 8.dp, vertical = 8.dp)
                             ) {
