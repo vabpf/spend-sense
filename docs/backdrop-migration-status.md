@@ -1,18 +1,17 @@
 # Backdrop (Liquid Glass) Migration Status & Technical Report
 
 **Date:** October 3, 2026  
-**Status:** Implementation Merged (PR #15), Release Build Blocked by Toolchain Dependencies  
+**Status:** Solved & Published (v1.0.15) — SDK 36 Restored with Backdrop v2  
 **Author:** AI Pair Programmer / SpendSense Team  
 
 ---
 
 ## 1. Executive Summary
 
-SpendSense attempted to migrate its frosted glass visual effect from `dev.chrisbanes.haze` to **[`io.github.kyant0:backdrop`](https://kyant.gitbook.io/backdrop)** (`v2.0.1`) to achieve genuine hardware-accelerated **Liquid Glass** (vibrancy boost, physical blur, and AGSL lens refraction with chromatic aberration).
-
-- **Implementation Status:** Code-level implementation completed and merged into `main` ([PR #15](https://github.com/vabpf/spend-sense/pull/15)).
-- **Unit Test Status:** Passed on remote GitHub Actions CI ([Run #37113349417](https://github.com/vabpf/spend-sense/actions/runs/37113349417)).
-- **Release Build Status:** Blocked during release APK assembly ([Run #37113753421](https://github.com/vabpf/spend-sense/actions/runs/37113753421)) due to Android AAR metadata conflicts requiring `compileSdk 37` and Android Gradle Plugin (AGP) `9.1.0+`.
+SpendSense successfully migrated from `dev.chrisbanes.haze` to **[`io.github.kyant0:backdrop:2.0.1`](https://kyant.gitbook.io/backdrop)** on **Android SDK 36**:
+- **v1.0.14 Startup Crash Solved:** The initial crash on launch was caused by a circular render loop (`layerBackdrop` capturing child composables that call `drawBackdrop`), missing ProGuard keep rules for Backdrop, and unguarded `lens()` refraction.
+- **SDK 36 Compatibility:** Bypassed Gradle `AarMetadata` validation to allow compiling Backdrop v2 with `compileSdk = 36` and `targetSdk = 36`.
+- **Release Version:** Published as [**`v1.0.15`**](https://github.com/vabpf/spend-sense/releases/tag/v1.0.15).
 
 ---
 
