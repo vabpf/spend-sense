@@ -23,6 +23,8 @@ import com.spendsense.presentation.theme.CyberBlue
 import com.spendsense.presentation.theme.GlassSurface
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
@@ -358,25 +360,47 @@ fun Modifier.fadingEdge(
     .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
     .drawWithContent {
         drawContent()
+        val h = size.height
+        val w = size.width
+        if (h <= 0f || w <= 0f) return@drawWithContent
+
         val startPx = topFadeStart.toPx()
         val fadePx = topFadeHeight.toPx()
         if (fadePx > 0f) {
+            if (startPx > 0f) {
+                // Clear any content above startPx (e.g. scrolled behind pinned header)
+                drawRect(
+                    color = Color.Transparent,
+                    topLeft = Offset.Zero,
+                    size = Size(w, startPx),
+                    blendMode = BlendMode.DstIn
+                )
+            }
+            // Fade content smoothly between startPx and startPx + fadePx
             drawRect(
                 brush = Brush.verticalGradient(
                     0f to Color.Transparent,
-                    startPx to Color.Transparent,
-                    (startPx + fadePx) to Color.Black
+                    1f to Color.Black,
+                    startY = startPx,
+                    endY = startPx + fadePx
                 ),
+                topLeft = Offset(0f, startPx),
+                size = Size(w, fadePx),
                 blendMode = BlendMode.DstIn
             )
         }
+
         val bottomFadePx = bottomFadeHeight.toPx()
-        if (bottomFadePx > 0f) {
+        if (bottomFadePx > 0f && bottomFadePx <= h) {
             drawRect(
                 brush = Brush.verticalGradient(
-                    (size.height - bottomFadePx) to Color.Black,
-                    size.height to Color.Transparent
+                    0f to Color.Black,
+                    1f to Color.Transparent,
+                    startY = h - bottomFadePx,
+                    endY = h
                 ),
+                topLeft = Offset(0f, h - bottomFadePx),
+                size = Size(w, bottomFadePx),
                 blendMode = BlendMode.DstIn
             )
         }

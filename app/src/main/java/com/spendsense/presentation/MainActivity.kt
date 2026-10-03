@@ -395,7 +395,7 @@ class MainActivity : ComponentActivity() {
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)
                                     .fillMaxWidth()
-                                    .padding(horizontal = 28.dp, vertical = 12.dp)
+                                    .padding(horizontal = 48.dp, vertical = 12.dp)
                                     .offset(y = (-16).dp)
                                     .shadow(
                                         elevation = 22.dp,

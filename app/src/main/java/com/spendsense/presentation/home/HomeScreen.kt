@@ -15,6 +15,7 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -396,15 +397,28 @@ fun HomeScreen(
                     )
             )
 
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .fadingEdge(topFadeHeight = statusBarPadding + 14.dp),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = statusBarPadding + 8.dp, bottom = 120.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                // 1. "Today at a glance" Summary Card
-                item {
+            val listState = rememberLazyListState()
+            val density = LocalDensity.current
+            val topFadeHeight by remember {
+                derivedStateOf {
+                    if (listState.firstVisibleItemIndex > 0) {
+                        24.dp
+                    } else {
+                        val offsetDp = with(density) { listState.firstVisibleItemScrollOffset.toDp() }
+                        offsetDp.coerceAtMost(24.dp)
+                    }
+                }
+            }
+
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Fixed top pinned section: Summary Card, Search Bar, and Category Chips
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, top = statusBarPadding + 8.dp, bottom = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    // 1. "Today at a glance" Summary Card
                     HomeSummaryCard(
                         todaySpending = todayConvertedTotal,
                         yesterdaySpending = yesterdayConvertedTotal,
@@ -415,10 +429,8 @@ fun HomeScreen(
                         defaultCurrency = defaultCurrency,
                         onNotificationClick = { /* Notifications */ }
                     )
-                }
 
-                // 2. Search Bar Card
-                item {
+                    // 2. Search Bar Card
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -475,10 +487,8 @@ fun HomeScreen(
                             )
                         )
                     }
-                }
 
-                // 3. Quick Category Filter Chips
-                item {
+                    // 3. Quick Category Filter Chips
                     LazyRow(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -546,12 +556,22 @@ fun HomeScreen(
                     }
                 }
 
-                // 4. Notification Inbox (if any)
-                if (pendingNotifications.isNotEmpty()) {
-                    item {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
+                // Scrollable transactions dissolving when scrolled up under the pinned chips
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .fadingEdge(topFadeHeight = topFadeHeight),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 120.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    // 4. Notification Inbox (if any)
+                    if (pendingNotifications.isNotEmpty()) {
+                        item {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
                                 .padding(top = 4.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
@@ -909,6 +929,7 @@ fun HomeScreen(
             }
         }
     }
+}
 
     editingTransaction?.let { transaction ->
         EditTransactionDialog(

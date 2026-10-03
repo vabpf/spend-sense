@@ -61,7 +61,7 @@ rm -f /mnt/c/Users/vuong/Downloads/SpendSense.apk && gh run download <run_id> -n
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **spend-sense** (2829 symbols, 6015 relationships, 118 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **spend-sense** (2842 symbols, 6025 relationships, 118 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

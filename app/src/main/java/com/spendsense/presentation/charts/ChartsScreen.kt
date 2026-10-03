@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -32,8 +33,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -61,6 +65,18 @@ fun ChartsScreen(
     val state by viewModel.state.collectAsState()
     val summary = state.summary
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val listState = rememberLazyListState()
+    val density = LocalDensity.current
+    val topFadeHeight by remember {
+        derivedStateOf {
+            if (listState.firstVisibleItemIndex > 0) {
+                statusBarPadding + 16.dp
+            } else {
+                val offsetDp = with(density) { listState.firstVisibleItemScrollOffset.toDp() }
+                offsetDp.coerceAtMost(statusBarPadding + 16.dp)
+            }
+        }
+    }
 
     Scaffold(containerColor = Color.Transparent) { _ ->
         Box(modifier = Modifier.fillMaxSize()) {
@@ -79,9 +95,10 @@ fun ChartsScreen(
             )
 
             LazyColumn(
+                state = listState,
                 modifier = modifier
                     .fillMaxSize()
-                    .fadingEdge(topFadeHeight = statusBarPadding + 16.dp),
+                    .fadingEdge(topFadeHeight = topFadeHeight),
                 contentPadding = PaddingValues(
                     start = 16.dp,
                     end = 16.dp,

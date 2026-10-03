@@ -170,7 +170,7 @@ fun SettingsScreen(
                 contentPadding = PaddingValues(
                     start = 16.dp,
                     end = 16.dp,
-                    top = headerHeight + 12.dp,
+                    top = headerHeight + 32.dp,
                     bottom = 120.dp
                 ),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
