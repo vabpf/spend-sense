@@ -41,6 +41,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Brush
 import com.spendsense.presentation.util.SpendSenseTopBar
 import com.spendsense.presentation.util.glassEffect
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.text.font.FontWeight
+import com.spendsense.presentation.util.fadingEdge
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,6 +56,14 @@ fun CategoriesScreen(
     viewModel: CategoriesViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
+    val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val fadeStart = statusBarPadding + 62.dp
+    val fadeDistance = 36.dp
+    val fadeEnd = fadeStart + fadeDistance
+    val density = LocalDensity.current
+    val fadeStartPx = with(density) { fadeStart.toPx() }
+    val fadeEndPx = with(density) { fadeEnd.toPx() }
+
     Scaffold(
         containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0),
@@ -57,14 +72,15 @@ fun CategoriesScreen(
                 modifier = Modifier
                     .offset(y = (-24).dp)
                     .size(56.dp)
-                    .glassEffect(
-                        shape = FloatingActionButtonDefaults.shape,
-                        liveBlur = true
+                    .shadow(
+                        elevation = 8.dp,
+                        shape = CircleShape,
+                        ambientColor = Color.Black.copy(alpha = 0.25f),
+                        spotColor = Color.Black.copy(alpha = 0.20f)
                     )
-                    .border(
-                        width = 1.dp,
-                        color = CyberBlue,
-                        shape = FloatingActionButtonDefaults.shape
+                    .background(
+                        Brush.linearGradient(listOf(CyberBlue, Color(0xFF00C6FF))),
+                        shape = CircleShape
                     )
                     .clickable { viewModel.showAddEditDialog(null) },
                 contentAlignment = Alignment.Center
@@ -72,8 +88,8 @@ fun CategoriesScreen(
                 Icon(
                     Icons.Rounded.Add,
                     contentDescription = "Add Category",
-                    tint = CyberBlue,
-                    modifier = Modifier.size(24.dp)
+                    tint = Color.White,
+                    modifier = Modifier.size(28.dp)
                 )
             }
         }
@@ -83,43 +99,94 @@ fun CategoriesScreen(
                 .fillMaxSize()
                 .padding(bottom = padding.calculateBottomPadding())
         ) {
-            LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize(),
-                        contentPadding = PaddingValues(
-                            start = 16.dp, 
-                            end = 16.dp, 
-                            top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 88.dp, 
-                            bottom = 120.dp
-                        ),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(state.categories) { category ->
-                            CategoryItem(
-                                category = category,
-                                onEdit = { viewModel.showAddEditDialog(category) },
-                                onDelete = { viewModel.deleteCategory(category) }
-                            )
-                        }
-                        item { Spacer(modifier = Modifier.height(40.dp)) }
-                    }
+            // Background scrim: transparent at top wallpaper, smoothly fades into #F8FAFC right below header text
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            0.0f to Color.Transparent,
+                            0.35f to Color(0xFFF8FAFC).copy(alpha = 0.40f),
+                            0.70f to Color(0xFFF8FAFC).copy(alpha = 0.85f),
+                            1.0f to Color(0xFFF8FAFC),
+                            startY = fadeStartPx,
+                            endY = fadeEndPx
+                        )
+                    )
+            )
 
-                    SpendSenseTopBar(
-                        title = "Categories",
-                        onNavigationClick = onNavigateBack,
-                        navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .fadingEdge(
+                        topFadeStart = fadeStart,
+                        topFadeHeight = fadeDistance
+                    ),
+                contentPadding = PaddingValues(
+                    start = 16.dp, 
+                    end = 16.dp, 
+                    top = fadeEnd + 6.dp, 
+                    bottom = 120.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(state.categories) { category ->
+                    CategoryItem(
+                        category = category,
+                        onEdit = { viewModel.showAddEditDialog(category) },
+                        onDelete = { viewModel.deleteCategory(category) }
+                    )
+                }
+                item { Spacer(modifier = Modifier.height(40.dp)) }
+            }
+
+            // Pinned Header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        top = statusBarPadding + 10.dp,
+                        start = 12.dp,
+                        end = 20.dp,
+                        bottom = 10.dp
+                    )
+                    .align(Alignment.TopStart),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                IconButton(onClick = onNavigateBack) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color.White
+                    )
+                }
+                Column {
+                    Text(
+                        text = "Categories",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Manage expense and income categories",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.85f)
                     )
                 }
             }
-
-        if (state.isAddingOrEditing) {
-            AddEditCategoryDialog(
-                initialCategory = state.editingCategory,
-                onDismiss = viewModel::hideAddEditDialog,
-                onSave = viewModel::saveCategory
-            )
         }
     }
+
+    if (state.isAddingOrEditing) {
+        AddEditCategoryDialog(
+            initialCategory = state.editingCategory,
+            onDismiss = viewModel::hideAddEditDialog,
+            onSave = viewModel::saveCategory
+        )
+    }
+}
 
 @Composable
 fun CategoryItem(
@@ -130,14 +197,17 @@ fun CategoryItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .glassEffect(
-                shape = MaterialTheme.shapes.large
+            .shadow(
+                elevation = 2.dp,
+                shape = RoundedCornerShape(16.dp),
+                ambientColor = Color.Black.copy(alpha = 0.04f),
+                spotColor = Color.Black.copy(alpha = 0.03f)
             ),
-        shape = MaterialTheme.shapes.medium,
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.onSurface
+            containerColor = Color.White
         ),
+        border = BorderStroke(1.dp, Color(0xFFF1F5F9)),
         onClick = onEdit
     ) {
         Row(
@@ -184,6 +254,8 @@ fun CategoryItem(
             Text(
                 text = category.name,
                 style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF0F172A),
                 modifier = Modifier.weight(1f)
             )
 

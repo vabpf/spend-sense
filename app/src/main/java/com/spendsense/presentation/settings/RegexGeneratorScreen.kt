@@ -22,11 +22,14 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.spendsense.presentation.theme.GlassSurface
 import com.spendsense.data.local.Currencies
 import com.spendsense.presentation.util.GlassAlertDialog
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Brush
-import com.spendsense.presentation.util.SpendSenseTopBar
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.platform.LocalDensity
+import com.spendsense.presentation.util.fadingEdge
 import com.spendsense.presentation.util.glassEffect
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.text.KeyboardOptions
@@ -74,6 +77,11 @@ fun RegexGeneratorScreen(
         }
     }
 
+    val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val fadeStart = statusBarPadding + 62.dp
+    val fadeDistance = 36.dp
+    val fadeEnd = fadeStart + fadeDistance
+
     Scaffold(
         containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0)
@@ -83,59 +91,88 @@ fun RegexGeneratorScreen(
                 .fillMaxSize()
                 .padding(bottom = padding.calculateBottomPadding())
         ) {
-            Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                            .padding(
-                                start = 16.dp,
-                                end = 16.dp,
-                                top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 88.dp,
-                                bottom = 120.dp
-                            ),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-            // Info Card
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .glassEffect(
-                        shape = MaterialTheme.shapes.large
-                    ),
-                shape = MaterialTheme.shapes.medium,
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.Transparent
-                )
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        Icons.Rounded.Info,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                    Text(
-                        text = "Paste a banking notification below. The AI will classify it and generate a regex pattern.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                }
-            }
+            val density = LocalDensity.current
+            val fadeStartPx = with(density) { fadeStart.toPx() }
+            val fadeEndPx = with(density) { fadeEnd.toPx() }
 
-            // Input Section
-            Card(
+            // Background scrim: transparent over pinned title, fades to #F8FAFC
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            0f to Color.Transparent,
+                            fadeStartPx / fadeEndPx to Color.Transparent,
+                            1f to Color(0xFFF8FAFC),
+                            startY = 0f,
+                            endY = fadeEndPx
+                        )
+                    )
+            )
+            // Solid background below fadeEnd
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .glassEffect(
-                        shape = MaterialTheme.shapes.large
+                    .padding(top = fadeEnd)
+                    .fillMaxHeight()
+                    .background(Color(0xFFF8FAFC))
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .fadingEdge(
+                        topFadeStart = fadeStart,
+                        topFadeHeight = fadeDistance
+                    )
+                    .verticalScroll(rememberScrollState())
+                    .padding(
+                        start = 16.dp,
+                        end = 16.dp,
+                        top = fadeEnd + 6.dp,
+                        bottom = 120.dp
                     ),
-                shape = MaterialTheme.shapes.medium,
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.Transparent
-                )
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // Info Card
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(2.dp, RoundedCornerShape(16.dp)),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color.White
+                    ),
+                    border = BorderStroke(1.dp, Color(0xFFF1F5F9))
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            Icons.Rounded.Info,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "Paste a banking notification below. The AI will classify it and generate a regex pattern.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color(0xFF334155)
+                        )
+                    }
+                }
+
+                // Input Section
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(2.dp, RoundedCornerShape(16.dp)),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color.White
+                    ),
+                    border = BorderStroke(1.dp, Color(0xFFF1F5F9))
+                ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -241,13 +278,12 @@ fun RegexGeneratorScreen(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .glassEffect(
-                        shape = MaterialTheme.shapes.large
-                    ),
-                shape = MaterialTheme.shapes.medium,
+                    .shadow(2.dp, RoundedCornerShape(16.dp)),
+                shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = Color.Transparent
-                )
+                    containerColor = Color.White
+                ),
+                border = BorderStroke(1.dp, Color(0xFFF1F5F9))
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -436,10 +472,14 @@ fun RegexGeneratorScreen(
             
             if (displayPattern != null) {
                 Card(
-                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(2.dp, RoundedCornerShape(16.dp)),
+                    shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = GlassSurface
-                    )
+                        containerColor = Color.White
+                    ),
+                    border = BorderStroke(1.dp, Color(0xFFF1F5F9))
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp),
@@ -498,12 +538,10 @@ fun RegexGeneratorScreen(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable { showDatePicker = true }
-                                        .glassEffect(
-                                            shape = MaterialTheme.shapes.medium,
-                                            containerColor = GlassSurface.copy(alpha = 0.5f),
-                                            borderAlpha = 0.15f
-                                        ),
-                                    shape = MaterialTheme.shapes.medium
+                                        .shadow(1.dp, RoundedCornerShape(12.dp)),
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = Color(0xFFF8FAFC),
+                                    border = BorderStroke(1.dp, Color(0xFFE2E8F0))
                                 ) {
                                     Row(
                                         modifier = Modifier.padding(12.dp),
@@ -791,11 +829,44 @@ fun RegexGeneratorScreen(
                 }
             } // if (state.generatedRegex != null)
             } // scrolling Column
-            SpendSenseTopBar(
-                title = "AI Regex Generator",
-                onNavigationClick = onNavigateBack,
-                navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack
-            )
+
+            // Pinned Header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        top = statusBarPadding + 10.dp,
+                        start = 16.dp,
+                        end = 16.dp,
+                        bottom = 8.dp
+                    ),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick = onNavigateBack,
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color(0xFF0F172A)
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Column {
+                    Text(
+                        text = "AI Regex Generator",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF0F172A)
+                    )
+                    Text(
+                        text = "Generate regex patterns from notification text",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF64748B)
+                    )
+                }
+            }
         }
     }
 
@@ -914,8 +985,9 @@ fun TestResultChip(
 ) {
     Surface(
         modifier = modifier,
-        color = GlassSurface,
-        shape = MaterialTheme.shapes.small
+        color = Color(0xFFF8FAFC),
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
     ) {
         Column(
             modifier = Modifier.padding(12.dp)
@@ -923,14 +995,14 @@ fun TestResultChip(
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSecondaryContainer
+                color = Color(0xFF64748B)
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = value,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSecondaryContainer
+                color = Color(0xFF0F172A)
             )
         }
     }

@@ -35,6 +35,13 @@ import androidx.compose.foundation.BorderStroke
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import com.spendsense.presentation.util.fadingEdge
+
+@Composable
 fun NotificationPatternsScreen(
     viewModel: NotificationPatternsViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit = {}
@@ -65,6 +72,14 @@ fun NotificationPatternsScreen(
     val matchedNotifications by viewModel.matchedNotifications.collectAsState()
     val isLoadingHistory by viewModel.isLoadingHistory.collectAsState()
 
+    val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val fadeStart = statusBarPadding + 62.dp
+    val fadeDistance = 36.dp
+    val fadeEnd = fadeStart + fadeDistance
+    val density = LocalDensity.current
+    val fadeStartPx = with(density) { fadeStart.toPx() }
+    val fadeEndPx = with(density) { fadeEnd.toPx() }
+
     Scaffold(
         containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0),
@@ -73,14 +88,15 @@ fun NotificationPatternsScreen(
                 modifier = Modifier
                     .offset(y = (-20).dp)
                     .size(56.dp)
-                    .glassEffect(
-                        shape = FloatingActionButtonDefaults.shape,
-                        liveBlur = true
+                    .shadow(
+                        elevation = 8.dp,
+                        shape = CircleShape,
+                        ambientColor = Color.Black.copy(alpha = 0.25f),
+                        spotColor = Color.Black.copy(alpha = 0.20f)
                     )
-                    .border(
-                        width = 1.dp,
-                        color = CyberBlue,
-                        shape = FloatingActionButtonDefaults.shape
+                    .background(
+                        Brush.linearGradient(listOf(CyberBlue, Color(0xFF00C6FF))),
+                        shape = CircleShape
                     )
                     .clickable { viewModel.showAddDialog() },
                 contentAlignment = Alignment.Center
@@ -88,8 +104,8 @@ fun NotificationPatternsScreen(
                 Icon(
                     Icons.Rounded.Add,
                     contentDescription = "Add pattern",
-                    tint = CyberBlue,
-                    modifier = Modifier.size(24.dp)
+                    tint = Color.White,
+                    modifier = Modifier.size(28.dp)
                 )
             }
         }
@@ -99,71 +115,119 @@ fun NotificationPatternsScreen(
                 .fillMaxSize()
                 .padding(bottom = padding.calculateBottomPadding())
         ) {
+            // Background scrim: transparent at top wallpaper, smoothly fades into #F8FAFC right below header text
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            0.0f to Color.Transparent,
+                            0.35f to Color(0xFFF8FAFC).copy(alpha = 0.40f),
+                            0.70f to Color(0xFFF8FAFC).copy(alpha = 0.85f),
+                            1.0f to Color(0xFFF8FAFC),
+                            startY = fadeStartPx,
+                            endY = fadeEndPx
+                        )
+                    )
+            )
+
             if (patterns.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = fadeEnd + 24.dp)
                     ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                            modifier = Modifier.padding(
-                                start = 32.dp,
-                                end = 32.dp,
-                                top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 88.dp,
-                                bottom = 0.dp
-                            )
-                        ) {
-                            Icon(
-                                Icons.Rounded.Pattern,
-                                contentDescription = null,
-                                modifier = Modifier.size(64.dp),
-                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                            )
-                            Text(
-                                "No patterns yet",
-                                style = MaterialTheme.typography.titleLarge
-                            )
-                            Text(
-                                "Patterns are created automatically when you save from the Regex Generator, or you can add one manually.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize(),
-                        contentPadding = PaddingValues(
-                            start = 16.dp, 
-                            end = 16.dp, 
-                            top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 88.dp, 
-                            bottom = 120.dp
-                        ),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(patterns, key = { it.id }) { pattern ->
-                            PatternItem(
-                                pattern = pattern,
-                                appNameMap = appNameMap,
-                                onEdit = { viewModel.startEdit(pattern) },
-                                onDelete = { viewModel.deletePattern(pattern.id) },
-                                onToggleTransaction = {
-                                    viewModel.updatePattern(pattern.id, pattern.regex, !pattern.isTransaction)
-                                },
-                                onShowHistory = { viewModel.showHistoryForPattern(pattern) }
-                            )
-                        }
-                        item { Spacer(modifier = Modifier.height(40.dp)) }
+                        Icon(
+                            Icons.Rounded.Pattern,
+                            contentDescription = null,
+                            modifier = Modifier.size(64.dp),
+                            tint = Color(0xFF00D4FF).copy(alpha = 0.5f)
+                        )
+                        Text(
+                            text = "No patterns yet",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF0F172A)
+                        )
+                        Text(
+                            text = "Patterns are created automatically when you save from the Regex Generator, or you can add one manually.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color(0xFF64748B)
+                        )
                     }
                 }
-            SpendSenseTopBar(
-                title = "Notification Patterns",
-                onNavigationClick = onNavigateBack,
-                navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack
-            )
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .fadingEdge(
+                            topFadeStart = fadeStart,
+                            topFadeHeight = fadeDistance
+                        ),
+                    contentPadding = PaddingValues(
+                        start = 16.dp, 
+                        end = 16.dp, 
+                        top = fadeEnd + 6.dp, 
+                        bottom = 120.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(patterns, key = { it.id }) { pattern ->
+                        PatternItem(
+                            pattern = pattern,
+                            appNameMap = appNameMap,
+                            onEdit = { viewModel.startEdit(pattern) },
+                            onDelete = { viewModel.deletePattern(pattern.id) },
+                            onToggleTransaction = {
+                                viewModel.updatePattern(pattern.id, pattern.regex, !pattern.isTransaction)
+                            },
+                            onShowHistory = { viewModel.showHistoryForPattern(pattern) }
+                        )
+                    }
+                    item { Spacer(modifier = Modifier.height(40.dp)) }
+                }
+            }
+
+            // Pinned Header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        top = statusBarPadding + 10.dp,
+                        start = 12.dp,
+                        end = 20.dp,
+                        bottom = 10.dp
+                    )
+                    .align(Alignment.TopStart),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                IconButton(onClick = onNavigateBack) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color.White
+                    )
+                }
+                Column {
+                    Text(
+                        text = "Notification Patterns",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Manage (app × title) pattern rules",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.85f)
+                    )
+                }
+            }
         }
     }
 
@@ -777,11 +841,15 @@ fun PatternItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onShowHistory() }
-            .glassEffect(
-                shape = MaterialTheme.shapes.large
+            .shadow(
+                elevation = 2.dp,
+                shape = RoundedCornerShape(16.dp),
+                ambientColor = Color.Black.copy(alpha = 0.04f),
+                spotColor = Color.Black.copy(alpha = 0.03f)
             ),
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(1.dp, Color(0xFFF1F5F9))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -799,29 +867,28 @@ fun PatternItem(
                                 ?: pattern.packageName
                         },
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = Color(0xFF64748B)
                     )
                     Text(
                         text = pattern.notificationTitle,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
+                        color = Color(0xFF0F172A),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Surface(
-                        shape = MaterialTheme.shapes.small,
-                        color = if (pattern.isTransaction) {
-                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
-                        } else {
-                            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f)
-                        }
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (pattern.isTransaction) Color(0xFFDCFCE7) else Color(0xFFFEE2E2)
                     ) {
                         Text(
                             text = if (pattern.isTransaction) "Expense" else "Skip",
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            style = MaterialTheme.typography.labelSmall
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (pattern.isTransaction) Color(0xFF16A34A) else Color(0xFFDC2626)
                         )
                     }
                     if (pattern.matchCount > 0) {
@@ -829,7 +896,7 @@ fun PatternItem(
                         Text(
                             text = "${pattern.matchCount}x",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = Color(0xFF64748B)
                         )
                     }
                 }
@@ -838,14 +905,16 @@ fun PatternItem(
             if (pattern.regex != null) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Surface(
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    shape = MaterialTheme.shapes.small
+                    color = Color(0xFFF8FAFC),
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, Color(0xFFE2E8F0))
                 ) {
                     Text(
                         text = pattern.regex,
                         modifier = Modifier.padding(8.dp),
                         style = MaterialTheme.typography.bodySmall,
                         fontFamily = FontFamily.Monospace,
+                        color = Color(0xFF334155),
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )

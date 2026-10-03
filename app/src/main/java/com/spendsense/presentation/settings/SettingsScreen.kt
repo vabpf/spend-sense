@@ -129,8 +129,8 @@ fun SettingsScreen(
     }
 
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val fadeStart = statusBarPadding + 80.dp
-    val fadeDistance = 80.dp
+    val fadeStart = statusBarPadding + 62.dp
+    val fadeDistance = 36.dp
     val fadeEnd = fadeStart + fadeDistance
     val density = LocalDensity.current
     val fadeStartPx = with(density) { fadeStart.toPx() }
@@ -152,7 +152,7 @@ fun SettingsScreen(
                     .background(
                         Brush.verticalGradient(
                             0.0f to Color.Transparent,
-                            0.35f to Color(0xFFF8FAFC).copy(alpha = 0.35f),
+                            0.35f to Color(0xFFF8FAFC).copy(alpha = 0.40f),
                             0.70f to Color(0xFFF8FAFC).copy(alpha = 0.85f),
                             1.0f to Color(0xFFF8FAFC),
                             startY = fadeStartPx,
@@ -172,7 +172,7 @@ fun SettingsScreen(
                 contentPadding = PaddingValues(
                     start = 16.dp,
                     end = 16.dp,
-                    top = fadeEnd + 8.dp,
+                    top = fadeEnd + 6.dp,
                     bottom = 120.dp
                 ),
                 verticalArrangement = Arrangement.spacedBy(4.dp)

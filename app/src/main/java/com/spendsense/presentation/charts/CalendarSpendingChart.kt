@@ -231,7 +231,7 @@ fun CalendarSpendingChart(
                         Icon(
                             imageVector = Icons.Rounded.ChevronLeft,
                             contentDescription = "Previous Month",
-                            tint = MaterialTheme.colorScheme.onSurface,
+                            tint = Color(0xFF334155),
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -240,7 +240,7 @@ fun CalendarSpendingChart(
                         text = monthYearFormatter,
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = Color(0xFF0F172A),
                         modifier = Modifier.padding(horizontal = 4.dp)
                     )
 
@@ -258,7 +258,7 @@ fun CalendarSpendingChart(
                         Icon(
                             imageVector = Icons.Rounded.ChevronRight,
                             contentDescription = "Next Month",
-                            tint = MaterialTheme.colorScheme.onSurface,
+                            tint = Color(0xFF334155),
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -462,9 +462,9 @@ private fun CalendarDayCell(
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = if (isToday) FontWeight.Bold else FontWeight.Medium,
             color = if (day.isCurrentMonth) {
-                if (isToday) CyberBlue else MaterialTheme.colorScheme.onSurface
+                if (isToday) CyberBlue else Color(0xFF0F172A)
             } else {
-                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
+                Color(0xFF94A3B8)
             }
         )
         val compactAmount = remember(day.dailySpending) {

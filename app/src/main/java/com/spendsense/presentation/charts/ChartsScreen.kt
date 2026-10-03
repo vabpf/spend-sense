@@ -39,9 +39,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalDensity
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
-import com.kyant.backdrop.backdrops.layerBackdrop
-import com.spendsense.presentation.util.LocalBackdrop
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -82,15 +79,12 @@ fun ChartsScreen(
         }
     }
 
-    val chartsBackdrop = rememberLayerBackdrop()
-
     Scaffold(containerColor = Color.Transparent) { _ ->
         Box(modifier = Modifier.fillMaxSize()) {
-            // Background gradient scrim: captured in chartsBackdrop so cards blur the scrimmed background
+            // Background gradient scrim: smoothly transitions wallpaper to #F8FAFC
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .layerBackdrop(chartsBackdrop)
                     .background(
                         Brush.verticalGradient(
                             0.0f to Color.Transparent,
@@ -101,12 +95,11 @@ fun ChartsScreen(
                     )
             )
 
-            CompositionLocalProvider(LocalBackdrop provides chartsBackdrop) {
-                LazyColumn(
-                    state = listState,
-                    modifier = modifier
-                        .fillMaxSize()
-                        .fadingEdge(topFadeHeight = topFadeHeight),
+            LazyColumn(
+                state = listState,
+                modifier = modifier
+                    .fillMaxSize()
+                    .fadingEdge(topFadeHeight = topFadeHeight),
                 contentPadding = PaddingValues(
                     start = 16.dp,
                     end = 16.dp,
@@ -190,7 +183,6 @@ fun ChartsScreen(
                         onMonthChanged = { y, m -> viewModel.setMonth(y, m) },
                         onFilterDay = onNavigateToHomeWithFilter
                     )
-                }
                 }
             }
         }

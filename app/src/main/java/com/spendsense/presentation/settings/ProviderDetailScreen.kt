@@ -25,6 +25,14 @@ import com.spendsense.presentation.util.GlassAlertDialog
 import com.spendsense.presentation.util.SpendSenseTopBar
 import com.spendsense.presentation.util.glassEffect
 
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.background
+import com.spendsense.presentation.util.fadingEdge
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProviderDetailScreen(
@@ -33,45 +41,65 @@ fun ProviderDetailScreen(
     onNavigateBack: () -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
+    val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val fadeStart = statusBarPadding + 62.dp
+    val fadeDistance = 36.dp
+    val fadeEnd = fadeStart + fadeDistance
+    val density = LocalDensity.current
+    val fadeStartPx = with(density) { fadeStart.toPx() }
+    val fadeEndPx = with(density) { fadeEnd.toPx() }
 
     LaunchedEffect(accountId) {
         viewModel.load(accountId)
     }
 
-        Scaffold(
-            containerColor = Color.Transparent,
-            topBar = {
-                SpendSenseTopBar(
-                    title = state.account?.name ?: "Provider",
-                    onNavigationClick = onNavigateBack,
-                    navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack
-                )
-            }
-        ) { padding ->
+    Scaffold(
+        containerColor = Color.Transparent,
+        contentWindowInsets = WindowInsets(0)
+    ) { padding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = padding.calculateBottomPadding())
+        ) {
+            // Background scrim: transparent at top wallpaper, smoothly fades into #F8FAFC right below header text
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(top = padding.calculateTopPadding())
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxSize()
-                ) {
-            // Header
-            Text(
-                text = "Available Models",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            0.0f to Color.Transparent,
+                            0.35f to Color(0xFFF8FAFC).copy(alpha = 0.40f),
+                            0.70f to Color(0xFFF8FAFC).copy(alpha = 0.85f),
+                            1.0f to Color(0xFFF8FAFC),
+                            startY = fadeStartPx,
+                            endY = fadeEndPx
+                        )
+                    )
             )
 
-            if (state.lastRefreshedAt > 0) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = fadeEnd + 6.dp)
+            ) {
+                // Header
                 Text(
-                    text = "Last refresh: ${formatTimeAgo(state.lastRefreshedAt)}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 4.dp)
+                    text = "Available Models",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF0F172A),
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp)
                 )
-            }
+
+                if (state.lastRefreshedAt > 0) {
+                    Text(
+                        text = "Last refresh: ${formatTimeAgo(state.lastRefreshedAt)}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFF64748B),
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 4.dp)
+                    )
+                }
 
             // Refresh + Key row
             Row(
@@ -192,9 +220,44 @@ fun ProviderDetailScreen(
                     }
                 }
             }
+            // Pinned Header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        top = statusBarPadding + 10.dp,
+                        start = 12.dp,
+                        end = 20.dp,
+                        bottom = 10.dp
+                    )
+                    .align(Alignment.TopStart),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                IconButton(onClick = onNavigateBack) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color.White
+                    )
+                }
+                Column {
+                    Text(
+                        text = state.account?.name ?: "Provider",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Manage provider models and configuration",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.85f)
+                    )
+                }
+            }
         }
     }
-}
 
     // API Key dialog
     if (state.showKeyDialog) {
@@ -241,18 +304,16 @@ private fun ModelItem(
 
     Surface(
         onClick = onClick,
-        shape = MaterialTheme.shapes.medium,
-        color = if (model.isEnabled) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) else Color.Transparent,
-        modifier = Modifier
-            .fillMaxWidth()
-            .glassEffect(
-                shape = MaterialTheme.shapes.medium
-            )
+        shape = RoundedCornerShape(14.dp),
+        color = if (model.isEnabled) Color(0xFFF0FDF4) else Color.White,
+        border = BorderStroke(1.dp, if (model.isEnabled) Color(0xFF86EFAC) else Color(0xFFF1F5F9)),
+        shadowElevation = 1.dp,
+        modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -260,14 +321,14 @@ private fun ModelItem(
                 Text(
                     text = displayText,
                     style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = if (model.isEnabled) FontWeight.Medium else FontWeight.Normal,
-                    color = MaterialTheme.colorScheme.onSurface
+                    fontWeight = if (model.isEnabled) FontWeight.SemiBold else FontWeight.Normal,
+                    color = Color(0xFF0F172A)
                 )
             }
             Icon(
                 imageVector = if (model.isEnabled) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
                 contentDescription = if (model.isEnabled) "Selected" else "Not selected",
-                tint = if (model.isEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                tint = if (model.isEnabled) Color(0xFF16A34A) else Color(0xFF94A3B8)
             )
         }
     }

@@ -349,6 +349,18 @@ fun CategoryDonutChart(
                     val inset = stroke / 2f
                     val arcSize = Size(size.width - stroke, size.height - stroke)
                     val arcOffset = Offset(inset, inset)
+                    // 1. Background ring track
+                    drawArc(
+                        color = Color(0xFFF1F5F9),
+                        startAngle = 0f,
+                        sweepAngle = 360f,
+                        useCenter = false,
+                        topLeft = arcOffset,
+                        size = arcSize,
+                        style = Stroke(width = stroke, cap = StrokeCap.Round)
+                    )
+
+                    // 2. Animated category slices
                     var startAngle = -90f
                     val gap = 2.5f
 
@@ -370,18 +382,6 @@ fun CategoryDonutChart(
                         )
 
                         startAngle += slice.fraction * 360f
-                    }
-
-                    if (progress < 1f) {
-                        drawArc(
-                            color = Color(0xFFF1F5F9),
-                            startAngle = 0f,
-                            sweepAngle = 360f,
-                            useCenter = false,
-                            topLeft = arcOffset,
-                            size = arcSize,
-                            style = Stroke(width = stroke, cap = StrokeCap.Round)
-                        )
                     }
                 }
 

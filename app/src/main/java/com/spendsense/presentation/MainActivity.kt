@@ -193,16 +193,36 @@ class MainActivity : ComponentActivity() {
                                     navController = navController,
                                     startDestination = "home",
                                     enterTransition = {
-                                        fadeIn(animationSpec = tween(150))
+                                        fadeIn(animationSpec = tween(240, easing = FastOutSlowInEasing)) +
+                                            slideIntoContainer(
+                                                towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                                                animationSpec = tween(240, easing = FastOutSlowInEasing),
+                                                initialOffset = { it / 10 }
+                                            )
                                     },
                                     exitTransition = {
-                                        fadeOut(animationSpec = tween(150))
+                                        fadeOut(animationSpec = tween(180, easing = FastOutSlowInEasing)) +
+                                            slideOutOfContainer(
+                                                towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                                                animationSpec = tween(180, easing = FastOutSlowInEasing),
+                                                targetOffset = { it / 10 }
+                                            )
                                     },
                                     popEnterTransition = {
-                                        fadeIn(animationSpec = tween(150))
+                                        fadeIn(animationSpec = tween(240, easing = FastOutSlowInEasing)) +
+                                            slideIntoContainer(
+                                                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                                                animationSpec = tween(240, easing = FastOutSlowInEasing),
+                                                initialOffset = { it / 10 }
+                                            )
                                     },
                                     popExitTransition = {
-                                        fadeOut(animationSpec = tween(150))
+                                        fadeOut(animationSpec = tween(180, easing = FastOutSlowInEasing)) +
+                                            slideOutOfContainer(
+                                                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                                                animationSpec = tween(180, easing = FastOutSlowInEasing),
+                                                targetOffset = { it / 10 }
+                                            )
                                     }
                                 ) {
                                     composable(

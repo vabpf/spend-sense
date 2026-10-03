@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import android.graphics.drawable.ColorDrawable
 import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.layout.widthIn
@@ -35,15 +36,14 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.unit.Dp
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 /**
- * A Material3-style dialog with the liquid glass effect applied to its surface.
- *
- * Replaces [androidx.compose.material3.AlertDialog] with glass styling —
- * uses real Liquid Glass sampling on API 33+ and falls back to Haze on older devices.
- *
- * @see [Liquid Glass Guide](docs/LIQUID_GLASS.md)
+ * A Material3-style dialog with solid elevated surface styling and clean shadows.
+ * Replaces glass backdrop sampling to prevent multi-window wallpaper redraw artifacts.
  */
 @Composable
 fun GlassAlertDialog(
@@ -53,8 +53,8 @@ fun GlassAlertDialog(
     dismissButton: @Composable RowScope.() -> Unit = {},
     title: @Composable (() -> Unit)? = null,
     text: @Composable (() -> Unit)? = null,
-    shape: Shape = MaterialTheme.shapes.extraLarge,
-    containerColor: Color = FrostGlassDefaults.containerColor,
+    shape: Shape = RoundedCornerShape(24.dp),
+    containerColor: Color = Color.White,
     borderAlpha: Float = FrostGlassDefaults.borderAlpha
 ) {
     Dialog(
@@ -77,11 +77,20 @@ fun GlassAlertDialog(
             modifier = modifier
                 .fillMaxWidth(0.92f)
                 .widthIn(max = 560.dp)
-                .glassEffect(
+                .shadow(
+                    elevation = 16.dp,
                     shape = shape,
-                    containerColor = containerColor,
-                    borderAlpha = borderAlpha,
-                    liveBlur = true
+                    ambientColor = Color.Black.copy(alpha = 0.18f),
+                    spotColor = Color.Black.copy(alpha = 0.12f)
+                )
+                .background(
+                    color = containerColor,
+                    shape = shape
+                )
+                .border(
+                    width = 1.dp,
+                    color = Color(0xFFE2E8F0),
+                    shape = shape
                 )
                 .padding(24.dp)
         ) {

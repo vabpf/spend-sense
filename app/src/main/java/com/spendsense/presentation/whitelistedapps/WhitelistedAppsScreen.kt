@@ -25,6 +25,14 @@ import com.spendsense.presentation.util.glassEffect
 import com.spendsense.presentation.util.shimmer
 import com.spendsense.domain.repository.AppItem
 
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.background
+import androidx.compose.ui.text.font.FontWeight
+import com.spendsense.presentation.util.fadingEdge
+
 @Composable
 private fun rememberDrawablePainter(drawable: Drawable): Painter {
     return remember(drawable) {
@@ -39,46 +47,58 @@ fun WhitelistedAppsScreen(
     viewModel: WhitelistedAppsViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
+    val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val fadeStart = statusBarPadding + 62.dp
+    val fadeDistance = 36.dp
+    val fadeEnd = fadeStart + fadeDistance
+    val density = LocalDensity.current
+    val fadeStartPx = with(density) { fadeStart.toPx() }
+    val fadeEndPx = with(density) { fadeEnd.toPx() }
+
     val suggestedPackageNames = remember(state.suggestedApps) {
         state.suggestedApps.map { it.packageName }.toSet()
     }
     val nonSuggestedFilteredApps = remember(state.filteredApps, suggestedPackageNames) {
         state.filteredApps.filterNot { it.packageName in suggestedPackageNames }
     }
+
     Scaffold(
         containerColor = Color.Transparent,
-        contentColor = MaterialTheme.colorScheme.onBackground,
-        topBar = {
-            SpendSenseTopBar(
-                title = "Whitelisted Apps",
-                onNavigationClick = onNavigateBack,
-                navigationIcon = Icons.AutoMirrored.Rounded.ArrowBack
-            )
-        }
+        contentWindowInsets = WindowInsets(0)
     ) { padding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = padding.calculateTopPadding())
+                .padding(bottom = padding.calculateBottomPadding())
         ) {
-            Column(
-                    modifier = Modifier.fillMaxSize()
-                ) {
+            // Background scrim: transparent at top wallpaper, smoothly fades into #F8FAFC right below header text
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            0.0f to Color.Transparent,
+                            0.35f to Color(0xFFF8FAFC).copy(alpha = 0.40f),
+                            0.70f to Color(0xFFF8FAFC).copy(alpha = 0.85f),
+                            1.0f to Color(0xFFF8FAFC),
+                            startY = fadeStartPx,
+                            endY = fadeEndPx
+                        )
+                    )
+            )
+
             if (state.isLoading) {
                 Column(
                     modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                        .fillMaxSize()
+                        .padding(start = 16.dp, end = 16.dp, top = fadeEnd + 16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Shimmer Placeholders for explanation text and search bar
                     Box(modifier = Modifier.fillMaxWidth().height(16.dp).clip(RoundedCornerShape(4.dp)).shimmer())
                     Box(modifier = Modifier.width(240.dp).height(16.dp).clip(RoundedCornerShape(4.dp)).shimmer())
                     Spacer(modifier = Modifier.height(8.dp))
                     Box(modifier = Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(4.dp)).shimmer())
                     Spacer(modifier = Modifier.height(16.dp))
-                    
                     repeat(5) {
                         WhitelistedAppSkeletonItem()
                     }
@@ -86,17 +106,20 @@ fun WhitelistedAppsScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 0.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                        .fillMaxSize()
+                        .fadingEdge(
+                            topFadeStart = fadeStart,
+                            topFadeHeight = fadeDistance
+                        ),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = fadeEnd + 6.dp, bottom = 100.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     item {
                         Text(
-                            "Select the apps you want SpendSense to monitor for transaction notifications.",
+                            text = "Select the apps you want SpendSense to monitor for transaction notifications.",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(bottom = 8.dp)
+                            color = Color(0xFF64748B),
+                            modifier = Modifier.padding(bottom = 4.dp)
                         )
                     }
 
@@ -107,7 +130,14 @@ fun WhitelistedAppsScreen(
                             modifier = Modifier.fillMaxWidth(),
                             label = { Text("Search apps") },
                             placeholder = { Text("Search by app name or package") },
-                            singleLine = true
+                            singleLine = true,
+                            shape = RoundedCornerShape(14.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = Color.White,
+                                unfocusedContainerColor = Color.White,
+                                focusedBorderColor = Color(0xFF00D4FF),
+                                unfocusedBorderColor = Color(0xFFE2E8F0)
+                            )
                         )
                     }
 
@@ -116,17 +146,17 @@ fun WhitelistedAppsScreen(
                             Text(
                                 text = "Suggested Vietnam Banking Apps",
                                 style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF0F172A),
                                 modifier = Modifier.padding(top = 8.dp)
                             )
                         }
-
-                        items(
-                            items = state.suggestedApps,
-                            key = { "suggested_${it.packageName}" }
-                        ) { app ->
+                        items(state.suggestedApps, key = { "sug_${it.packageName}" }) { app ->
                             WhitelistedAppCard(
                                 app = app,
-                                onToggle = { isChecked -> viewModel.toggleApp(app, isChecked) }
+                                onToggle = { isChecked ->
+                                    viewModel.onAppToggled(app.packageName, isChecked)
+                                }
                             )
                         }
                     }
@@ -134,27 +164,61 @@ fun WhitelistedAppsScreen(
                     if (nonSuggestedFilteredApps.isNotEmpty()) {
                         item {
                             Text(
-                                text = "Installed Applications",
+                                text = "All Installed Apps",
                                 style = MaterialTheme.typography.titleMedium,
-                                modifier = Modifier.padding(top = 8.dp)
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF0F172A),
+                                modifier = Modifier.padding(top = 12.dp)
                             )
                         }
-
-                        items(
-                            items = nonSuggestedFilteredApps,
-                            key = { "all_${it.packageName}" }
-                        ) { app ->
+                        items(nonSuggestedFilteredApps, key = { it.packageName }) { app ->
                             WhitelistedAppCard(
                                 app = app,
-                                onToggle = { isChecked -> viewModel.toggleApp(app, isChecked) }
+                                onToggle = { isChecked ->
+                                    viewModel.onAppToggled(app.packageName, isChecked)
+                                }
                             )
                         }
                     }
                 }
             }
+
+            // Pinned Header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        top = statusBarPadding + 10.dp,
+                        start = 12.dp,
+                        end = 20.dp,
+                        bottom = 10.dp
+                    )
+                    .align(Alignment.TopStart),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                IconButton(onClick = onNavigateBack) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color.White
+                    )
+                }
+                Column {
+                    Text(
+                        text = "Whitelisted Apps",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Manage apps monitored for banking alerts",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.85f)
+                    )
         }
     }
-}
 }
 
 @Composable
@@ -216,14 +280,17 @@ fun WhitelistedAppCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .glassEffect(
-                shape = MaterialTheme.shapes.large
+            .shadow(
+                elevation = 2.dp,
+                shape = RoundedCornerShape(16.dp),
+                ambientColor = Color.Black.copy(alpha = 0.04f),
+                spotColor = Color.Black.copy(alpha = 0.03f)
             ),
-        shape = MaterialTheme.shapes.medium,
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.onSurface
-        )
+            containerColor = Color.White
+        ),
+        border = BorderStroke(1.dp, Color(0xFFF1F5F9))
     ) {
         Row(
             modifier = Modifier
@@ -244,12 +311,14 @@ fun WhitelistedAppCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = app.appName,
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF0F172A)
                 )
                 Text(
                     text = app.packageName,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = Color(0xFF64748B)
                 )
             }
             Switch(
