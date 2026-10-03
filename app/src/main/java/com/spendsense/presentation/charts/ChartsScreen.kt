@@ -39,8 +39,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalDensity
-import com.kyant.backdrop.rememberLayerBackdrop
-import com.kyant.backdrop.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
 import com.spendsense.presentation.util.LocalBackdrop
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip

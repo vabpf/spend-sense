@@ -54,8 +54,8 @@ import com.spendsense.presentation.util.getCategoryIcon
 import com.spendsense.presentation.util.FrostGlassDefaults
 import com.spendsense.presentation.util.glassEffect
 import com.spendsense.presentation.util.LocalBackdrop
-import com.kyant.backdrop.rememberLayerBackdrop
-import com.kyant.backdrop.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
 import com.spendsense.presentation.util.fadingEdge
 import com.spendsense.presentation.util.prismEdge
 import com.spendsense.presentation.util.parseColor
