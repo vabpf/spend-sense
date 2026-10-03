@@ -315,7 +315,8 @@ fun HomeScreen(
                     .size(56.dp)
                     .glassEffect(
                         shape = CircleShape,
-                        liveBlur = true
+                        liveBlur = true,
+                        useLens = true
                     )
                     .prismEdge(
                         shape = CircleShape,
@@ -1993,7 +1994,8 @@ fun GlassFilterChip(
                 shape = CircleShape,
                 containerColor = GlassSurface.copy(alpha = containerAlpha),
                 borderWidth = 1.dp,
-                borderAlpha = borderAlpha
+                borderAlpha = borderAlpha,
+                useLens = true
             )
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -2314,7 +2316,8 @@ fun SortChip(
                 shape = MaterialTheme.shapes.small,
                 containerColor = GlassSurface.copy(alpha = containerAlpha),
                 borderWidth = 1.dp,
-                borderAlpha = borderAlpha
+                borderAlpha = borderAlpha,
+                useLens = true
             )
             .clickable(onClick = onClick)
             .padding(vertical = 10.dp),
