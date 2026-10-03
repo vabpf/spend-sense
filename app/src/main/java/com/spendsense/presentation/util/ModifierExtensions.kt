@@ -22,6 +22,9 @@ import com.kyant.backdrop.effects.vibrancy
 import com.spendsense.presentation.theme.CyberBlue
 import com.spendsense.presentation.theme.GlassSurface
 import androidx.compose.ui.composed
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -342,4 +345,36 @@ fun Modifier.combinedBounceClickable(
             onClick = onClick
         )
 }
+
+/**
+ * Smoothly dissolves/fades content edges (top and/or bottom) using GPU-accelerated alpha blend masks.
+ */
+fun Modifier.fadingEdge(
+    topFadeHeight: Dp = 0.dp,
+    bottomFadeHeight: Dp = 0.dp
+): Modifier = this
+    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+    .drawWithContent {
+        drawContent()
+        val topFadePx = topFadeHeight.toPx()
+        if (topFadePx > 0f) {
+            drawRect(
+                brush = Brush.verticalGradient(
+                    0f to Color.Transparent,
+                    topFadePx to Color.Black
+                ),
+                blendMode = BlendMode.DstIn
+            )
+        }
+        val bottomFadePx = bottomFadeHeight.toPx()
+        if (bottomFadePx > 0f) {
+            drawRect(
+                brush = Brush.verticalGradient(
+                    (size.height - bottomFadePx) to Color.Black,
+                    size.height to Color.Transparent
+                ),
+                blendMode = BlendMode.DstIn
+            )
+        }
+    }
 

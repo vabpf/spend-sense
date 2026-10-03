@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -408,12 +409,12 @@ class MainActivity : ComponentActivity() {
                                         useLens = true,
                                         backdrop = contentBackdrop
                                     )
-                                    .padding(horizontal = 8.dp, vertical = 8.dp)
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
                             ) {
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(64.dp),
+                                        .height(54.dp),
                                     horizontalArrangement = Arrangement.SpaceEvenly,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
@@ -427,7 +428,7 @@ class MainActivity : ComponentActivity() {
                                         } == true
 
                                         Box(
-                                            modifier = Modifier
+                                             modifier = Modifier
                                                 .weight(1f)
                                                 .clip(RoundedCornerShape(999.dp))
                                                 .clickable {
@@ -439,22 +440,22 @@ class MainActivity : ComponentActivity() {
                                                         restoreState = true
                                                     }
                                                 }
-                                                .padding(vertical = 8.dp),
+                                                .padding(vertical = 4.dp),
                                             contentAlignment = Alignment.Center
                                         ) {
                                             Column(
                                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                                verticalArrangement = Arrangement.spacedBy(3.dp)
+                                                verticalArrangement = Arrangement.spacedBy(2.dp)
                                             ) {
                                                 Icon(
                                                     imageVector = icon,
                                                     contentDescription = label,
                                                     tint = if (selected) CyberBlue else Color(0xFF64748B),
-                                                    modifier = Modifier.size(24.dp)
+                                                    modifier = Modifier.size(22.dp)
                                                 )
                                                 Text(
                                                     text = label,
-                                                    style = MaterialTheme.typography.labelSmall,
+                                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
                                                     fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                                                     color = if (selected) CyberBlue else Color(0xFF64748B)
                                                 )
