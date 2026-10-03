@@ -67,3 +67,6 @@ Thumbs.db
 
 # Local exported data
 exported-data/
+
+# Machine-local IDE & CLI metadata
+.antigravitycli/
