@@ -42,9 +42,6 @@ fun SpendSenseTopBar(
             )
             .glassEffect(
                 shape = barShape,
-                containerColor = GlassSurface.copy(alpha = 0.9f),
-                borderAlpha = 0.18f,
-                sheenAlpha = 0.05f,
                 liveBlur = true,
                 hazeState = hazeState
             ),

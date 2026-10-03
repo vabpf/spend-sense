@@ -729,9 +729,7 @@ private fun ChartCard(
         modifier = modifier
             .fillMaxWidth()
             .glassEffect(
-                shape = MaterialTheme.shapes.large,
-                containerColor = GlassSurface.copy(alpha = 0.8f),
-                borderAlpha = 0.24f
+                shape = MaterialTheme.shapes.large
             )
             .padding(16.dp)
     ) {

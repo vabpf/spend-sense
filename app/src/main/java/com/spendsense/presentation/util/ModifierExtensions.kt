@@ -47,6 +47,19 @@ object LiquidTokens {
     const val curve = 0.5f
 }
 
+/**
+ * Unified Design Tokens for Frosted Glass across the app.
+ * Provides a single source of truth for cards, floating bars, dialogs, and controls.
+ */
+object FrostGlassDefaults {
+    val containerColor: Color = GlassSurface.copy(alpha = 0.72f)
+    val liveBlurContainerColor: Color = GlassSurface.copy(alpha = 0.50f)
+    val borderWidth: Dp = 1.dp
+    const val borderAlpha: Float = 0.20f
+    const val sheenAlpha: Float = 0.06f
+    const val prismAlpha: Float = 0.04f
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // GLASSMORPHISM EFFECT UTILITIES
 // Cyber-Premium style with prism edges and chromatic aberration
@@ -62,11 +75,11 @@ object LiquidTokens {
 @Composable
 fun Modifier.glassEffect(
     shape: Shape,
-    containerColor: Color = GlassSurface.copy(alpha = 0.65f),
-    borderWidth: Dp = 1.dp,
-    borderAlpha: Float = 0.20f,
-    sheenAlpha: Float = 0.08f,
-    prismAlpha: Float = 0.04f,
+    containerColor: Color = FrostGlassDefaults.containerColor,
+    borderWidth: Dp = FrostGlassDefaults.borderWidth,
+    borderAlpha: Float = FrostGlassDefaults.borderAlpha,
+    sheenAlpha: Float = FrostGlassDefaults.sheenAlpha,
+    prismAlpha: Float = FrostGlassDefaults.prismAlpha,
     liveBlur: Boolean = false,
     hazeState: HazeState? = LocalGlassHazeState.current,
     liquidState: Any? = null,
@@ -81,7 +94,11 @@ fun Modifier.glassEffect(
     }
     modifier = modifier.clip(shape)
     val effectiveColor = if (liveBlur && hazeState != null) {
-        containerColor.copy(alpha = containerColor.alpha.coerceAtMost(0.35f))
+        if (containerColor == FrostGlassDefaults.containerColor) {
+            FrostGlassDefaults.liveBlurContainerColor
+        } else {
+            containerColor.copy(alpha = containerColor.alpha.coerceAtMost(0.55f))
+        }
     } else {
         containerColor
     }
@@ -187,8 +204,8 @@ fun Modifier.neonGlow(
 @Composable
 fun Modifier.glassCard(
     shape: Shape,
-    containerColor: Color = GlassSurface.copy(alpha = 0.82f),
-    borderAlpha: Float = 0.2f,
+    containerColor: Color = FrostGlassDefaults.containerColor,
+    borderAlpha: Float = FrostGlassDefaults.borderAlpha,
     hasPrism: Boolean = true,
     prismColor: Color = CyberBlue
 ): Modifier = glassEffect(

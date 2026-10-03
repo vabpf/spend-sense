@@ -48,6 +48,7 @@ import com.spendsense.presentation.theme.GlassSurface
 import com.spendsense.presentation.util.GlassAlertDialog
 import com.spendsense.presentation.util.SpendSenseTopBar
 import com.spendsense.presentation.util.getCategoryIcon
+import com.spendsense.presentation.util.FrostGlassDefaults
 import com.spendsense.presentation.util.glassEffect
 import com.spendsense.presentation.util.prismEdge
 import com.spendsense.presentation.util.parseColor
@@ -314,9 +315,6 @@ fun HomeScreen(
                     .size(56.dp)
                     .glassEffect(
                         shape = CircleShape,
-                        containerColor = GlassSurface.copy(alpha = 0.85f),
-                        borderWidth = 1.dp,
-                        borderAlpha = 0.24f,
                         liveBlur = true
                     )
                     .prismEdge(
@@ -486,23 +484,24 @@ fun HomeScreen(
                                                         detectHorizontalDragGestures(
                                                             onDragEnd = {
                                                                 scope.launch {
-                                                                     if (offsetAnim.value > revealThresholdPx) {
-                                                                         offsetAnim.animateTo(
-                                                                             revealWidthPx,
-                                                                             spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessHigh)
-                                                                         )
-                                                                     } else {
-                                                                         offsetAnim.animateTo(
-                                                                             0f,
-                                                                             spring(dampingRatio = 0.35f, stiffness = Spring.StiffnessHigh)
-                                                                         )
-                                                                         dragOffset = 0f
-                                                                     }
-                                                                 }
-                                                             },
+                                                                    if (offsetAnim.value > revealThresholdPx) {
+                                                                        offsetAnim.animateTo(
+                                                                            revealWidthPx,
+                                                                            spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessHigh)
+                                                                        )
+                                                                        dragOffset = revealWidthPx
+                                                                    } else {
+                                                                        offsetAnim.animateTo(
+                                                                            0f,
+                                                                            spring(dampingRatio = 0.35f, stiffness = Spring.StiffnessHigh)
+                                                                        )
+                                                                        dragOffset = 0f
+                                                                    }
+                                                                }
+                                                            },
                                                             onHorizontalDrag = { change, dragAmount ->
                                                                 change.consume()
-                                                                dragOffset = (dragOffset + dragAmount).coerceIn(-revealWidthPx, revealWidthPx)
+                                                                dragOffset = (dragOffset + dragAmount).coerceIn(0f, revealWidthPx)
                                                                 scope.launch { offsetAnim.snapTo(dragOffset) }
                                                             }
                                                         )
@@ -520,7 +519,15 @@ fun HomeScreen(
                                                     }
                                                 },
                                                 onClick = {
-                                                    if (selectedTransactionIds.isNotEmpty()) {
+                                                    if (offsetAnim.value > 0f) {
+                                                        scope.launch {
+                                                            offsetAnim.animateTo(
+                                                                0f,
+                                                                spring(dampingRatio = 0.35f, stiffness = Spring.StiffnessHigh)
+                                                            )
+                                                            dragOffset = 0f
+                                                        }
+                                                    } else if (selectedTransactionIds.isNotEmpty()) {
                                                         selectedTransactionIds = if (selectedTransactionIds.contains(transaction.id)) {
                                                             selectedTransactionIds - transaction.id
                                                         } else {
@@ -563,9 +570,7 @@ fun HomeScreen(
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp)
                             .glassEffect(
-                                shape = MaterialTheme.shapes.medium,
-                                containerColor = GlassSurface.copy(alpha = 0.82f),
-                                borderAlpha = 0.24f
+                                shape = MaterialTheme.shapes.medium
                             ),
                         shape = MaterialTheme.shapes.medium,
                         colors = CardDefaults.cardColors(containerColor = Color.Transparent)
@@ -743,8 +748,6 @@ fun HomeScreen(
                         )
                         .glassEffect(
                             shape = RoundedCornerShape(20.dp),
-                            containerColor = GlassSurface.copy(alpha = 0.92f),
-                            borderAlpha = 0.20f,
                             liveBlur = true
                         )
                         .padding(horizontal = 16.dp, vertical = 10.dp)
@@ -1112,9 +1115,7 @@ private fun HomeSummaryCard(
         modifier = modifier
             .fillMaxWidth()
             .glassEffect(
-                shape = MaterialTheme.shapes.large,
-                containerColor = GlassSurface.copy(alpha = 0.82f),
-                borderAlpha = 0.24f
+                shape = MaterialTheme.shapes.large
             ),
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(containerColor = Color.Transparent)
@@ -1182,9 +1183,7 @@ fun InboxItem(
             .width(280.dp)
             .height(148.dp)
             .glassEffect(
-                shape = MaterialTheme.shapes.medium,
-                containerColor = GlassSurface.copy(alpha = 0.85f),
-                borderAlpha = 0.2f
+                shape = MaterialTheme.shapes.medium
             ),
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
@@ -1593,8 +1592,8 @@ fun TransactionItem(
     onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit
 ) {
-    val containerColor = if (isSelected) CyberBlue.copy(alpha = 0.20f) else GlassSurface
-    val borderAlpha = if (isSelected) 0.45f else 0.15f
+    val containerColor = if (isSelected) CyberBlue.copy(alpha = 0.20f) else FrostGlassDefaults.containerColor
+    val borderAlpha = if (isSelected) 0.45f else FrostGlassDefaults.borderAlpha
 
     Card(
         modifier = Modifier

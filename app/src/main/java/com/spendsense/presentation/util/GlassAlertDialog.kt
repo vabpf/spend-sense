@@ -21,6 +21,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
+import android.graphics.drawable.ColorDrawable
+import android.graphics.Color as AndroidColor
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.window.Dialog
 import com.spendsense.presentation.theme.GlassSurface
 import androidx.compose.ui.graphics.CompositingStrategy
@@ -47,15 +54,29 @@ fun GlassAlertDialog(
     title: @Composable (() -> Unit)? = null,
     text: @Composable (() -> Unit)? = null,
     shape: Shape = MaterialTheme.shapes.extraLarge,
-    containerColor: Color = GlassSurface.copy(alpha = 0.9f),
-    borderAlpha: Float = 0f
+    containerColor: Color = FrostGlassDefaults.containerColor,
+    borderAlpha: Float = FrostGlassDefaults.borderAlpha
 ) {
-    Dialog(onDismissRequest = onDismissRequest) {
+    Dialog(
+        onDismissRequest = onDismissRequest,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        val view = LocalView.current
+        SideEffect {
+            var parent = view.parent
+            while (parent != null && parent !is DialogWindowProvider) {
+                parent = parent.parent
+            }
+            (parent as? DialogWindowProvider)?.window?.setBackgroundDrawable(ColorDrawable(AndroidColor.TRANSPARENT))
+        }
+
         val configuration = LocalConfiguration.current
         val maxContentHeight = configuration.screenHeightDp.dp * 0.55f
 
         Box(
             modifier = modifier
+                .fillMaxWidth(0.92f)
+                .widthIn(max = 560.dp)
                 .glassEffect(
                     shape = shape,
                     containerColor = containerColor,

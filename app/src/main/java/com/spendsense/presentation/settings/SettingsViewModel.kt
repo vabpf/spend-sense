@@ -74,7 +74,12 @@ class SettingsViewModel @Inject constructor(
     fun setCustomBackground(uri: android.net.Uri, context: android.content.Context) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val destFile = java.io.File(context.filesDir, "custom_background.jpg")
+                // Delete previous custom background files to prevent disk leak
+                context.filesDir.listFiles { file ->
+                    file.name.startsWith("custom_background")
+                }?.forEach { it.delete() }
+
+                val destFile = java.io.File(context.filesDir, "custom_background_${System.currentTimeMillis()}.jpg")
                 context.contentResolver.openInputStream(uri)?.use { input ->
                     destFile.outputStream().use { output ->
                         input.copyTo(output)

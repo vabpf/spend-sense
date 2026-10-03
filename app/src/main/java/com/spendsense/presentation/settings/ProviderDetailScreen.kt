@@ -246,9 +246,7 @@ private fun ModelItem(
         modifier = Modifier
             .fillMaxWidth()
             .glassEffect(
-                shape = MaterialTheme.shapes.medium,
-                containerColor = GlassSurface.copy(alpha = 0.6f),
-                borderAlpha = if (model.isEnabled) 0.3f else 0.1f
+                shape = MaterialTheme.shapes.medium
             )
     ) {
         Row(

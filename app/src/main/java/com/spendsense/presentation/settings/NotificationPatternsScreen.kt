@@ -75,8 +75,7 @@ fun NotificationPatternsScreen(
                     .size(56.dp)
                     .glassEffect(
                         shape = FloatingActionButtonDefaults.shape,
-                        containerColor = GlassSurface.copy(alpha = 0.15f),
-                        borderAlpha = 0.25f
+                        liveBlur = true
                     )
                     .border(
                         width = 1.dp,
@@ -160,23 +159,6 @@ fun NotificationPatternsScreen(
                         item { Spacer(modifier = Modifier.height(40.dp)) }
                     }
                 }
- 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 96.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            0.0f to MaterialTheme.colorScheme.background,
-                            0.3f to MaterialTheme.colorScheme.background.copy(alpha = 0.9f),
-                            0.55f to MaterialTheme.colorScheme.background.copy(alpha = 0.65f),
-                            0.75f to MaterialTheme.colorScheme.background.copy(alpha = 0.25f),
-                            1.0f to Color.Transparent
-                        )
-                    )
-                    .align(Alignment.TopCenter)
-            )
- 
             SpendSenseTopBar(
                 title = "Notification Patterns",
                 onNavigationClick = onNavigateBack,
@@ -796,9 +778,7 @@ fun PatternItem(
             .fillMaxWidth()
             .clickable { onShowHistory() }
             .glassEffect(
-                shape = MaterialTheme.shapes.large,
-                containerColor = GlassSurface.copy(alpha = 0.8f),
-                borderAlpha = 0.2f
+                shape = MaterialTheme.shapes.large
             ),
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(containerColor = Color.Transparent)

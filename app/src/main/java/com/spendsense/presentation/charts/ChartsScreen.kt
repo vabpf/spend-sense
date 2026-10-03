@@ -137,14 +137,6 @@ fun ChartsScreen(
                     )
                 }
 
-                // ── Monthly trend line ────────────────────────────────────────────
-                item {
-                    MonthlyTrendLineChart(
-                        points = state.monthlyPoints,
-                        currency = summary.currency
-                    )
-                }
-
                 item { Spacer(modifier = Modifier.height(120.dp)) }
             }
 
@@ -376,9 +368,7 @@ private fun GlassSummaryCard(
     Box(
         modifier = modifier
             .glassEffect(
-                shape = MaterialTheme.shapes.large,
-                containerColor = GlassSurface.copy(alpha = 0.8f),
-                borderAlpha = 0.24f
+                shape = MaterialTheme.shapes.large
             )
             .padding(16.dp)
     ) {

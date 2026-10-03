@@ -89,7 +89,8 @@ fun AppBackground(
             }
             AppBackgroundOption.CUSTOM.key -> {
                 val customFile = customImagePath?.let { File(it) }
-                val bitmap = remember(customImagePath) {
+                val lastModified = customFile?.takeIf { it.exists() }?.lastModified() ?: 0L
+                val bitmap = remember(customImagePath, lastModified) {
                     if (customFile != null && customFile.exists()) {
                         BitmapFactory.decodeFile(customFile.absolutePath)?.asImageBitmap()
                     } else null
@@ -122,11 +123,31 @@ fun AppBackground(
             }
         }
 
-        // Dark overlay to maintain readability and contrast for all cards and text
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.30f))
-        )
+        // Adaptive dark overlay to maintain legibility and high contrast for text and cards
+        val overlayModifier = when (themeKey) {
+            AppBackgroundOption.CUSTOM.key -> {
+                Modifier.background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0.52f),
+                            Color.Black.copy(alpha = 0.60f),
+                            Color.Black.copy(alpha = 0.66f)
+                        )
+                    )
+                )
+            }
+            AppBackgroundOption.OLED_BLACK.key -> null
+            AppBackgroundOption.DEEP_SPACE.key,
+            AppBackgroundOption.CYBER_NEON.key -> Modifier.background(Color.Black.copy(alpha = 0.15f))
+            else -> Modifier.background(Color.Black.copy(alpha = 0.30f))
+        }
+
+        if (overlayModifier != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(overlayModifier)
+            )
+        }
     }
 }

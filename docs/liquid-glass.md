@@ -68,27 +68,24 @@ CompositionLocalProvider(
 
 ---
 
-## 3. High-End Design Parameters
+## 3. Unified Design Tokens (FrostGlassDefaults)
 
-In [`ModifierExtensions.kt`](file:///home/vab/apps/spend-sense/app/src/main/java/com/spendsense/presentation/util/ModifierExtensions.kt), `Modifier.glassEffect(...)` automatically coordinates parameters:
+In [`ModifierExtensions.kt`](file:///home/vab/apps/spend-sense/app/src/main/java/com/spendsense/presentation/util/ModifierExtensions.kt), `FrostGlassDefaults` provides the single source of truth for all frosted glass surfaces across the app:
 
 ```kotlin
-@Composable
-fun Modifier.glassEffect(
-    shape: Shape,
-    containerColor: Color = GlassSurface.copy(alpha = 0.65f),
-    borderWidth: Dp = 1.dp,
-    borderAlpha: Float = 0.20f,
-    sheenAlpha: Float = 0.08f,
-    prismAlpha: Float = 0.04f,
-    liveBlur: Boolean = false,
-    hazeState: HazeState? = LocalGlassHazeState.current,
-    contentModifier: Modifier = Modifier
-): Modifier
+object FrostGlassDefaults {
+    val containerColor: Color = GlassSurface.copy(alpha = 0.72f)
+    val liveBlurContainerColor: Color = GlassSurface.copy(alpha = 0.50f)
+    val borderWidth: Dp = 1.dp
+    const val borderAlpha: Float = 0.20f
+    const val sheenAlpha: Float = 0.06f
+    const val prismAlpha: Float = 0.04f
+}
 ```
 
-- When `liveBlur = true`: applies `modifier.hazeEffect(...)` and caps alpha at `0.35f` so the blur shines through clearly.
-- When `liveBlur = false`: uses the full translucent `containerColor.alpha` (e.g. `0.65f - 0.75f`) with gradient border and top sheen for pure 120 FPS performance.
+`Modifier.glassEffect(...)` automatically applies these tokens by default:
+- **Surface Cards & Items (`liveBlur = false`):** uses `FrostGlassDefaults.containerColor` (72% opacity), subtle top specular sheen (`0.06f`), and cyber glass gradient border (`0.20f`).
+- **Floating Chrome & Dialogs (`liveBlur = true`):** uses `FrostGlassDefaults.liveBlurContainerColor` (50% opacity) blended with `HazeMaterials.thin()` backdrop blur, sharing the exact same specular sheen, border thickness, and border gradient for complete visual consistency across the entire app.
 
 ---
 

@@ -217,9 +217,7 @@ fun WhitelistedAppCard(
         modifier = Modifier
             .fillMaxWidth()
             .glassEffect(
-                shape = MaterialTheme.shapes.large,
-                containerColor = GlassSurface.copy(alpha = 0.8f),
-                borderAlpha = 0.24f
+                shape = MaterialTheme.shapes.large
             ),
         shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(

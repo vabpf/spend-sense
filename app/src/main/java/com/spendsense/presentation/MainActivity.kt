@@ -169,14 +169,16 @@ class MainActivity : ComponentActivity() {
                     LocalCustomBackgroundPath provides customBackgroundPath
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        AppBackground(
+                        // 1. Background + Content layer inside hazeSource for real-time backdrop blur
+                        Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .hazeSource(state = hazeState)
-                        )
+                        ) {
+                            AppBackground(
+                                modifier = Modifier.fillMaxSize()
+                            )
 
-                        // Sibling 2: Content (Scaffold + NavHost) — NOT inside liquefiable
-                        Box(modifier = Modifier.fillMaxSize()) {
                             Scaffold(
                                 containerColor = Color.Transparent,
                                 contentColor = MaterialTheme.colorScheme.onBackground,
@@ -385,22 +387,6 @@ class MainActivity : ComponentActivity() {
                         if (isMainScreen) {
                             Box(
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(120.dp)
-                                    .background(
-                                        Brush.verticalGradient(
-                                            0.0f to Color.Transparent,
-                                            0.25f to MaterialTheme.colorScheme.background.copy(alpha = 0.25f),
-                                            0.45f to MaterialTheme.colorScheme.background.copy(alpha = 0.65f),
-                                            0.7f to MaterialTheme.colorScheme.background.copy(alpha = 0.9f),
-                                            1.0f to MaterialTheme.colorScheme.background
-                                        )
-                                    )
-                                    .align(Alignment.BottomCenter)
-                            )
-
-                            Box(
-                                modifier = Modifier
                                     .align(Alignment.BottomCenter)
                                     .fillMaxWidth()
                                     .padding(horizontal = 28.dp, vertical = 12.dp)
@@ -413,9 +399,6 @@ class MainActivity : ComponentActivity() {
                                     )
                                     .glassEffect(
                                         shape = RoundedCornerShape(999.dp),
-                                        containerColor = GlassSurface.copy(alpha = 0.70f),
-                                        borderAlpha = 0.20f,
-                                        sheenAlpha = 0.08f,
                                         liveBlur = true,
                                         hazeState = hazeState
                                     )
