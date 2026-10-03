@@ -4,6 +4,7 @@ package com.spendsense.presentation.home
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -80,26 +81,6 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.rememberDatePickerState
 import android.widget.Toast
 
-private fun Modifier.fadingEdge(topFadeHeight: Dp): Modifier = this
-    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
-    .drawWithContent {
-        drawContent()
-        val topFadePx = topFadeHeight.toPx()
-        if (topFadePx > 0f) {
-            drawRect(
-                brush = Brush.verticalGradient(
-                    colorStops = arrayOf(
-                        0f to Color.Transparent,
-                        0.999f to Color.Transparent,
-                        1f to Color.White
-                    ),
-                    startY = 0f,
-                    endY = topFadePx
-                ),
-                blendMode = BlendMode.DstIn
-            )
-        }
-    }
 
 private fun isFuzzyMatch(target: String, query: String): Boolean {
     if (query.isEmpty()) return true
@@ -225,19 +206,6 @@ fun HomeScreen(
     var showStartDatePicker by remember { mutableStateOf(false) }
     var showEndDatePicker by remember { mutableStateOf(false) }
 
-    val density = LocalDensity.current
-    val defaultHeaderHeightPx = with(density) {
-        if (pendingNotifications.isNotEmpty()) {
-            (428.dp).toPx()
-        } else {
-            (228.dp).toPx()
-        }
-    }
-    var measuredHeaderHeightPx by remember { mutableStateOf(defaultHeaderHeightPx) }
-    val headerHeight = remember(measuredHeaderHeightPx, density) {
-        with(density) { measuredHeaderHeightPx.toDp() + statusBarPadding + 16.dp }
-    }
-
     val availablePaymentSources = remember(transactions) {
         transactions.map { it.paymentSource }.distinct().filter { it.isNotBlank() }
     }
@@ -313,15 +281,15 @@ fun HomeScreen(
                 modifier = Modifier
                     .offset(y = (-112).dp)
                     .size(56.dp)
-                    .glassEffect(
+                    .shadow(
+                        elevation = 8.dp,
                         shape = CircleShape,
-                        liveBlur = true,
-                        useLens = true
+                        ambientColor = Color.Black.copy(alpha = 0.25f),
+                        spotColor = Color.Black.copy(alpha = 0.20f)
                     )
-                    .prismEdge(
-                        shape = CircleShape,
-                        accentColor = CyberBlue,
-                        intensity = 0.6f
+                    .background(
+                        Brush.linearGradient(listOf(CyberBlue, Color(0xFF00C6FF))),
+                        shape = CircleShape
                     )
                     .clickable { isAddingTransaction = true },
                 contentAlignment = Alignment.Center
@@ -329,514 +297,513 @@ fun HomeScreen(
                 Icon(
                     Icons.Rounded.Add,
                     contentDescription = "Add Transaction",
-                    tint = CyberBlue,
-                    modifier = Modifier.size(24.dp)
+                    tint = Color.White,
+                    modifier = Modifier.size(28.dp)
                 )
             }
         }
     ) { padding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(bottom = padding.calculateBottomPadding())
+                .padding(top = statusBarPadding + 12.dp)
         ) {
-            if (filteredTransactions.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(top = headerHeight, bottom = 120.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
+            // 1. TOP SECTION (Kept the same, Dark Theme on Wallpaper)
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                HomeSummaryCard(
+                    todaySpending = todayConvertedTotal,
+                    yesterdaySpending = yesterdayConvertedTotal,
+                    transactionCount = transactions.size,
+                    pendingCount = pendingNotifications.size,
+                    defaultCurrency = defaultCurrency,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .glassEffect(
+                            shape = MaterialTheme.shapes.medium
+                        ),
+                    shape = MaterialTheme.shapes.medium,
+                    colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+                ) {
+                    TextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("Search transactions...", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)) },
+                        leadingIcon = {
                             Icon(
-                                if (transactions.isEmpty()) Icons.Rounded.Receipt else Icons.Rounded.Search,
-                                contentDescription = null,
-                                modifier = Modifier.size(64.dp),
-                                tint = MaterialTheme.colorScheme.primary
+                                Icons.Rounded.Search,
+                                contentDescription = "Search",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            Text(
-                                text = if (transactions.isEmpty()) "No transactions yet" else "No matching transactions",
-                                style = MaterialTheme.typography.titleLarge
-                            )
-                            Text(
-                                text = if (transactions.isEmpty()) "Transactions will appear here automatically" else "Try adjusting your search query",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                } else {
-                    val listItems = remember(filteredTransactions, filterState.sortOrder) {
-                        when (filterState.sortOrder) {
-                            SortOrder.NEWEST_FIRST -> {
-                                filteredTransactions.groupBy { normalizeToDay(it.timestamp) }
-                                    .mapValues { (_, txns) -> txns.sortedByDescending { it.timestamp } }
-                                    .toSortedMap(compareByDescending { it })
-                                    .flatMap { (date, txns) ->
-                                        listOf(TransactionListItem.Header(date)) + txns.map { TransactionListItem.Item(it) }
+                        },
+                        trailingIcon = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                modifier = Modifier.padding(end = 8.dp)
+                            ) {
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { searchQuery = "" }) {
+                                        Icon(
+                                            Icons.Rounded.Close,
+                                            contentDescription = "Clear",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
                                     }
-                            }
-                            SortOrder.OLDEST_FIRST -> {
-                                filteredTransactions.groupBy { normalizeToDay(it.timestamp) }
-                                    .mapValues { (_, txns) -> txns.sortedBy { it.timestamp } }
-                                    .toSortedMap(compareBy { it })
-                                    .flatMap { (date, txns) ->
-                                        listOf(TransactionListItem.Header(date)) + txns.map { TransactionListItem.Item(it) }
-                                    }
-                            }
-                            SortOrder.HIGHEST_AMOUNT -> {
-                                filteredTransactions.map { TransactionListItem.Item(it) }
-                            }
-                            SortOrder.LOWEST_AMOUNT -> {
-                                filteredTransactions.map { TransactionListItem.Item(it) }
-                            }
-                        }
-                    }
-
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .fadingEdge(headerHeight),
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 120.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        item {
-                            Spacer(
-                                modifier = Modifier.height(
-                                    headerHeight + if (selectedTransactionIds.isNotEmpty()) 72.dp else 0.dp
-                                )
-                            )
-                        }
-
-                        items(
-                            items = listItems,
-                            key = { it.key }
-                        ) { item ->
-                            when (item) {
-                                is TransactionListItem.Header -> {
-                                    Text(
-                                        text = formatDayHeader(item.date),
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 4.dp)
+                                }
+                                IconButton(onClick = { showFilterSheet = true }) {
+                                    Icon(
+                                        Icons.Rounded.FilterList,
+                                        contentDescription = "Filter",
+                                        tint = if (filterState != TransactionFilterState()) CyberBlue else MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
-                                is TransactionListItem.Item -> {
-                                    val transaction = item.transaction
-                                    val category = categories.find { it.id == transaction.categoryId }
-                                    
-                                    val scope = rememberCoroutineScope()
-                                    val offsetAnim = remember { Animatable(0f) }
-                                    var dragOffset by remember { mutableStateOf(0f) }
-                                    val revealWidth = 80.dp
-                                    val revealWidthPx = with(LocalDensity.current) { revealWidth.toPx() }
-                                    val revealThresholdPx = revealWidthPx * 0.4f
+                            }
+                        },
+                        singleLine = true,
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            disabledContainerColor = Color.Transparent,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            disabledIndicatorColor = Color.Transparent
+                        )
+                    )
+                }
 
-                                    LaunchedEffect(selectedTransactionIds.isNotEmpty()) {
-                                        if (selectedTransactionIds.isNotEmpty()) {
-                                            offsetAnim.animateTo(0f)
-                                            dragOffset = 0f
-                                        }
+                // Quick Category Filter Chips Row
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 2.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    item {
+                        GlassFilterChip(
+                            text = "All",
+                            selected = filterState.selectedCategoryIds.isEmpty(),
+                            onClick = {
+                                filterState = filterState.copy(selectedCategoryIds = emptySet())
+                            }
+                        )
+                    }
+                    items(categories) { category ->
+                        val selected = filterState.selectedCategoryIds.contains(category.id)
+                        val categoryColor = parseColor(category.colorHex)
+                        GlassFilterChip(
+                            text = category.name,
+                            selected = selected,
+                            activeColor = categoryColor,
+                            onClick = {
+                                val newSet = if (selected) {
+                                    filterState.selectedCategoryIds - category.id
+                                } else {
+                                    filterState.selectedCategoryIds + category.id
+                                }
+                                filterState = filterState.copy(selectedCategoryIds = newSet)
+                            }
+                        )
+                    }
+                }
+
+                if (pendingNotifications.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, end = 16.dp, top = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Notification Inbox (${pendingNotifications.size})",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Box(
+                            modifier = Modifier
+                                .glassEffect(
+                                    shape = CircleShape,
+                                    containerColor = GlassSurface.copy(alpha = 0.12f),
+                                    borderWidth = 1.dp,
+                                    borderAlpha = 0.15f
+                                )
+                                .clickable { viewModel.discardAllNotifications() }
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Delete,
+                                    contentDescription = "Discard All",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                                Text(
+                                    text = "Discard All",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                    }
+
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(pendingNotifications) { notification ->
+                            InboxItem(
+                                notification = notification,
+                                onProcess = {
+                                    onNavigateToRegexGenerator(notification.text, notification.title, notification.stalePatternId)
+                                    viewModel.markNotificationAsProcessed(notification)
+                                },
+                                onAddNew = {
+                                    onNavigateToRegexGenerator(notification.text, notification.title, null)
+                                    viewModel.markNotificationAsProcessed(notification)
+                                },
+                                onDelete = { viewModel.deleteNotification(notification) }
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // 2. SOLID WHITE CONTAINER FOR TRANSACTIONS (goes all the way to the bottom)
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                color = Color.White,
+                shadowElevation = 8.dp
+            ) {
+                val listItems = remember(filteredTransactions, filterState.sortOrder) {
+                    when (filterState.sortOrder) {
+                        SortOrder.NEWEST_FIRST -> {
+                            filteredTransactions.groupBy { normalizeToDay(it.timestamp) }
+                                .mapValues { (_, txns) -> txns.sortedByDescending { it.timestamp } }
+                                .toSortedMap(compareByDescending { it })
+                                .flatMap { (date, txns) ->
+                                    listOf(TransactionListItem.Header(date)) + txns.map { TransactionListItem.Item(it) }
+                                }
+                        }
+                        SortOrder.OLDEST_FIRST -> {
+                            filteredTransactions.groupBy { normalizeToDay(it.timestamp) }
+                                .mapValues { (_, txns) -> txns.sortedBy { it.timestamp } }
+                                .toSortedMap(compareBy { it })
+                                .flatMap { (date, txns) ->
+                                    listOf(TransactionListItem.Header(date)) + txns.map { TransactionListItem.Item(it) }
+                                }
+                        }
+                        SortOrder.HIGHEST_AMOUNT -> {
+                            filteredTransactions.map { TransactionListItem.Item(it) }
+                        }
+                        SortOrder.LOWEST_AMOUNT -> {
+                            filteredTransactions.map { TransactionListItem.Item(it) }
+                        }
+                    }
+                }
+
+                Box(modifier = Modifier.fillMaxSize()) {
+                    if (filteredTransactions.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(bottom = 120.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                Icon(
+                                    if (transactions.isEmpty()) Icons.Rounded.Receipt else Icons.Rounded.Search,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(64.dp),
+                                    tint = Color(0xFF94A3B8)
+                                )
+                                Text(
+                                    text = if (transactions.isEmpty()) "No transactions yet" else "No matching transactions",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF0F172A)
+                                )
+                                Text(
+                                    text = if (transactions.isEmpty()) "Transactions will appear here automatically" else "Try adjusting your search query",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color(0xFF64748B)
+                                )
+                            }
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 120.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(
+                                items = listItems,
+                                key = { it.key }
+                            ) { item ->
+                                when (item) {
+                                    is TransactionListItem.Header -> {
+                                        Text(
+                                            text = formatDayHeader(item.date),
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF475569),
+                                            modifier = Modifier.padding(start = 4.dp, top = 10.dp, bottom = 4.dp)
+                                        )
                                     }
+                                    is TransactionListItem.Item -> {
+                                        val transaction = item.transaction
+                                        val category = categories.find { it.id == transaction.categoryId }
+                                        
+                                        val scope = rememberCoroutineScope()
+                                        val offsetAnim = remember { Animatable(0f) }
+                                        var dragOffset by remember { mutableStateOf(0f) }
+                                        val revealWidth = 80.dp
+                                        val revealWidthPx = with(LocalDensity.current) { revealWidth.toPx() }
+                                        val revealThresholdPx = revealWidthPx * 0.4f
 
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(IntrinsicSize.Min)
-                                            .clip(MaterialTheme.shapes.medium),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        if (selectedTransactionIds.isEmpty()) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .fillMaxHeight()
-                                                    .fillMaxWidth()
-                                                    .padding(horizontal = 8.dp, vertical = 6.dp)
-                                                    .background(MaterialTheme.colorScheme.error, MaterialTheme.shapes.medium)
-                                                    .align(Alignment.Center)
-                                            ) {
-                                                Row(
-                                                    modifier = Modifier
-                                                        .fillMaxHeight()
-                                                        .clip(MaterialTheme.shapes.medium)
-                                                        .clickable {
-                                                            viewModel.deleteTransaction(transaction)
-                                                            dragOffset = 0f
-                                                            scope.launch { offsetAnim.animateTo(0f) }
-                                                        }
-                                                        .padding(horizontal = 16.dp),
-                                                    verticalAlignment = Alignment.CenterVertically
-                                                ) {
-                                                    Icon(Icons.Rounded.Delete, "Delete", tint = Color.White)
-                                                }
+                                        LaunchedEffect(selectedTransactionIds.isNotEmpty()) {
+                                            if (selectedTransactionIds.isNotEmpty()) {
+                                                offsetAnim.animateTo(0f)
+                                                dragOffset = 0f
                                             }
                                         }
 
                                         Box(
                                             modifier = Modifier
                                                 .fillMaxWidth()
-                                                .offset { IntOffset(offsetAnim.value.roundToInt(), 0) }
-                                                .pointerInput(selectedTransactionIds.isEmpty()) {
-                                                    if (selectedTransactionIds.isEmpty()) {
-                                                        detectHorizontalDragGestures(
-                                                            onDragEnd = {
-                                                                scope.launch {
-                                                                    if (offsetAnim.value > revealThresholdPx) {
-                                                                        offsetAnim.animateTo(
-                                                                            revealWidthPx,
-                                                                            spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessHigh)
-                                                                        )
-                                                                        dragOffset = revealWidthPx
-                                                                    } else {
-                                                                        offsetAnim.animateTo(
-                                                                            0f,
-                                                                            spring(dampingRatio = 0.35f, stiffness = Spring.StiffnessHigh)
-                                                                        )
-                                                                        dragOffset = 0f
-                                                                    }
-                                                                }
-                                                            },
-                                                            onHorizontalDrag = { change, dragAmount ->
-                                                                change.consume()
-                                                                dragOffset = (dragOffset + dragAmount).coerceIn(0f, revealWidthPx)
-                                                                scope.launch { offsetAnim.snapTo(dragOffset) }
-                                                            }
-                                                        )
-                                                    }
-                                                }
+                                                .height(IntrinsicSize.Min)
+                                                .clip(RoundedCornerShape(16.dp)),
+                                            contentAlignment = Alignment.Center
                                         ) {
-                                            TransactionItem(
-                                                transaction = transaction,
-                                                category = category,
-                                                isSelected = selectedTransactionIds.contains(transaction.id),
-                                                inSelectionMode = selectedTransactionIds.isNotEmpty(),
-                                                onLongClick = {
-                                                    if (selectedTransactionIds.isEmpty()) {
-                                                        selectedTransactionIds = selectedTransactionIds + transaction.id
-                                                    }
-                                                },
-                                                onClick = {
-                                                    if (offsetAnim.value > 0f) {
-                                                        scope.launch {
-                                                            offsetAnim.animateTo(
-                                                                0f,
-                                                                spring(dampingRatio = 0.35f, stiffness = Spring.StiffnessHigh)
-                                                            )
-                                                            dragOffset = 0f
-                                                        }
-                                                    } else if (selectedTransactionIds.isNotEmpty()) {
-                                                        selectedTransactionIds = if (selectedTransactionIds.contains(transaction.id)) {
-                                                            selectedTransactionIds - transaction.id
-                                                        } else {
-                                                            selectedTransactionIds + transaction.id
-                                                        }
-                                                    } else {
-                                                        editingTransaction = transaction
+                                            if (selectedTransactionIds.isEmpty()) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .fillMaxHeight()
+                                                        .fillMaxWidth()
+                                                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                                                        .background(Color(0xFFEF4444), RoundedCornerShape(16.dp))
+                                                        .align(Alignment.Center)
+                                                ) {
+                                                    Row(
+                                                        modifier = Modifier
+                                                            .fillMaxHeight()
+                                                            .clip(RoundedCornerShape(16.dp))
+                                                            .clickable {
+                                                                viewModel.deleteTransaction(transaction)
+                                                                dragOffset = 0f
+                                                                scope.launch { offsetAnim.animateTo(0f) }
+                                                            }
+                                                            .padding(horizontal = 16.dp),
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        Icon(Icons.Rounded.Delete, "Delete", tint = Color.White)
                                                     }
                                                 }
-                                            )
+                                            }
+
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .offset { IntOffset(offsetAnim.value.roundToInt(), 0) }
+                                                    .pointerInput(selectedTransactionIds.isEmpty()) {
+                                                        if (selectedTransactionIds.isEmpty()) {
+                                                            detectHorizontalDragGestures(
+                                                                onDragEnd = {
+                                                                    scope.launch {
+                                                                        if (offsetAnim.value > revealThresholdPx) {
+                                                                            offsetAnim.animateTo(
+                                                                                revealWidthPx,
+                                                                                spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessHigh)
+                                                                            )
+                                                                            dragOffset = revealWidthPx
+                                                                        } else {
+                                                                            offsetAnim.animateTo(
+                                                                                0f,
+                                                                                spring(dampingRatio = 0.35f, stiffness = Spring.StiffnessHigh)
+                                                                            )
+                                                                            dragOffset = 0f
+                                                                        }
+                                                                    }
+                                                                },
+                                                                onHorizontalDrag = { change, dragAmount ->
+                                                                    change.consume()
+                                                                    dragOffset = (dragOffset + dragAmount).coerceIn(0f, revealWidthPx)
+                                                                    scope.launch { offsetAnim.snapTo(dragOffset) }
+                                                                }
+                                                            )
+                                                        }
+                                                    }
+                                            ) {
+                                                TransactionItem(
+                                                    transaction = transaction,
+                                                    category = category,
+                                                    isSelected = selectedTransactionIds.contains(transaction.id),
+                                                    inSelectionMode = selectedTransactionIds.isNotEmpty(),
+                                                    onLongClick = {
+                                                        if (selectedTransactionIds.isEmpty()) {
+                                                            selectedTransactionIds = selectedTransactionIds + transaction.id
+                                                        }
+                                                    },
+                                                    onClick = {
+                                                        if (offsetAnim.value > 0f) {
+                                                            scope.launch {
+                                                                offsetAnim.animateTo(
+                                                                    0f,
+                                                                    spring(dampingRatio = 0.35f, stiffness = Spring.StiffnessHigh)
+                                                                )
+                                                                dragOffset = 0f
+                                                            }
+                                                        } else if (selectedTransactionIds.isNotEmpty()) {
+                                                            selectedTransactionIds = if (selectedTransactionIds.contains(transaction.id)) {
+                                                                selectedTransactionIds - transaction.id
+                                                            } else {
+                                                                selectedTransactionIds + transaction.id
+                                                            }
+                                                        } else {
+                                                            editingTransaction = transaction
+                                                        }
+                                                    }
+                                                )
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
                     }
-                }
 
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                        .align(Alignment.TopCenter)
-                        .padding(top = statusBarPadding + 16.dp)
-                        .onGloballyPositioned { coordinates ->
-                            measuredHeaderHeightPx = coordinates.size.height.toFloat()
-                        },
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    HomeSummaryCard(
-                        todaySpending = todayConvertedTotal,
-                        yesterdaySpending = yesterdayConvertedTotal,
-                        transactionCount = transactions.size,
-                        pendingCount = pendingNotifications.size,
-                        defaultCurrency = defaultCurrency,
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
-
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
-                            .glassEffect(
-                                shape = MaterialTheme.shapes.medium
-                            ),
-                        shape = MaterialTheme.shapes.medium,
-                        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
-                    ) {
-                        TextField(
-                            value = searchQuery,
-                            onValueChange = { searchQuery = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text("Search transactions...", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)) },
-                            leadingIcon = {
-                                Icon(
-                                    Icons.Rounded.Search,
-                                    contentDescription = "Search",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    // Floating selection toolbar
+                    if (selectedTransactionIds.isNotEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .padding(top = 12.dp, start = 16.dp, end = 16.dp)
+                                .fillMaxWidth()
+                                .shadow(
+                                    elevation = 8.dp,
+                                    shape = RoundedCornerShape(20.dp),
+                                    ambientColor = Color.Black.copy(alpha = 0.15f),
+                                    spotColor = Color.Black.copy(alpha = 0.10f)
                                 )
-                            },
-                            trailingIcon = {
+                                .background(
+                                    color = Color.White,
+                                    shape = RoundedCornerShape(20.dp)
+                                )
+                                .border(
+                                    width = 1.dp,
+                                    color = Color(0xFFE2E8F0),
+                                    shape = RoundedCornerShape(20.dp)
+                                )
+                                .padding(horizontal = 16.dp, vertical = 10.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                    modifier = Modifier.padding(end = 8.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    if (searchQuery.isNotEmpty()) {
-                                        IconButton(onClick = { searchQuery = "" }) {
-                                            Icon(
-                                                Icons.Rounded.Close,
-                                                contentDescription = "Clear",
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
-                                    }
-                                    IconButton(onClick = { showFilterSheet = true }) {
+                                    IconButton(
+                                        onClick = { selectedTransactionIds = emptySet() },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
                                         Icon(
-                                            Icons.Rounded.FilterList,
-                                            contentDescription = "Filter",
-                                            tint = if (filterState != TransactionFilterState()) CyberBlue else MaterialTheme.colorScheme.onSurfaceVariant
+                                            imageVector = Icons.Rounded.Close,
+                                            contentDescription = "Cancel selection",
+                                            tint = Color(0xFF64748B),
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                    Column(
+                                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                                    ) {
+                                        Text(
+                                            text = "${selectedTransactionIds.size} Selected",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color(0xFF64748B),
+                                            fontWeight = FontWeight.Normal
+                                        )
+                                        Text(
+                                            text = "Total: ${formatCurrency(selectedTotalAmount, defaultCurrency)}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = CyberBlue
                                         )
                                     }
                                 }
-                            },
-                            singleLine = true,
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = Color.Transparent,
-                                unfocusedContainerColor = Color.Transparent,
-                                disabledContainerColor = Color.Transparent,
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent,
-                                disabledIndicatorColor = Color.Transparent
-                            )
-                        )
-                    }
 
-                    // Quick Category Filter Chips Row
-                    LazyRow(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        item {
-                            GlassFilterChip(
-                                text = "All",
-                                selected = filterState.selectedCategoryIds.isEmpty(),
-                                onClick = {
-                                    filterState = filterState.copy(selectedCategoryIds = emptySet())
-                                }
-                            )
-                        }
-                        items(categories) { category ->
-                            val selected = filterState.selectedCategoryIds.contains(category.id)
-                            val categoryColor = parseColor(category.colorHex)
-                            GlassFilterChip(
-                                text = category.name,
-                                selected = selected,
-                                activeColor = categoryColor,
-                                onClick = {
-                                    val newSet = if (selected) {
-                                        filterState.selectedCategoryIds - category.id
-                                    } else {
-                                        filterState.selectedCategoryIds + category.id
-                                    }
-                                    filterState = filterState.copy(selectedCategoryIds = newSet)
-                                }
-                            )
-                        }
-                    }
-
-                    if (pendingNotifications.isNotEmpty()) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(start = 16.dp, end = 16.dp, top = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Notification Inbox (${pendingNotifications.size})",
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .glassEffect(
-                                        shape = CircleShape,
-                                        containerColor = GlassSurface.copy(alpha = 0.12f),
-                                        borderWidth = 1.dp,
-                                        borderAlpha = 0.15f
-                                    )
-                                    .clickable { viewModel.discardAllNotifications() }
-                                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Delete,
-                                        contentDescription = "Discard All",
-                                        modifier = Modifier.size(16.dp),
-                                        tint = MaterialTheme.colorScheme.error
-                                    )
-                                    Text(
-                                        text = "Discard All",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.error
-                                    )
-                                }
-                            }
-                        }
-
-                        LazyRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentPadding = PaddingValues(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(pendingNotifications) { notification ->
-                                InboxItem(
-                                    notification = notification,
-                                    onProcess = {
-                                        onNavigateToRegexGenerator(notification.text, notification.title, notification.stalePatternId)
-                                        viewModel.markNotificationAsProcessed(notification)
-                                    },
-                                    onAddNew = {
-                                        onNavigateToRegexGenerator(notification.text, notification.title, null)
-                                        viewModel.markNotificationAsProcessed(notification)
-                                    },
-                                    onDelete = { viewModel.deleteNotification(notification) }
-                                )
-                            }
-                        }
-                    }
-
-                    LensDivider(
-                        modifier = Modifier.padding(start = 16.dp, end = 16.dp),
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
-                    )
-                }
-
-            // Floating selection toolbar at the top of the transaction list
-            if (selectedTransactionIds.isNotEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = headerHeight + 8.dp)
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .shadow(
-                            elevation = 16.dp,
-                            shape = RoundedCornerShape(20.dp),
-                            ambientColor = Color.Black.copy(alpha = 0.25f),
-                            spotColor = Color.Black.copy(alpha = 0.18f)
-                        )
-                        .glassEffect(
-                            shape = RoundedCornerShape(20.dp),
-                            liveBlur = true
-                        )
-                        .padding(horizontal = 16.dp, vertical = 10.dp)
-
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            IconButton(
-                                onClick = { selectedTransactionIds = emptySet() },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Close,
-                                    contentDescription = "Cancel selection",
-                                    tint = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                            Column(
-                                verticalArrangement = Arrangement.spacedBy(2.dp)
-                            ) {
-                                Text(
-                                    text = "${selectedTransactionIds.size} Selected",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                                    fontWeight = FontWeight.Normal
-                                )
-                                Text(
-                                    text = "Total: ${formatCurrency(selectedTotalAmount, defaultCurrency)}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = CyberBlue
-                                )
-                            }
-                        }
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            val allVisibleSelected = filteredTransactions.all { selectedTransactionIds.contains(it.id) }
-                            IconButton(
-                                onClick = {
-                                    selectedTransactionIds = if (allVisibleSelected) {
-                                        emptySet()
-                                    } else {
-                                        filteredTransactions.map { it.id }.toSet()
+                                    val allVisibleSelected = filteredTransactions.all { selectedTransactionIds.contains(it.id) }
+                                    IconButton(
+                                        onClick = {
+                                            selectedTransactionIds = if (allVisibleSelected) {
+                                                emptySet()
+                                            } else {
+                                                filteredTransactions.map { it.id }.toSet()
+                                            }
+                                        },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = if (allVisibleSelected) Icons.Rounded.Deselect else Icons.Rounded.SelectAll,
+                                            contentDescription = if (allVisibleSelected) "Deselect all" else "Select all",
+                                            tint = CyberBlue,
+                                            modifier = Modifier.size(18.dp)
+                                        )
                                     }
-                                },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(
-                                    imageVector = if (allVisibleSelected) Icons.Rounded.Deselect else Icons.Rounded.SelectAll,
-                                    contentDescription = if (allVisibleSelected) "Deselect all" else "Select all",
-                                    tint = CyberBlue,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
 
-                            IconButton(
-                                onClick = { showBatchEditDialog = true },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Edit,
-                                    contentDescription = "Edit selection",
-                                    tint = CyberBlue,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
+                                    IconButton(
+                                        onClick = { showBatchEditDialog = true },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Edit,
+                                            contentDescription = "Edit selection",
+                                            tint = CyberBlue,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
 
-                            IconButton(
-                                onClick = { showDeleteConfirmation = true },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Delete,
-                                    contentDescription = "Delete selected",
-                                    tint = NeonRose,
-                                    modifier = Modifier.size(18.dp)
-                                )
+                                    IconButton(
+                                        onClick = { showDeleteConfirmation = true },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Delete,
+                                            contentDescription = "Delete selected",
+                                            tint = NeonRose,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -1593,41 +1560,25 @@ fun TransactionItem(
     onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit
 ) {
-    val containerColor = if (isSelected) CyberBlue.copy(alpha = 0.20f) else FrostGlassDefaults.containerColor
-    val borderAlpha = if (isSelected) 0.45f else FrostGlassDefaults.borderAlpha
-
-    Card(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .glassEffect(
-                shape = MaterialTheme.shapes.medium,
-                containerColor = containerColor,
-                borderAlpha = borderAlpha,
-                contentModifier = Modifier.combinedBounceClickable(
-                    onLongClick = onLongClick,
-                    onClick = onClick
-                )
-            ).let { modifier ->
-                if (isSelected) {
-                    modifier.prismEdge(
-                        shape = MaterialTheme.shapes.medium,
-                        accentColor = CyberBlue,
-                        intensity = 0.4f
-                    )
-                } else {
-                    modifier
-                }
-            },
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(
-            containerColor = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.onSurface
-        )
+            .combinedBounceClickable(
+                onLongClick = onLongClick,
+                onClick = onClick
+            ),
+        shape = RoundedCornerShape(16.dp),
+        color = if (isSelected) Color(0xFFEFF6FF) else Color(0xFFF8FAFC),
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (isSelected) CyberBlue else Color(0xFFE2E8F0)
+        ),
+        shadowElevation = if (isSelected) 2.dp else 0.dp
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1639,7 +1590,7 @@ fun TransactionItem(
                         .clip(CircleShape)
                         .border(
                             width = 1.5.dp,
-                            color = if (isSelected) CyberBlue else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                            color = if (isSelected) CyberBlue else Color(0xFFCBD5E1),
                             shape = CircleShape
                         )
                         .background(
@@ -1651,7 +1602,7 @@ fun TransactionItem(
                         Icon(
                             imageVector = Icons.Rounded.Check,
                             contentDescription = "Selected",
-                            tint = Color.Black,
+                            tint = Color.White,
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -1664,17 +1615,27 @@ fun TransactionItem(
                     .weight(1f)
                     .padding(end = 16.dp)
             ) {
-                val categoryColor = if (category != null) parseColor(category.colorHex) else MaterialTheme.colorScheme.primary
-                Icon(
-                    imageVector = getCategoryIcon(category?.iconName ?: "Category"),
-                    contentDescription = null,
-                    tint = categoryColor
-                )
+                val categoryColor = if (category != null) parseColor(category.colorHex) else CyberBlue
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(categoryColor.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = getCategoryIcon(category?.iconName ?: "Category"),
+                        contentDescription = null,
+                        tint = categoryColor,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = transaction.merchant,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
+                        color = Color(0xFF0F172A),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(bottom = 2.dp)
@@ -1691,6 +1652,7 @@ fun TransactionItem(
                         Text(
                             text = category?.name ?: "Unknown",
                             style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Medium,
                             color = categoryColor,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -1699,12 +1661,12 @@ fun TransactionItem(
                         Text(
                             text = "•",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                            color = Color(0xFF94A3B8)
                         )
                         Text(
                             text = sourceText,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = Color(0xFF64748B),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f, fill = false)
@@ -1712,12 +1674,12 @@ fun TransactionItem(
                         Text(
                             text = "•",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                            color = Color(0xFF94A3B8)
                         )
                         Text(
                             text = formatTime(transaction.timestamp),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = Color(0xFF64748B),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -1729,7 +1691,7 @@ fun TransactionItem(
                 text = formatCurrency(transaction.amount, transaction.currencyCode),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.error
+                color = Color(0xFFDC2626)
             )
         }
     }
