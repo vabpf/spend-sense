@@ -91,6 +91,7 @@ fun Modifier.glassEffect(
     sheenAlpha: Float = FrostGlassDefaults.sheenAlpha,
     prismAlpha: Float = FrostGlassDefaults.prismAlpha,
     liveBlur: Boolean = true,
+    useLens: Boolean = false,
     backdrop: Backdrop? = null,
     hazeState: Any? = null, // kept for call-site source-compat; ignored
     liquidState: Any? = null,
@@ -116,8 +117,9 @@ fun Modifier.glassEffect(
                 vibrancy()
                 // Official documentation recommendation: 4.dp (clean, subtle, not too blurry)
                 blur(4f.dp.toPx())
-                // Lens refraction is API 33+ and strictly requires CornerBasedShape
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && shape is CornerBasedShape) {
+                // Lens refraction is API 33+ and strictly requires CornerBasedShape.
+                // Disabled by default on list items and cards for 120 FPS performance; enabled on chips and hero surfaces.
+                if (useLens && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && shape is CornerBasedShape) {
                     try {
                         lens(refractionHeight = 16f.dp.toPx(), refractionAmount = 32f.dp.toPx())
                     } catch (_: Throwable) {

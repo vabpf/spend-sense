@@ -404,6 +404,7 @@ class MainActivity : ComponentActivity() {
                                     .glassEffect(
                                         shape = RoundedCornerShape(999.dp),
                                         liveBlur = true,
+                                        useLens = true,
                                         backdrop = contentBackdrop
                                     )
                                     .padding(horizontal = 8.dp, vertical = 8.dp)
