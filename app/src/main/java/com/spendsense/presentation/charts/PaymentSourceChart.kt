@@ -148,6 +148,7 @@ internal fun MonthlyPaymentSourceStackedBar(
     val colCornerPx = with(density) { 8.dp.toPx() }
     val barStrokePx = with(density) { 2.dp.toPx() }
     val colBorderPx = with(density) { 1.dp.toPx() }
+    val yAxisGutter = with(density) { 38.dp.toPx() }
 
     val maxAmount = monthlyData.maxOfOrNull { it.total }?.takeIf { it > 0 } ?: 1.0
 
@@ -161,12 +162,14 @@ internal fun MonthlyPaymentSourceStackedBar(
                         val count = monthlyData.size
                         if (count == 0) return@detectTapGestures
                         val w = size.width.toFloat()
-                        val totalSpacing = w * 0.28f
-                        val barWidth = (w - totalSpacing) / count
+                        val chartStartX = yAxisGutter
+                        val chartWidth = (w - chartStartX).coerceAtLeast(1f)
+                        val totalSpacing = chartWidth * 0.28f
+                        val barWidth = (chartWidth - totalSpacing) / count
                         val gap = totalSpacing / (count + 1)
 
                         val hit = monthlyData.indices.find { mi ->
-                            val barStart = gap + mi * (barWidth + gap)
+                            val barStart = chartStartX + gap + mi * (barWidth + gap)
                             offset.x in (barStart - gap / 2f)..(barStart + barWidth + gap / 2f)
                         }
                         if (hit != null) {
@@ -180,8 +183,10 @@ internal fun MonthlyPaymentSourceStackedBar(
             if (count == 0) return@Canvas
             val w = size.width
             val h = size.height
-            val totalSpacing = w * 0.28f
-            val barWidth = (w - totalSpacing) / count
+            val chartStartX = yAxisGutter
+            val chartWidth = (w - chartStartX).coerceAtLeast(1f)
+            val totalSpacing = chartWidth * 0.28f
+            val barWidth = (chartWidth - totalSpacing) / count
             val gap = totalSpacing / (count + 1)
 
             val topPadding = 22.dp.toPx()
@@ -189,18 +194,18 @@ internal fun MonthlyPaymentSourceStackedBar(
             val availH = (h - topPadding - bottomPadding).coerceAtLeast(1f)
             val baseY = h - bottomPadding
 
-            // Grid lines
+            // Grid lines across chart area
             listOf(0.25f, 0.5f, 0.75f, 1f).forEach { fraction ->
                 val y = baseY - availH * fraction
                 drawLine(
                     color = Color.White.copy(alpha = 0.05f),
-                    start = Offset(0f, y),
+                    start = Offset(chartStartX, y),
                     end = Offset(w, y),
                     strokeWidth = 1f
                 )
             }
 
-            // Compact Y-axis amount labels for top and mid gridlines
+            // Compact Y-axis amount labels in left gutter, right-aligned before chartStartX
             if (progress >= 0.75f && maxAmount > 1.0) {
                 listOf(0.5f, 1.0f).forEach { fraction ->
                     val y = baseY - availH * fraction
@@ -210,14 +215,14 @@ internal fun MonthlyPaymentSourceStackedBar(
                         style = TextStyle(
                             fontSize = 8.5.sp,
                             fontWeight = FontWeight.Medium,
-                            color = TextSecondary.copy(alpha = 0.55f)
+                            color = TextSecondary.copy(alpha = 0.65f)
                         )
                     )
                     drawText(
                         textLayoutResult = textLayout,
                         topLeft = Offset(
-                            x = w - textLayout.size.width - 2.dp.toPx(),
-                            y = y - textLayout.size.height - 2.dp.toPx()
+                            x = (chartStartX - textLayout.size.width - 6.dp.toPx()).coerceAtLeast(0f),
+                            y = (y - textLayout.size.height / 2f).coerceAtLeast(0f)
                         )
                     )
                 }
@@ -226,7 +231,7 @@ internal fun MonthlyPaymentSourceStackedBar(
             if (chartMode == SpendingChartMode.BAR) {
                 // Glowing Column Backdrop behind selected month
                 if (selectedIndex != -1) {
-                    val selX = gap + selectedIndex * (barWidth + gap)
+                    val selX = chartStartX + gap + selectedIndex * (barWidth + gap)
                     val colLeft = selX - gap * 0.35f
                     val colWidth = barWidth + gap * 0.7f
 
@@ -294,7 +299,7 @@ internal fun MonthlyPaymentSourceStackedBar(
                 }
 
                 monthlyData.forEachIndexed { mi, month ->
-                    val x = gap + mi * (barWidth + gap)
+                    val x = chartStartX + gap + mi * (barWidth + gap)
                     var accumulatedTop = baseY
                     val isThisMonthSelected = mi == selectedIndex
                     val barAlpha = when {
@@ -406,7 +411,7 @@ internal fun MonthlyPaymentSourceStackedBar(
             } else {
                 // Line area mode (6-month spending trend)
                 val n = monthlyData.size
-                fun xAt(i: Int) = gap + i * (barWidth + gap) + barWidth / 2f
+                fun xAt(i: Int) = chartStartX + gap + i * (barWidth + gap) + barWidth / 2f
                 fun yAt(i: Int): Float {
                     val raw = (monthlyData[i].total / maxAmount).toFloat()
                     val clamped = (raw * progress).coerceIn(0f, 1f)
@@ -503,7 +508,7 @@ internal fun MonthlyPaymentSourceStackedBar(
                             center = Offset(px, py)
                         )
 
-                        // Amount badge above beacon dot
+                        // FULL Amount badge above beacon dot
                         if (progress >= 0.85f) {
                             val text = formatAmount(monthlyData[i].total, currency)
                             val textLayout = textMeasurer.measure(
@@ -516,17 +521,17 @@ internal fun MonthlyPaymentSourceStackedBar(
                             )
                             val tw = textLayout.size.width
                             val th = textLayout.size.height
-                            val tx = (px - tw / 2f).coerceIn(4f, w - tw - 4f)
+                            val tx = (px - tw / 2f).coerceIn(chartStartX + 2.dp.toPx(), w - tw - 4.dp.toPx())
                             val ty = (py - th - 8.dp.toPx()).coerceAtLeast(2.dp.toPx())
 
                             drawRoundRect(
-                                color = DarkSurface.copy(alpha = 0.85f),
+                                color = DarkSurface.copy(alpha = 0.88f),
                                 topLeft = Offset(tx - 4.dp.toPx(), ty - 2.dp.toPx()),
                                 size = Size(tw + 8.dp.toPx(), th + 4.dp.toPx()),
                                 cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
                             )
                             drawRoundRect(
-                                color = CyberBlue.copy(alpha = 0.5f),
+                                color = CyberBlue.copy(alpha = 0.6f),
                                 topLeft = Offset(tx - 4.dp.toPx(), ty - 2.dp.toPx()),
                                 size = Size(tw + 8.dp.toPx(), th + 4.dp.toPx()),
                                 cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx()),
@@ -538,6 +543,7 @@ internal fun MonthlyPaymentSourceStackedBar(
                             )
                         }
                     } else {
+                        // Unselected month: subtle point dot
                         drawCircle(
                             color = CyberBlue.copy(alpha = 0.7f),
                             radius = 3.5.dp.toPx(),
@@ -548,6 +554,27 @@ internal fun MonthlyPaymentSourceStackedBar(
                             radius = 1.8.dp.toPx(),
                             center = Offset(px, py)
                         )
+
+                        // Shortened amount label above unselected point
+                        if (progress >= 0.85f && monthlyData[i].total > 0) {
+                            val text = formatAxisAmount(monthlyData[i].total, currency)
+                            val textLayout = textMeasurer.measure(
+                                text = text,
+                                style = TextStyle(
+                                    fontSize = 8.5.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = TextSecondary.copy(alpha = 0.75f)
+                                )
+                            )
+                            val tw = textLayout.size.width
+                            val th = textLayout.size.height
+                            val tx = (px - tw / 2f).coerceIn(chartStartX + 2.dp.toPx(), w - tw - 4.dp.toPx())
+                            val ty = (py - th - 5.dp.toPx()).coerceAtLeast(2.dp.toPx())
+                            drawText(
+                                textLayoutResult = textLayout,
+                                topLeft = Offset(tx, ty)
+                            )
+                        }
                     }
                 }
             }
@@ -555,7 +582,7 @@ internal fun MonthlyPaymentSourceStackedBar(
 
         Spacer(Modifier.height(8.dp))
 
-        // Month labels — aligned to exact bar centers, Option 1 pill highlight
+        // Month labels — aligned to exact bar centers with left gutter offset
         val count = monthlyData.size
         val gapWeight = 0.28f / (count + 1)
         val barWeight = 0.72f / count
@@ -563,6 +590,7 @@ internal fun MonthlyPaymentSourceStackedBar(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Spacer(Modifier.width(38.dp))
             Spacer(Modifier.weight(gapWeight))
             monthlyData.forEachIndexed { mi, month ->
                 val isSelected = mi == selectedIndex
@@ -578,10 +606,10 @@ internal fun MonthlyPaymentSourceStackedBar(
                     contentAlignment = Alignment.Center
                 ) {
                     if (isSelected) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
+                        Box(
+                            contentAlignment = Alignment.Center,
                             modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(CircleShape)
                                 .background(
                                     Brush.verticalGradient(
                                         listOf(
@@ -598,9 +626,9 @@ internal fun MonthlyPaymentSourceStackedBar(
                                             CyberBlue.copy(alpha = 0.35f)
                                         )
                                     ),
-                                    shape = RoundedCornerShape(8.dp)
+                                    shape = CircleShape
                                 )
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                .padding(horizontal = 8.dp, vertical = 3.dp)
                         ) {
                             Text(
                                 text = month.monthLabel,
@@ -608,13 +636,6 @@ internal fun MonthlyPaymentSourceStackedBar(
                                 fontWeight = FontWeight.Bold,
                                 color = CyberBlueLight,
                                 maxLines = 1
-                            )
-                            Spacer(Modifier.height(2.dp))
-                            Box(
-                                modifier = Modifier
-                                    .size(4.dp)
-                                    .clip(CircleShape)
-                                    .background(CyberBlueLight)
                             )
                         }
                     } else {
@@ -830,14 +851,14 @@ private fun ChartModeSelector(
 ) {
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(Color.White.copy(alpha = 0.05f))
+            .clip(CircleShape)
+            .background(Color.White.copy(alpha = 0.06f))
             .border(
                 width = 1.dp,
-                color = Color.White.copy(alpha = 0.10f),
-                shape = RoundedCornerShape(8.dp)
+                color = Color.White.copy(alpha = 0.12f),
+                shape = CircleShape
             )
-            .padding(2.dp),
+            .padding(3.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -845,7 +866,7 @@ private fun ChartModeSelector(
             val isSelected = mode == selectedMode
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
+                    .clip(CircleShape)
                     .background(
                         if (isSelected) {
                             Brush.verticalGradient(
@@ -863,7 +884,7 @@ private fun ChartModeSelector(
                             Modifier.border(
                                 width = 1.dp,
                                 color = CyberBlueLight.copy(alpha = 0.60f),
-                                shape = RoundedCornerShape(6.dp)
+                                shape = CircleShape
                             )
                         } else {
                             Modifier
@@ -875,7 +896,7 @@ private fun ChartModeSelector(
                     ) {
                         onModeSelected(mode)
                     }
-                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
