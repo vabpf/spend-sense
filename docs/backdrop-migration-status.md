@@ -1,17 +1,18 @@
 # Backdrop (Liquid Glass) Migration Status & Technical Report
 
 **Date:** October 3, 2026  
-**Status:** Solved & Published (v1.0.15) — SDK 36 Restored with Backdrop v2  
+**Status:** Solved & Published (v1.0.16) — Dual-Backdrop Architecture & Official 4dp Blur  
 **Author:** AI Pair Programmer / SpendSense Team  
 
 ---
 
 ## 1. Executive Summary
 
-SpendSense successfully migrated from `dev.chrisbanes.haze` to **[`io.github.kyant0:backdrop:2.0.1`](https://kyant.gitbook.io/backdrop)** on **Android SDK 36**:
-- **v1.0.14 Startup Crash Solved:** The initial crash on launch was caused by a circular render loop (`layerBackdrop` capturing child composables that call `drawBackdrop`), missing ProGuard keep rules for Backdrop, and unguarded `lens()` refraction.
-- **SDK 36 Compatibility:** Bypassed Gradle `AarMetadata` validation to allow compiling Backdrop v2 with `compileSdk = 36` and `targetSdk = 36`.
-- **Release Version:** Published as [**`v1.0.15`**](https://github.com/vabpf/spend-sense/releases/tag/v1.0.15).
+SpendSense successfully tuned and finalized its **[`io.github.kyant0:backdrop:2.0.1`](https://kyant.gitbook.io/backdrop)** implementation in **`v1.0.16`**:
+- **Dual-Backdrop Architecture:** Employs `backgroundBackdrop` (sampling `AppBackground` for all cards and top bars) and `contentBackdrop` (sampling content + background for the floating bottom navigation bar). The bottom bar now blurs underlying transactions and charts with AGSL lens refraction as they scroll under it.
+- **Glass Effect on All Cards:** Defaulted `liveBlur = true` in `Modifier.glassEffect(...)` so all 56 card, chart, and setting option call-sites render genuine Backdrop glass.
+- **Official Parameters (4.dp Blur):** Tuned the blur radius from 12dp down to the official recommendation of **`4.dp`** for crisp optical glass, and increased surface translucency (alpha `0.38f`) so underlying blurred content shines through with high contrast.
+- **Release Version:** Published as [**`v1.0.16`**](https://github.com/vabpf/spend-sense/releases/tag/v1.0.16).
 
 ---
 
