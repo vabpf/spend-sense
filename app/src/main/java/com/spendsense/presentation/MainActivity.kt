@@ -159,28 +159,34 @@ class MainActivity : ComponentActivity() {
         setContent {
             SpendSenseTheme {
                 val navController = rememberNavController()
-                val backdrop = rememberLayerBackdrop()
+                val backgroundBackdrop = rememberLayerBackdrop()
+                val contentBackdrop = rememberLayerBackdrop()
                 val backgroundTheme by securePreferences.backgroundThemeFlow.collectAsState()
                 val customBackgroundPath by securePreferences.customBackgroundPathFlow.collectAsState()
 
                 CompositionLocalProvider(
-                    LocalBackdrop provides backdrop,
+                    LocalBackdrop provides backgroundBackdrop,
                     LocalAppBackgroundTheme provides backgroundTheme,
                     LocalCustomBackgroundPath provides customBackgroundPath
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        // Sibling 1: Pure background captured by backdrop (no liveBlur children here!)
-                        AppBackground(
+                        // Sibling 1: Content + Background layer inside contentBackdrop
+                        // Allows the floating bottom nav bar to blur both cards and background!
+                        Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .layerBackdrop(backdrop)
-                        )
+                                .layerBackdrop(contentBackdrop)
+                        ) {
+                            AppBackground(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .layerBackdrop(backgroundBackdrop)
+                            )
 
-                        // Sibling 2: Interactive content layer outside layerBackdrop
-                        Scaffold(
-                            containerColor = Color.Transparent,
-                            contentColor = MaterialTheme.colorScheme.onBackground,
-                        ) { innerPadding ->
+                            Scaffold(
+                                containerColor = Color.Transparent,
+                                contentColor = MaterialTheme.colorScheme.onBackground,
+                            ) { innerPadding ->
                                 NavHost(
                                     navController = navController,
                                     startDestination = "home",
@@ -364,6 +370,7 @@ class MainActivity : ComponentActivity() {
                                      }
                                 }
                             }
+                        }
 
                         // Sibling 2: nav bar with glass effect (separate from Scaffold)
                         // Referenced as: GLASS_NAV_BAR (floating pill at bottom center)
@@ -396,7 +403,8 @@ class MainActivity : ComponentActivity() {
                                     )
                                     .glassEffect(
                                         shape = RoundedCornerShape(999.dp),
-                                        liveBlur = true
+                                        liveBlur = true,
+                                        backdrop = contentBackdrop
                                     )
                                     .padding(horizontal = 8.dp, vertical = 8.dp)
                             ) {

@@ -56,11 +56,11 @@ object LiquidTokens {
  * Provides a single source of truth for cards, floating bars, dialogs, and controls.
  */
 object FrostGlassDefaults {
-    val containerColor: Color = GlassSurface.copy(alpha = 0.72f)
-    val liveBlurContainerColor: Color = GlassSurface.copy(alpha = 0.50f)
+    val containerColor: Color = GlassSurface.copy(alpha = 0.38f)
+    val liveBlurContainerColor: Color = GlassSurface.copy(alpha = 0.38f)
     val borderWidth: Dp = 1.dp
-    const val borderAlpha: Float = 0.20f
-    const val sheenAlpha: Float = 0.06f
+    const val borderAlpha: Float = 0.16f
+    const val sheenAlpha: Float = 0.05f
     const val prismAlpha: Float = 0.04f
 }
 
@@ -72,14 +72,14 @@ object FrostGlassDefaults {
 /**
  * Applies a premium frosted glass effect with:
  * - Real Liquid Glass backdrop sampling via [io.github.kyant0:backdrop]
- * - Vibrancy → Blur → Lens refraction (on API 33+) pipeline for liveBlur surfaces
+ * - Vibrancy → Blur (4dp) → Lens refraction (on API 33+) pipeline for liveBlur surfaces
  * - Gradient sheen for depth
  * - Prism edge - subtle rainbow color bleeding on edges
  * - High corner radius support
  *
- * @param liveBlur When true, uses [drawBackdrop] for real-time blur sampling (floating chrome,
- *   dialogs, top bar). When false, renders a lightweight static frosted surface for 120 FPS
- *   LazyColumn scrolling.
+ * @param liveBlur When true (default), uses [drawBackdrop] for real-time blur sampling
+ *   whenever a backdrop is available. When false, renders a lightweight static frosted surface.
+ * @param backdrop Optional explicit [Backdrop] to sample (defaults to [LocalBackdrop.current]).
  * @param hazeState Kept for source compatibility; unused — pass null or omit.
  */
 @Composable
@@ -90,30 +90,32 @@ fun Modifier.glassEffect(
     borderAlpha: Float = FrostGlassDefaults.borderAlpha,
     sheenAlpha: Float = FrostGlassDefaults.sheenAlpha,
     prismAlpha: Float = FrostGlassDefaults.prismAlpha,
-    liveBlur: Boolean = false,
+    liveBlur: Boolean = true,
+    backdrop: Backdrop? = null,
     hazeState: Any? = null, // kept for call-site source-compat; ignored
     liquidState: Any? = null,
     contentModifier: Modifier = Modifier
 ): Modifier {
-    val backdrop = LocalBackdrop.current
-    val effectiveColor = if (liveBlur && backdrop != null) {
+    val activeBackdrop = backdrop ?: LocalBackdrop.current
+    val effectiveColor = if (liveBlur && activeBackdrop != null) {
         if (containerColor == FrostGlassDefaults.containerColor) {
             FrostGlassDefaults.liveBlurContainerColor
         } else {
-            containerColor.copy(alpha = containerColor.alpha.coerceAtMost(0.55f))
+            containerColor.copy(alpha = containerColor.alpha.coerceAtMost(0.50f))
         }
     } else {
         containerColor
     }
 
-    return if (liveBlur && backdrop != null) {
-        // Live blur path: full Backdrop pipeline with specular surface drawn inside drawBackdrop
+    return if (liveBlur && activeBackdrop != null) {
+        // Live blur path: official Backdrop pipeline with 4dp blur and specular sheen
         this.drawBackdrop(
-            backdrop = backdrop,
+            backdrop = activeBackdrop,
             shape = { shape },
             effects = {
                 vibrancy()
-                blur(12f.dp.toPx())
+                // Official documentation recommendation: 4.dp (clean, subtle, not too blurry)
+                blur(4f.dp.toPx())
                 // Lens refraction is API 33+ and strictly requires CornerBasedShape
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && shape is CornerBasedShape) {
                     try {
