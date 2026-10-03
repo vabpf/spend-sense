@@ -34,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -189,10 +190,14 @@ fun CalendarSpendingChart(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .glassEffect(
-                shape = MaterialTheme.shapes.large
+            .shadow(
+                elevation = 2.dp,
+                shape = RoundedCornerShape(24.dp),
+                ambientColor = Color.Black.copy(alpha = 0.04f),
+                spotColor = Color.Black.copy(alpha = 0.08f)
             )
-            .padding(16.dp)
+            .background(Color.White, shape = RoundedCornerShape(24.dp))
+            .padding(18.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             // Header: title + interactive month switcher
@@ -203,9 +208,9 @@ fun CalendarSpendingChart(
             ) {
                 Text(
                     text = "Spending Calendar",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF0F172A)
                 )
 
                 Row(

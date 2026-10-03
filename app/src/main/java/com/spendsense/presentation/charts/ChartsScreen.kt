@@ -5,17 +5,27 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
+import androidx.compose.material.icons.rounded.BarChart
+import androidx.compose.material.icons.rounded.CalendarToday
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.LocalGasStation
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -25,18 +35,18 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.spendsense.domain.model.Category
 import com.spendsense.domain.model.Transaction
-import com.spendsense.presentation.theme.GlassSurface
-import com.spendsense.presentation.theme.NeonMint
-import com.spendsense.presentation.theme.NeonRose
 import com.spendsense.presentation.theme.TextSecondary
+import com.spendsense.presentation.util.fadingEdge
 import com.spendsense.presentation.util.getCategoryIcon
 import com.spendsense.presentation.util.glassEffect
 import com.spendsense.presentation.util.parseColor
@@ -50,17 +60,37 @@ fun ChartsScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val summary = state.summary
+    val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+
     Scaffold(containerColor = Color.Transparent) { _ ->
         Box(modifier = Modifier.fillMaxSize()) {
-            LazyColumn(
-                    modifier = modifier
-                        .fillMaxSize()
-                        .padding(start = 16.dp, end = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                item { Spacer(modifier = Modifier.height(40.dp)) }
+            // Background gradient scrim: fades from wallpaper at top into soft light slate
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            0.0f to Color.Transparent,
+                            0.22f to Color.White.copy(alpha = 0.55f),
+                            0.36f to Color(0xFFF8FAFC),
+                            1.0f to Color(0xFFF8FAFC)
+                        )
+                    )
+            )
 
-                // ── Row 1: This Month + Daily Average ────────────────────────────
+            LazyColumn(
+                modifier = modifier
+                    .fillMaxSize()
+                    .fadingEdge(topFadeHeight = statusBarPadding + 16.dp),
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = statusBarPadding + 12.dp,
+                    bottom = 120.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                // ── Row 1: This Month + Daily Average (Glass Effect) ─────────────
                 item {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -82,7 +112,7 @@ fun ChartsScreen(
                     }
                 }
 
-                // ── Row 2: Top Category + Biggest Transaction ─────────────────────
+                // ── Row 2: Top Category + Biggest Transaction (Glass Effect) ──────
                 item {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -103,7 +133,7 @@ fun ChartsScreen(
                     }
                 }
 
-                // ── Donut chart ───────────────────────────────────────────────────
+                // ── Donut chart: Spending by Category (White Card) ─────────────────
                 item {
                     CategoryDonutChart(
                         slices = state.categorySlices,
@@ -112,7 +142,7 @@ fun ChartsScreen(
                     )
                 }
 
-                // ── Payment sources ──────────────────────────────────────────────
+                // ── Monthly Spending & Payment sources (White Card) ───────────────
                 item {
                     PaymentSourcesCard(
                         currentMonthSources = state.currentMonthPaymentSources,
@@ -124,7 +154,7 @@ fun ChartsScreen(
                     )
                 }
 
-                // ── Daily calendar chart ──────────────────────────────────────────
+                // ── Daily calendar chart (White Card) ─────────────────────────────
                 item {
                     CalendarSpendingChart(
                         allTransactions = state.allTransactions,
@@ -136,31 +166,13 @@ fun ChartsScreen(
                         onFilterDay = onNavigateToHomeWithFilter
                     )
                 }
-
-                item { Spacer(modifier = Modifier.height(120.dp)) }
             }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            0.0f to MaterialTheme.colorScheme.background,
-                            0.3f to MaterialTheme.colorScheme.background.copy(alpha = 0.9f),
-                            0.55f to MaterialTheme.colorScheme.background.copy(alpha = 0.65f),
-                            0.75f to MaterialTheme.colorScheme.background.copy(alpha = 0.25f),
-                            1.0f to Color.Transparent
-                        )
-                    )
-                    .align(Alignment.TopCenter)
-            )
         }
     }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Summary cards
+// Summary cards (Frosted Glass)
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
@@ -173,7 +185,7 @@ private fun MonthTotalCard(
 ) {
     val delta = thisMonth - lastMonth
     val deltaPositive = delta >= 0
-    val deltaColor = if (deltaPositive) NeonRose else NeonMint
+    val deltaColor = if (deltaPositive) Color(0xFFDC2626) else Color(0xFF16A34A)
     val deltaIcon = if (deltaPositive) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward
     val deltaLabel = if (lastMonth > 0) {
         val pct = (abs(delta) / lastMonth * 100).toInt()
@@ -183,19 +195,40 @@ private fun MonthTotalCard(
     }
 
     GlassSummaryCard(modifier = modifier) {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                text = monthLabel,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = monthLabel,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFF64748B),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFDCFCE7)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Rounded.CalendarToday,
+                        contentDescription = null,
+                        tint = Color(0xFF16A34A),
+                        modifier = Modifier.size(15.dp)
+                    )
+                }
+            }
             Text(
                 text = formatAmount(thisMonth, currency),
-                style = MaterialTheme.typography.headlineSmall,
+                fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = Color(0xFF0F172A),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -204,12 +237,13 @@ private fun MonthTotalCard(
                 horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 if (lastMonth > 0) {
-                    Icon(deltaIcon, contentDescription = null, tint = deltaColor, modifier = Modifier.size(12.dp))
+                    Icon(deltaIcon, contentDescription = null, tint = deltaColor, modifier = Modifier.size(13.dp))
                 }
                 Text(
                     text = deltaLabel,
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (lastMonth > 0) deltaColor else MaterialTheme.colorScheme.onSurfaceVariant
+                    fontWeight = FontWeight.Medium,
+                    color = if (lastMonth > 0) deltaColor else Color(0xFF64748B)
                 )
             }
         }
@@ -225,7 +259,7 @@ private fun DailyAverageCard(
 ) {
     val delta = dailyAverage - lastMonthDailyAverage
     val deltaPositive = delta >= 0
-    val deltaColor = if (deltaPositive) NeonRose else NeonMint
+    val deltaColor = if (deltaPositive) Color(0xFFDC2626) else Color(0xFF16A34A)
     val deltaIcon = if (deltaPositive) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward
     val deltaLabel = if (lastMonthDailyAverage > 0) {
         val pct = (abs(delta) / lastMonthDailyAverage * 100).toInt()
@@ -235,17 +269,38 @@ private fun DailyAverageCard(
     }
 
     GlassSummaryCard(modifier = modifier) {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                text = "Daily Average",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Daily Average",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFF64748B)
+                )
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFF3E8FF)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Rounded.BarChart,
+                        contentDescription = null,
+                        tint = Color(0xFF9333EA),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
             Text(
                 text = formatAmount(dailyAverage, currency),
-                style = MaterialTheme.typography.headlineSmall,
+                fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = Color(0xFF0F172A),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -254,12 +309,13 @@ private fun DailyAverageCard(
                 horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 if (lastMonthDailyAverage > 0) {
-                    Icon(deltaIcon, contentDescription = null, tint = deltaColor, modifier = Modifier.size(12.dp))
+                    Icon(deltaIcon, contentDescription = null, tint = deltaColor, modifier = Modifier.size(13.dp))
                 }
                 Text(
                     text = deltaLabel,
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (lastMonthDailyAverage > 0) deltaColor else MaterialTheme.colorScheme.onSurfaceVariant
+                    fontWeight = FontWeight.Medium,
+                    color = if (lastMonthDailyAverage > 0) deltaColor else Color(0xFF64748B)
                 )
             }
         }
@@ -274,37 +330,59 @@ private fun TopCategoryCard(
     amount: Double
 ) {
     GlassSummaryCard(modifier = modifier) {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
                 text = "Top Category",
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFF64748B)
             )
             if (category != null) {
                 Row(
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    val catColor = parseColor(category.colorHex)
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(catColor.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = getCategoryIcon(category.iconName),
+                            contentDescription = null,
+                            tint = catColor,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = category.name,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF0F172A),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = formatAmount(amount, currency),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF0F172A),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                     Icon(
-                        imageVector = getCategoryIcon(category.iconName),
+                        Icons.Rounded.ChevronRight,
                         contentDescription = null,
-                        tint = parseColor(category.colorHex),
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Text(
-                        text = category.name,
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        tint = Color(0xFF94A3B8),
+                        modifier = Modifier.size(18.dp)
                     )
                 }
-                Text(
-                    text = formatAmount(amount, currency),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
             } else {
                 EmptyStateText()
             }
@@ -320,38 +398,59 @@ private fun BiggestTransactionCard(
     category: Category?
 ) {
     GlassSummaryCard(modifier = modifier) {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
                 text = "Biggest Spend",
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFF64748B)
             )
             if (transaction != null) {
-                Text(
-                    text = transaction.merchant,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
                 Row(
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        text = formatAmount(transaction.amount, transaction.currencyCode),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    if (category != null) {
+                    val iconColor = category?.let { parseColor(it.colorHex) } ?: Color(0xFF2563EB)
+                    val iconVector = category?.let { getCategoryIcon(it.iconName) } ?: Icons.Rounded.LocalGasStation
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(iconColor.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Icon(
-                            imageVector = getCategoryIcon(category.iconName),
+                            imageVector = iconVector,
                             contentDescription = null,
-                            tint = parseColor(category.colorHex),
-                            modifier = Modifier.size(14.dp)
+                            tint = iconColor,
+                            modifier = Modifier.size(18.dp)
                         )
                     }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = transaction.merchant,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF0F172A),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = formatAmount(transaction.amount, transaction.currencyCode),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF0F172A),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    Icon(
+                        Icons.Rounded.ChevronRight,
+                        contentDescription = null,
+                        tint = Color(0xFF94A3B8),
+                        modifier = Modifier.size(18.dp)
+                    )
                 }
             } else {
                 EmptyStateText()
@@ -368,9 +467,9 @@ private fun GlassSummaryCard(
     Box(
         modifier = modifier
             .glassEffect(
-                shape = MaterialTheme.shapes.large
+                shape = RoundedCornerShape(20.dp)
             )
-            .padding(16.dp)
+            .padding(14.dp)
     ) {
         content()
     }
