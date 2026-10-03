@@ -61,8 +61,8 @@ object LiquidTokens {
  * Provides a single source of truth for cards, floating bars, dialogs, and controls.
  */
 object FrostGlassDefaults {
-    val containerColor: Color = Color.Transparent
-    val liveBlurContainerColor: Color = Color.Transparent
+    val containerColor: Color = Color.White.copy(alpha = 0.10f)
+    val liveBlurContainerColor: Color = Color.White.copy(alpha = 0.10f)
     val borderWidth: Dp = 1.dp
     const val borderAlpha: Float = 0.22f
     const val sheenAlpha: Float = 0.10f
@@ -125,7 +125,7 @@ fun Modifier.glassEffect(
                 // Lens refraction is API 33+ and strictly requires CornerBasedShape.
                 if (useLens && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && shape is CornerBasedShape) {
                     try {
-                        lens(refractionHeight = 24f.dp.toPx(), refractionAmount = 48f.dp.toPx())
+                        lens(refractionHeight = 16f.dp.toPx(), refractionAmount = 16f.dp.toPx())
                     } catch (_: Throwable) {
                         // Fall back gracefully to vibrancy + blur without crashing
                     }

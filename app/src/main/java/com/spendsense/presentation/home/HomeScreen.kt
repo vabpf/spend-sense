@@ -53,6 +53,9 @@ import com.spendsense.presentation.util.SpendSenseTopBar
 import com.spendsense.presentation.util.getCategoryIcon
 import com.spendsense.presentation.util.FrostGlassDefaults
 import com.spendsense.presentation.util.glassEffect
+import com.spendsense.presentation.util.LocalBackdrop
+import com.kyant.backdrop.rememberLayerBackdrop
+import com.kyant.backdrop.layerBackdrop
 import com.spendsense.presentation.util.fadingEdge
 import com.spendsense.presentation.util.prismEdge
 import com.spendsense.presentation.util.parseColor
@@ -383,10 +386,13 @@ fun HomeScreen(
         }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize()) {
-            // Background gradient scrim: fades from wallpaper at top into soft light slate
+            val homeBackdrop = rememberLayerBackdrop()
+
+            // Background gradient scrim: captured in homeBackdrop so pinned glass cards blur the scrimmed background
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .layerBackdrop(homeBackdrop)
                     .background(
                         Brush.verticalGradient(
                             0.0f to Color.Transparent,
@@ -410,9 +416,10 @@ fun HomeScreen(
                 }
             }
 
-            Column(modifier = Modifier.fillMaxSize()) {
-                // Fixed top pinned section: Summary Card, Search Bar, and Category Chips
-                Column(
+            CompositionLocalProvider(LocalBackdrop provides homeBackdrop) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Fixed top pinned section: Summary Card, Search Bar, and Category Chips
+                    Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(start = 16.dp, end = 16.dp, top = statusBarPadding + 8.dp, bottom = 4.dp),
@@ -930,6 +937,7 @@ fun HomeScreen(
             }
         }
     }
+}
 
     editingTransaction?.let { transaction ->
         EditTransactionDialog(

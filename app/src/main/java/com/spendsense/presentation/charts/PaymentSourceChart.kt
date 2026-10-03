@@ -601,7 +601,13 @@ internal fun MonthlyPaymentSourceStackedBar(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 12.dp)
-                        .glassEffect(
+                        .background(
+                            color = Color(0xFFF8FAFC),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = Color(0xFFE2E8F0),
                             shape = RoundedCornerShape(12.dp)
                         )
                         .padding(12.dp),

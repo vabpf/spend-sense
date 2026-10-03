@@ -32,12 +32,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalDensity
+import com.kyant.backdrop.rememberLayerBackdrop
+import com.kyant.backdrop.layerBackdrop
+import com.spendsense.presentation.util.LocalBackdrop
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -78,12 +82,15 @@ fun ChartsScreen(
         }
     }
 
+    val chartsBackdrop = rememberLayerBackdrop()
+
     Scaffold(containerColor = Color.Transparent) { _ ->
         Box(modifier = Modifier.fillMaxSize()) {
-            // Background gradient scrim: fades from wallpaper at top into soft light slate
+            // Background gradient scrim: captured in chartsBackdrop so cards blur the scrimmed background
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .layerBackdrop(chartsBackdrop)
                     .background(
                         Brush.verticalGradient(
                             0.0f to Color.Transparent,
@@ -94,11 +101,12 @@ fun ChartsScreen(
                     )
             )
 
-            LazyColumn(
-                state = listState,
-                modifier = modifier
-                    .fillMaxSize()
-                    .fadingEdge(topFadeHeight = topFadeHeight),
+            CompositionLocalProvider(LocalBackdrop provides chartsBackdrop) {
+                LazyColumn(
+                    state = listState,
+                    modifier = modifier
+                        .fillMaxSize()
+                        .fadingEdge(topFadeHeight = topFadeHeight),
                 contentPadding = PaddingValues(
                     start = 16.dp,
                     end = 16.dp,
@@ -182,6 +190,7 @@ fun ChartsScreen(
                         onMonthChanged = { y, m -> viewModel.setMonth(y, m) },
                         onFilterDay = onNavigateToHomeWithFilter
                     )
+                }
                 }
             }
         }

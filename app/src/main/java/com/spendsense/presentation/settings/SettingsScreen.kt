@@ -129,10 +129,12 @@ fun SettingsScreen(
     }
 
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val headerHeight = statusBarPadding + 64.dp
+    val fadeStart = statusBarPadding + 80.dp
+    val fadeDistance = 80.dp
+    val fadeEnd = fadeStart + fadeDistance
     val density = LocalDensity.current
-    val headerPx = with(density) { headerHeight.toPx() }
-    val fadePx = with(density) { 32.dp.toPx() }
+    val fadeStartPx = with(density) { fadeStart.toPx() }
+    val fadeEndPx = with(density) { fadeEnd.toPx() }
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -143,34 +145,34 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .padding(bottom = padding.calculateBottomPadding())
         ) {
-            // Background scrim: transparent at top wallpaper, fades into #F8FAFC right below header
+            // Background scrim: transparent at top wallpaper, smoothly fades into #F8FAFC right below header text
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                Color(0xFFF8FAFC)
-                            ),
-                            startY = headerPx,
-                            endY = headerPx + fadePx
+                            0.0f to Color.Transparent,
+                            0.35f to Color(0xFFF8FAFC).copy(alpha = 0.35f),
+                            0.70f to Color(0xFFF8FAFC).copy(alpha = 0.85f),
+                            1.0f to Color(0xFFF8FAFC),
+                            startY = fadeStartPx,
+                            endY = fadeEndPx
                         )
                     )
             )
 
-            // Scrollable settings cards with dissolve effect at transition line
+            // Scrollable settings cards with dissolve effect matching the exact background fade position
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
                     .fadingEdge(
-                        topFadeStart = headerHeight,
-                        topFadeHeight = 32.dp
+                        topFadeStart = fadeStart,
+                        topFadeHeight = fadeDistance
                     ),
                 contentPadding = PaddingValues(
                     start = 16.dp,
                     end = 16.dp,
-                    top = headerHeight + 32.dp,
+                    top = fadeEnd + 8.dp,
                     bottom = 120.dp
                 ),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
