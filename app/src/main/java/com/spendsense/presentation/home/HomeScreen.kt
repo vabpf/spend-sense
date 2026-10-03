@@ -433,9 +433,8 @@ fun HomeScreen(
                             modifier = Modifier
                                 .glassEffect(
                                     shape = CircleShape,
-                                    containerColor = GlassSurface.copy(alpha = 0.12f),
                                     borderWidth = 1.dp,
-                                    borderAlpha = 0.15f
+                                    borderAlpha = 0.22f
                                 )
                                 .clickable { viewModel.discardAllNotifications() }
                                 .padding(horizontal = 12.dp, vertical = 6.dp),
@@ -486,13 +485,13 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // 2. SOLID WHITE CONTAINER FOR TRANSACTIONS (goes all the way to the bottom)
+            // 2. TRANSACTIONS SHEET CONTAINER (Ice-Slate color, goes all the way to the bottom)
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
                 shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                color = Color.White,
+                color = Color(0xFFF1F5F9),
                 shadowElevation = 8.dp
             ) {
                 val listItems = remember(filteredTransactions, filterState.sortOrder) {
@@ -523,6 +522,16 @@ fun HomeScreen(
                 }
 
                 Box(modifier = Modifier.fillMaxSize()) {
+                    // Top drag handle indicator pill
+                    Box(
+                        modifier = Modifier
+                            .padding(top = 10.dp)
+                            .align(Alignment.TopCenter)
+                            .width(36.dp)
+                            .height(4.dp)
+                            .background(Color(0xFFCBD5E1), RoundedCornerShape(999.dp))
+                    )
+
                     if (filteredTransactions.isEmpty()) {
                         Box(
                             modifier = Modifier
@@ -556,7 +565,7 @@ fun HomeScreen(
                     } else {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 120.dp),
+                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 26.dp, bottom = 120.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             items(
@@ -595,7 +604,7 @@ fun HomeScreen(
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .height(IntrinsicSize.Min)
-                                                .clip(RoundedCornerShape(16.dp)),
+                                                .clip(RoundedCornerShape(22.dp)),
                                             contentAlignment = Alignment.Center
                                         ) {
                                             if (selectedTransactionIds.isEmpty()) {
@@ -604,13 +613,13 @@ fun HomeScreen(
                                                         .fillMaxHeight()
                                                         .fillMaxWidth()
                                                         .padding(horizontal = 4.dp, vertical = 2.dp)
-                                                        .background(Color(0xFFEF4444), RoundedCornerShape(16.dp))
+                                                        .background(Color(0xFFEF4444), RoundedCornerShape(22.dp))
                                                         .align(Alignment.Center)
                                                 ) {
                                                     Row(
                                                         modifier = Modifier
                                                             .fillMaxHeight()
-                                                            .clip(RoundedCornerShape(16.dp))
+                                                            .clip(RoundedCornerShape(22.dp))
                                                             .clickable {
                                                                 viewModel.deleteTransaction(transaction)
                                                                 dragOffset = 0f
@@ -1567,13 +1576,13 @@ fun TransactionItem(
                 onLongClick = onLongClick,
                 onClick = onClick
             ),
-        shape = RoundedCornerShape(16.dp),
-        color = if (isSelected) Color(0xFFEFF6FF) else Color(0xFFF8FAFC),
+        shape = RoundedCornerShape(22.dp),
+        color = if (isSelected) Color(0xFFEFF6FF) else Color(0xFFFFFFFF),
         border = BorderStroke(
             width = 1.dp,
             color = if (isSelected) CyberBlue else Color(0xFFE2E8F0)
         ),
-        shadowElevation = if (isSelected) 2.dp else 0.dp
+        shadowElevation = if (isSelected) 3.dp else 1.5.dp
     ) {
         Row(
             modifier = Modifier
@@ -1609,7 +1618,7 @@ fun TransactionItem(
                 }
             }
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .weight(1f)
@@ -1618,7 +1627,7 @@ fun TransactionItem(
                 val categoryColor = if (category != null) parseColor(category.colorHex) else CyberBlue
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(48.dp)
                         .clip(CircleShape)
                         .background(categoryColor.copy(alpha = 0.12f)),
                     contentAlignment = Alignment.Center
@@ -1627,7 +1636,7 @@ fun TransactionItem(
                         imageVector = getCategoryIcon(category?.iconName ?: "Category"),
                         contentDescription = null,
                         tint = categoryColor,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                 }
                 Column(modifier = Modifier.weight(1f)) {
@@ -1946,15 +1955,15 @@ fun GlassFilterChip(
     onClick: () -> Unit,
     activeColor: Color = CyberBlue
 ) {
-    val borderAlpha = if (selected) 0.6f else 0.15f
-    val containerAlpha = if (selected) 0.35f else 0.12f
-    val textColor = if (selected) activeColor else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+    val borderAlpha = if (selected) 0.6f else 0.22f
+    val containerColor = if (selected) activeColor.copy(alpha = 0.22f) else Color.Transparent
+    val textColor = if (selected) activeColor else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
     
     Box(
         modifier = Modifier
             .glassEffect(
                 shape = CircleShape,
-                containerColor = GlassSurface.copy(alpha = containerAlpha),
+                containerColor = containerColor,
                 borderWidth = 1.dp,
                 borderAlpha = borderAlpha,
                 useLens = true

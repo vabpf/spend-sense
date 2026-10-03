@@ -56,11 +56,11 @@ object LiquidTokens {
  * Provides a single source of truth for cards, floating bars, dialogs, and controls.
  */
 object FrostGlassDefaults {
-    val containerColor: Color = GlassSurface.copy(alpha = 0.38f)
-    val liveBlurContainerColor: Color = GlassSurface.copy(alpha = 0.38f)
+    val containerColor: Color = Color.Transparent
+    val liveBlurContainerColor: Color = Color.Transparent
     val borderWidth: Dp = 1.dp
-    const val borderAlpha: Float = 0.16f
-    const val sheenAlpha: Float = 0.05f
+    const val borderAlpha: Float = 0.22f
+    const val sheenAlpha: Float = 0.10f
     const val prismAlpha: Float = 0.04f
 }
 
@@ -72,7 +72,7 @@ object FrostGlassDefaults {
 /**
  * Applies a premium frosted glass effect with:
  * - Real Liquid Glass backdrop sampling via [io.github.kyant0:backdrop]
- * - Vibrancy → Blur (4dp) → Lens refraction (on API 33+) pipeline for liveBlur surfaces
+ * - Vibrancy → Blur (14dp) → Lens refraction (on API 33+) pipeline for liveBlur surfaces
  * - Gradient sheen for depth
  * - Prism edge - subtle rainbow color bleeding on edges
  * - High corner radius support
@@ -91,7 +91,7 @@ fun Modifier.glassEffect(
     sheenAlpha: Float = FrostGlassDefaults.sheenAlpha,
     prismAlpha: Float = FrostGlassDefaults.prismAlpha,
     liveBlur: Boolean = true,
-    useLens: Boolean = false,
+    useLens: Boolean = true,
     backdrop: Backdrop? = null,
     hazeState: Any? = null, // kept for call-site source-compat; ignored
     liquidState: Any? = null,
@@ -109,27 +109,28 @@ fun Modifier.glassEffect(
     }
 
     return if (liveBlur && activeBackdrop != null) {
-        // Live blur path: official Backdrop pipeline with 4dp blur and specular sheen
+        // Live blur path: official Backdrop pipeline with enhanced 14dp blur and lens refraction
         this.drawBackdrop(
             backdrop = activeBackdrop,
             shape = { shape },
             effects = {
                 vibrancy()
-                // Official documentation recommendation: 4.dp (clean, subtle, not too blurry)
-                blur(4f.dp.toPx())
+                // Increased blur for pure transparent glass without base color
+                blur(14f.dp.toPx())
                 // Lens refraction is API 33+ and strictly requires CornerBasedShape.
-                // Disabled by default on list items and cards for 120 FPS performance; enabled on chips and hero surfaces.
                 if (useLens && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && shape is CornerBasedShape) {
                     try {
-                        lens(refractionHeight = 16f.dp.toPx(), refractionAmount = 32f.dp.toPx())
+                        lens(refractionHeight = 24f.dp.toPx(), refractionAmount = 48f.dp.toPx())
                     } catch (_: Throwable) {
                         // Fall back gracefully to vibrancy + blur without crashing
                     }
                 }
             },
             onDrawSurface = {
-                // Frosted tint
-                drawRect(effectiveColor)
+                // Frosted tint (only drawn when a non-transparent color is specified)
+                if (effectiveColor != Color.Transparent && effectiveColor.alpha > 0f) {
+                    drawRect(effectiveColor)
+                }
                 // Specular sheen gradient
                 if (sheenAlpha > 0f) {
                     drawRect(
