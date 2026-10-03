@@ -17,6 +17,14 @@
   ```bash
   gh workflow run build.yml -f target=all
   ```
+- **Build Release APK & Publish GitHub Release**:
+  ```bash
+  gh workflow run build.yml -f target=build -f publish_release=true
+  ```
+- **Publish Release with Custom Tag**:
+  ```bash
+  gh workflow run build.yml -f target=build -f publish_release=true -f tag_name=v1.0.0
+  ```
 - **Check status / watch progress**:
   ```bash
   gh run list --limit 3
