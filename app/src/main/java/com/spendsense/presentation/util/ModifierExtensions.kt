@@ -39,7 +39,7 @@ val LocalLiquidState = compositionLocalOf<LiquidState?> { null }
 
 /**
  * Design tokens for the Liquid Glass effect.
- * Values sourced from DESIGN.md §"Liquid Glass (API 33+)".
+ * Values sourced from docs/design.md §"Liquid Glass (API 33+)".
  */
 object LiquidTokens {
     val frost = 5.dp
@@ -61,7 +61,7 @@ object LiquidTokens {
  * - High corner radius support
  * - REAL LIQUID GLASS sampling on API 33+ (via Liquid library)
  *
- * @see [Liquid Glass Guide](docs/LIQUID_GLASS.md)
+ * @see [Liquid Glass Guide](docs/liquid-glass.md)
  *
  * This creates the "frosted glass" look where elements appear as 
  * semi-transparent layers over the background with subtle rainbow highlights.
@@ -82,7 +82,7 @@ fun Modifier.glassEffect(
 
     // Apply Liquid effect on API 33+ if state is provided
     // IMPORTANT: liquid() should be applied early in the chain
-    // Parameters from DESIGN.md §"Liquid Glass (API 33+)" and docs/LIQUID_GLASS.md §3
+    // Parameters from docs/design.md §"Liquid Glass (API 33+)" and docs/liquid-glass.md §3
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && liquidState != null) {
         modifier = modifier
             .liquid(

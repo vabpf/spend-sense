@@ -19,55 +19,44 @@
   ```
 - **Build Release APK & Publish GitHub Release**:
   ```bash
-  gh workflow run build.yml -f target=build -f publish_release=true
+  gh workflow run build.yml -f target=build -f publish_release=true --ref main
   ```
 - **Publish Release with Custom Tag**:
   ```bash
-  gh workflow run build.yml -f target=build -f publish_release=true -f tag_name=v1.0.0
+  gh workflow run build.yml -f target=build -f publish_release=true -f tag_name=v1.0.12 --ref main
   ```
 - **Check status / watch progress**:
   ```bash
   gh run list --limit 3
-  gh run watch
+  gh run watch <run_id> --exit-status
   ```
 
 ### 2. Download Built APK to Local Machine
 Once the GitHub Action completes, download `SpendSense.apk` directly into the Windows Downloads folder:
 ```bash
-gh run download -n SpendSense-Release-APK -D /mnt/c/Users/vuong/Downloads
+rm -f /mnt/c/Users/vuong/Downloads/SpendSense.apk && gh run download <run_id> -n SpendSense-Release-APK -D /mnt/c/Users/vuong/Downloads
 ```
 
 ### 3. Install to Device (via ADB)
 ```bash
-/mnt/d/Apps/Android/Sdk/platform-tools/adb.exe install /mnt/c/Users/vuong/Downloads/SpendSense.apk
+/mnt/d/Apps/Android/Sdk/platform-tools/adb.exe install -r /mnt/c/Users/vuong/Downloads/SpendSense.apk
 ```
 
-## Project Structure
+---
 
-- **Platform:** Android (Kotlin, Jetpack Compose, Material 3)
-- **Architecture:** Clean Architecture with Hilt DI, Room database
+## Project Structure & Architecture
+
+- **Platform:** Android (Min SDK 26, Target SDK 35)
+- **Language:** 100% Kotlin with Coroutines & Flow
+- **UI:** Jetpack Compose (Material 3) with custom Cyber-Premium Liquid Glass design system
+- **Architecture:** Clean Architecture (Presentation, Domain, Data) with Hilt DI and Room Database
 - **Modules:** Single-module Android app (`app/`)
+- **Key Patterns:**
+  - **Sibling Background Architecture (120 FPS):** All screens place `AppBackground()` inside `Box(Modifier.fillMaxSize().liquefiable(screenLiquidState))` as Sibling 1, and place content (`LazyColumn`, `Column`, top bars) completely outside `liquefiable` as Sibling 2 to avoid recursive sampling jank.
+  - **Dynamic Multi-AI Providers:** Supports OpenRouter, OpenAI, Anthropic Claude, Gemini, Ollama, and custom OpenAI-compatible endpoints with encrypted key storage.
+  - **Notification Interception:** `TransactionNotificationListener` monitors whitelisted banking apps, applies cached Regex patterns, and triggers the `ActionOverlayService`.
 
-## GitNexus — Code Intelligence
-
-This project is indexed by GitNexus as **spend-sense** (1077 symbols, 2377 relationships, 73 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
-
-> If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
-
-### Always Do
-
-- **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `gitnexus_impact({target: "symbolName", direction: "upstream"})` and report the blast radius to the user.
-- **MUST run `gitnexus_detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows.
-- **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
-
-### CLI
-
-| Task | Skill File |
-|------|------------|
-| Understand architecture | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
-| Blast radius analysis | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
-| Debug/tracing | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
-| Rename/refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
+---
 
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
