@@ -46,6 +46,7 @@ render.experimental.xml
 # Keystore files
 *.jks
 *.keystore
+!keystore/release.keystore
 
 # Google Services (e.g. APIs or Firebase)
 # Uncomment if you want to ignore your actual config:
