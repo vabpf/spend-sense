@@ -42,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -429,13 +430,6 @@ class MainActivity : ComponentActivity() {
                                             modifier = Modifier
                                                 .weight(1f)
                                                 .clip(RoundedCornerShape(999.dp))
-                                                .background(
-                                                    if (selected) {
-                                                        CyberBlue.copy(alpha = 0.16f)
-                                                    } else {
-                                                        Color.Transparent
-                                                    }
-                                                )
                                                 .clickable {
                                                     navController.navigate(route) {
                                                         popUpTo(navController.graph.findStartDestination().id) {
@@ -445,22 +439,24 @@ class MainActivity : ComponentActivity() {
                                                         restoreState = true
                                                     }
                                                 }
-                                                .padding(horizontal = 10.dp, vertical = 10.dp),
+                                                .padding(vertical = 8.dp),
                                             contentAlignment = Alignment.Center
                                         ) {
                                             Column(
                                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                                                verticalArrangement = Arrangement.spacedBy(3.dp)
                                             ) {
                                                 Icon(
-                                                    icon,
+                                                    imageVector = icon,
                                                     contentDescription = label,
-                                                    tint = if (selected) CyberBlue else MaterialTheme.colorScheme.onSurfaceVariant
+                                                    tint = if (selected) CyberBlue else Color(0xFF64748B),
+                                                    modifier = Modifier.size(24.dp)
                                                 )
                                                 Text(
                                                     text = label,
-                                                    style = MaterialTheme.typography.labelMedium,
-                                                    color = if (selected) CyberBlue else MaterialTheme.colorScheme.onSurfaceVariant
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                                    color = if (selected) CyberBlue else Color(0xFF64748B)
                                                 )
                                             }
                                         }
