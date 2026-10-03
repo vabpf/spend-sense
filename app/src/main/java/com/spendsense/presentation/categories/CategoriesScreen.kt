@@ -149,8 +149,7 @@ fun CategoriesScreen(
                 }
             }
         }
-    }
- 
+
         if (state.isAddingOrEditing) {
             AddEditCategoryDialog(
                 initialCategory = state.editingCategory,

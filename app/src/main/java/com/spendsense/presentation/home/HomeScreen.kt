@@ -746,7 +746,6 @@ fun HomeScreen(
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
                     )
                 }
-            }
 
             // Floating selection toolbar at the top of the transaction list
             if (selectedTransactionIds.isNotEmpty()) {
