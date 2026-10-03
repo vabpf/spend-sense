@@ -169,20 +169,18 @@ class MainActivity : ComponentActivity() {
                     LocalCustomBackgroundPath provides customBackgroundPath
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        // 1. Background + Content layer inside layerBackdrop for real-time backdrop sampling
-                        Box(
+                        // Sibling 1: Pure background captured by backdrop (no liveBlur children here!)
+                        AppBackground(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .layerBackdrop(backdrop)
-                        ) {
-                            AppBackground(
-                                modifier = Modifier.fillMaxSize()
-                            )
+                        )
 
-                            Scaffold(
-                                containerColor = Color.Transparent,
-                                contentColor = MaterialTheme.colorScheme.onBackground,
-                            ) { innerPadding ->
+                        // Sibling 2: Interactive content layer outside layerBackdrop
+                        Scaffold(
+                            containerColor = Color.Transparent,
+                            contentColor = MaterialTheme.colorScheme.onBackground,
+                        ) { innerPadding ->
                                 NavHost(
                                     navController = navController,
                                     startDestination = "home",
@@ -366,7 +364,6 @@ class MainActivity : ComponentActivity() {
                                      }
                                 }
                             }
-                        }
 
                         // Sibling 2: nav bar with glass effect (separate from Scaffold)
                         // Referenced as: GLASS_NAV_BAR (floating pill at bottom center)

@@ -3,6 +3,7 @@ package com.spendsense.presentation.util
 import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
@@ -113,9 +114,13 @@ fun Modifier.glassEffect(
             effects = {
                 vibrancy()
                 blur(12f.dp.toPx())
-                // Lens refraction is API 33+ and requires CornerBasedShape
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    lens(refractionHeight = 16f.dp.toPx(), refractionAmount = 32f.dp.toPx())
+                // Lens refraction is API 33+ and strictly requires CornerBasedShape
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && shape is CornerBasedShape) {
+                    try {
+                        lens(refractionHeight = 16f.dp.toPx(), refractionAmount = 32f.dp.toPx())
+                    } catch (_: Throwable) {
+                        // Fall back gracefully to vibrancy + blur without crashing
+                    }
                 }
             },
             onDrawSurface = {

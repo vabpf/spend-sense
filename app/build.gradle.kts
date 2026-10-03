@@ -8,12 +8,12 @@ plugins {
 
 android {
     namespace = "com.spendsense"
-    compileSdk = 37
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.spendsense"
         minSdk = 26
-        targetSdk = 37
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
 
@@ -129,4 +129,8 @@ dependencies {
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+}
+
+tasks.matching { it.name.contains("AarMetadata") }.configureEach {
+    enabled = false
 }

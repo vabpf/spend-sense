@@ -4,3 +4,5 @@
     @com.google.gson.annotations.SerializedName <fields>;
 }
 -keep class com.spendsense.data.** { *; }
+-keep class com.kyant.backdrop.** { *; }
+-dontwarn com.kyant.backdrop.**
