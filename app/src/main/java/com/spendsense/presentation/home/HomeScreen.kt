@@ -819,8 +819,9 @@ fun HomeScreen(
                     }
                 }
             }
+        }
 
-            // Floating selection toolbar
+        // Floating selection toolbar
             if (selectedTransactionIds.isNotEmpty()) {
                 Box(
                     modifier = Modifier
@@ -929,7 +930,6 @@ fun HomeScreen(
             }
         }
     }
-}
 
     editingTransaction?.let { transaction ->
         EditTransactionDialog(
