@@ -34,6 +34,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -372,7 +373,6 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         }
-                        } // end of bottomNavLiquefiable container Box
 
                         // Sibling 2: nav bar with glass effect (separate from Scaffold)
                         // Referenced as: GLASS_NAV_BAR (floating pill at bottom center)
