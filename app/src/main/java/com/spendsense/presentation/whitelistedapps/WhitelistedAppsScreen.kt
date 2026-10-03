@@ -155,7 +155,7 @@ fun WhitelistedAppsScreen(
                             WhitelistedAppCard(
                                 app = app,
                                 onToggle = { isChecked ->
-                                    viewModel.onAppToggled(app.packageName, isChecked)
+                                    viewModel.toggleApp(app, isChecked)
                                 }
                             )
                         }
@@ -175,7 +175,7 @@ fun WhitelistedAppsScreen(
                             WhitelistedAppCard(
                                 app = app,
                                 onToggle = { isChecked ->
-                                    viewModel.onAppToggled(app.packageName, isChecked)
+                                    viewModel.toggleApp(app, isChecked)
                                 }
                             )
                         }

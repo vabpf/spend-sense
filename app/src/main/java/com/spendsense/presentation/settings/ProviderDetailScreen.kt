@@ -335,13 +335,3 @@ fun ModelItem(
         }
     }
 }
-
-fun formatTimeAgo(millis: Long): String {
-    val minutes = (System.currentTimeMillis() - millis) / 60_000
-    return when {
-        minutes < 1 -> "Just now"
-        minutes < 60 -> "${minutes}m ago"
-        minutes < 1440 -> "${minutes / 60}h ago"
-        else -> "${minutes / 1440}d ago"
-    }
-}

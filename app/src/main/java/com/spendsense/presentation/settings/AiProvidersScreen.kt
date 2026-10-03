@@ -305,7 +305,7 @@ private fun AddProviderDialog(
     )
 }
 
-private fun formatTimeAgo(millis: Long): String {
+fun formatTimeAgo(millis: Long): String {
     val minutes = (System.currentTimeMillis() - millis) / 60_000
     return when {
         minutes < 1 -> "Just now"
