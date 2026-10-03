@@ -173,6 +173,7 @@ fun WhitelistedAppsScreen(
     }
 }
 }
+}
 
 @Composable
 fun WhitelistedAppSkeletonItem() {

@@ -206,7 +206,6 @@ fun NotificationPatternsScreen(
         } // Sibling 2 Box
     } // outer Box
 } // Scaffold
-} // CompositionLocalProvider
 
     if (showAddDialog) {
         AddPatternDialog(
@@ -369,6 +368,7 @@ fun NotificationPatternsScreen(
             }
         )
     }
+}
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

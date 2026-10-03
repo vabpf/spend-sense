@@ -137,7 +137,6 @@ fun AiProvidersScreen(
                 }
             }
         }
-    }
 
     if (state.isAddingProvider) {
         AddProviderDialog(
@@ -149,6 +148,7 @@ fun AiProvidersScreen(
             onSave = viewModel::saveProvider
         )
     }
+}
 }
 
 @Composable

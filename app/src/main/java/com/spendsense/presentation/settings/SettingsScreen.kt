@@ -483,7 +483,6 @@ fun SettingsScreen(
         } // Sibling 2 Box
     } // outer Box
 } // Scaffold
-} // CompositionLocalProvider
 
     if (showCurrencySelector) {
         GlassAlertDialog(
@@ -1058,6 +1057,7 @@ fun SettingsScreen(
             }
         )
     }
+}
 }
 
 @Composable

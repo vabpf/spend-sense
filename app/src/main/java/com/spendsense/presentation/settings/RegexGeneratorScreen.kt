@@ -815,7 +815,8 @@ fun RegexGeneratorScreen(
                         }
                     }
                 }
-            } // inner Column
+            } // if (state.generatedRegex != null)
+            } // scrolling Column
 
             Box(
                 modifier = Modifier
@@ -841,7 +842,6 @@ fun RegexGeneratorScreen(
         } // Sibling 2 Box
     } // outer Box
 } // Scaffold close
-} // CompositionLocalProvider
 
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState(
@@ -948,6 +948,7 @@ fun RegexGeneratorScreen(
             }
         )
     }
+}
 }
 
 @Composable

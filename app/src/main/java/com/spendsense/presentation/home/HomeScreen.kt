@@ -860,7 +860,6 @@ fun HomeScreen(
             }
         }
     }
-}
 
     editingTransaction?.let { transaction ->
         EditTransactionDialog(
@@ -1118,6 +1117,7 @@ fun HomeScreen(
             )
         }
     }
+}
 }
 
 @Composable
