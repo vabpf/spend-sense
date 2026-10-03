@@ -103,6 +103,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var notificationPatternDao: com.spendsense.data.local.dao.NotificationPatternDao
 
+    @Inject
+    lateinit var securePreferences: com.spendsense.data.local.SecurePreferences
+
     private var reviewData by mutableStateOf<ReviewTransactionData?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -159,35 +162,23 @@ class MainActivity : ComponentActivity() {
                 val hazeState = rememberHazeState()
                 val liquidState = rememberLiquidState()
                 val bottomNavLiquidState = rememberLiquidState()
+                val backgroundTheme by securePreferences.backgroundThemeFlow.collectAsState()
+                val customBackgroundPath by securePreferences.customBackgroundPathFlow.collectAsState()
 
                 CompositionLocalProvider(
                     LocalGlassHazeState provides hazeState,
                     LocalLiquidState provides liquidState
                 ) {
-                    // docs/LIQUID_GLASS.md §2-4: liquefiable source must be sibling, not ancestor
                     Box(modifier = Modifier.fillMaxSize()) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .liquefiable(liquidState = bottomNavLiquidState)
                         ) {
-                            // Sibling 1: liquefiable source (pexels bg overlay ONLY — no content)
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .liquefiable(liquidState = liquidState)
-                            ) {
-                            Image(
-                                painter = painterResource(id = R.drawable.bg_pexel),
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(Color.Black.copy(alpha = 0.30f))
+                            com.spendsense.presentation.theme.AppBackground(
+                                themeKey = backgroundTheme,
+                                customImagePath = customBackgroundPath,
+                                modifier = Modifier.fillMaxSize()
                             )
                         }
 
@@ -201,28 +192,16 @@ class MainActivity : ComponentActivity() {
                                     navController = navController,
                                     startDestination = "home",
                                     enterTransition = {
-                                        slideIntoContainer(
-                                            AnimatedContentTransitionScope.SlideDirection.Start,
-                                            animationSpec = tween(300, easing = FastOutSlowInEasing)
-                                        ) + fadeIn(animationSpec = tween(300))
+                                        fadeIn(animationSpec = tween(150))
                                     },
                                     exitTransition = {
-                                        slideOutOfContainer(
-                                            AnimatedContentTransitionScope.SlideDirection.Start,
-                                            animationSpec = tween(200, easing = FastOutLinearInEasing)
-                                        ) + fadeOut(animationSpec = tween(200))
+                                        fadeOut(animationSpec = tween(150))
                                     },
                                     popEnterTransition = {
-                                        slideIntoContainer(
-                                            AnimatedContentTransitionScope.SlideDirection.End,
-                                            animationSpec = tween(300, easing = FastOutSlowInEasing)
-                                        ) + fadeIn(animationSpec = tween(300))
+                                        fadeIn(animationSpec = tween(150))
                                     },
                                     popExitTransition = {
-                                        slideOutOfContainer(
-                                            AnimatedContentTransitionScope.SlideDirection.End,
-                                            animationSpec = tween(200, easing = FastOutLinearInEasing)
-                                        ) + fadeOut(animationSpec = tween(200))
+                                        fadeOut(animationSpec = tween(150))
                                     }
                                 ) {
                                     composable(

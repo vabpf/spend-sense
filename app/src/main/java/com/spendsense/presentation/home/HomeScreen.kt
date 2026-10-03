@@ -347,21 +347,8 @@ fun HomeScreen(
                 .padding(bottom = padding.calculateBottomPadding())
         ) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .liquefiable(homeLiquidState)
+                modifier = Modifier.fillMaxSize()
             ) {
-                Image(
-                    painter = painterResource(id = com.spendsense.R.drawable.bg_pexel),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.30f))
-                )
 
                 if (filteredTransactions.isEmpty()) {
                     Box(

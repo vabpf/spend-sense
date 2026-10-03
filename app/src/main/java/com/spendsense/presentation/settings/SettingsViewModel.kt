@@ -32,6 +32,8 @@ data class SettingsState(
     val defaultCurrency: String = "USD",
     val isDailyReportEnabled: Boolean = false,
     val dailyReportTime: String = "20:00",
+    val backgroundTheme: String = "CYBERPUNK_DEFAULT",
+    val customBackgroundPath: String? = null,
     val isImporting: Boolean = false,
     val importResult: ImportResult? = null,
     val isExporting: Boolean = false,
@@ -58,8 +60,34 @@ class SettingsViewModel @Inject constructor(
         _state.value = SettingsState(
             defaultCurrency = securePreferences.getDefaultCurrency(),
             isDailyReportEnabled = securePreferences.isDailyReportEnabled(),
-            dailyReportTime = securePreferences.getDailyReportTime()
+            dailyReportTime = securePreferences.getDailyReportTime(),
+            backgroundTheme = securePreferences.getBackgroundTheme(),
+            customBackgroundPath = securePreferences.getCustomBackgroundPath()
         )
+    }
+
+    fun updateBackgroundTheme(theme: String) {
+        securePreferences.setBackgroundTheme(theme)
+        _state.value = _state.value.copy(backgroundTheme = theme)
+    }
+
+    fun setCustomBackground(uri: android.net.Uri, context: android.content.Context) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val destFile = java.io.File(context.filesDir, "custom_background.jpg")
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    destFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                securePreferences.setCustomBackgroundPath(destFile.absolutePath)
+                securePreferences.setBackgroundTheme("CUSTOM_IMAGE")
+                _state.value = _state.value.copy(
+                    backgroundTheme = "CUSTOM_IMAGE",
+                    customBackgroundPath = destFile.absolutePath
+                )
+            } catch (_: Exception) {}
+        }
     }
 
     fun updateDefaultCurrency(currencyCode: String) {
