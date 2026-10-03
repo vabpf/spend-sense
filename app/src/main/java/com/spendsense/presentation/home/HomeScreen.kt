@@ -433,9 +433,8 @@ fun HomeScreen(
                             modifier = Modifier
                                 .glassEffect(
                                     shape = CircleShape,
-                                    containerColor = GlassSurface.copy(alpha = 0.12f),
                                     borderWidth = 1.dp,
-                                    borderAlpha = 0.15f
+                                    borderAlpha = 0.22f
                                 )
                                 .clickable { viewModel.discardAllNotifications() }
                                 .padding(horizontal = 12.dp, vertical = 6.dp),
@@ -1956,15 +1955,15 @@ fun GlassFilterChip(
     onClick: () -> Unit,
     activeColor: Color = CyberBlue
 ) {
-    val borderAlpha = if (selected) 0.6f else 0.15f
-    val containerAlpha = if (selected) 0.35f else 0.12f
-    val textColor = if (selected) activeColor else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+    val borderAlpha = if (selected) 0.6f else 0.22f
+    val containerColor = if (selected) activeColor.copy(alpha = 0.22f) else Color.Transparent
+    val textColor = if (selected) activeColor else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
     
     Box(
         modifier = Modifier
             .glassEffect(
                 shape = CircleShape,
-                containerColor = GlassSurface.copy(alpha = containerAlpha),
+                containerColor = containerColor,
                 borderWidth = 1.dp,
                 borderAlpha = borderAlpha,
                 useLens = true
