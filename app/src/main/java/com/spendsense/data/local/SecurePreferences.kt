@@ -4,6 +4,9 @@ import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -115,5 +118,33 @@ class SecurePreferences @Inject constructor(
 
     fun getDailyReportTime(): String {
         return prefs.getString("daily_report_time", "20:00") ?: "20:00"
+    }
+
+    private val _backgroundThemeFlow = MutableStateFlow(getBackgroundTheme())
+    val backgroundThemeFlow: StateFlow<String> = _backgroundThemeFlow.asStateFlow()
+
+    private val _customBackgroundPathFlow = MutableStateFlow(getCustomBackgroundPath())
+    val customBackgroundPathFlow: StateFlow<String?> = _customBackgroundPathFlow.asStateFlow()
+
+    fun getBackgroundTheme(): String {
+        return prefs.getString("background_theme", "CYBERPUNK_DEFAULT") ?: "CYBERPUNK_DEFAULT"
+    }
+
+    fun setBackgroundTheme(theme: String) {
+        prefs.edit().putString("background_theme", theme).apply()
+        _backgroundThemeFlow.value = theme
+    }
+
+    fun getCustomBackgroundPath(): String? {
+        return prefs.getString("custom_background_path", null)
+    }
+
+    fun setCustomBackgroundPath(path: String?) {
+        if (path == null) {
+            prefs.edit().remove("custom_background_path").apply()
+        } else {
+            prefs.edit().putString("custom_background_path", path).apply()
+        }
+        _customBackgroundPathFlow.value = path
     }
 }

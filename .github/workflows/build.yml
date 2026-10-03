@@ -12,6 +12,16 @@ on:
           - 'all'
           - 'test'
           - 'build'
+      publish_release:
+        description: 'Publish as GitHub Release'
+        required: false
+        default: false
+        type: boolean
+      tag_name:
+        description: 'Custom Release Tag (leave blank for auto v<versionName>.<run_number>)'
+        required: false
+        default: ''
+        type: string
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -72,6 +82,32 @@ jobs:
           path: artifacts/SpendSense.apk
           retention-days: 30
 
+      - name: Determine Release Tag & Metadata
+        if: ${{ (inputs.target == 'all' || inputs.target == 'build') && (inputs.publish_release == true || startsWith(github.ref, 'refs/tags/v')) && success() }}
+        id: release_meta
+        run: |
+          VERSION_NAME=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts || echo "1.0")
+          TAG_INPUT="${{ inputs.tag_name }}"
+          if [ -n "$TAG_INPUT" ]; then
+            TAG="$TAG_INPUT"
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG="${{ github.ref_name }}"
+          else
+            TAG="v${VERSION_NAME}.${{ github.run_number }}"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "title=SpendSense $TAG" >> $GITHUB_OUTPUT
+
+      - name: Publish GitHub Release
+        if: ${{ (inputs.target == 'all' || inputs.target == 'build') && (inputs.publish_release == true || startsWith(github.ref, 'refs/tags/v')) && success() }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release_meta.outputs.tag }}
+          name: ${{ steps.release_meta.outputs.title }}
+          files: artifacts/SpendSense.apk
+          generate_release_notes: true
+          make_latest: true
+
       - name: Generate Job Summary with Download Link
         if: ${{ (inputs.target == 'all' || inputs.target == 'build') && success() }}
         run: |
@@ -86,7 +122,11 @@ jobs:
           echo "| **Package Name** | \`SpendSense.apk\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **File Size** | \`${{ steps.apk_meta.outputs.apk_size }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| **SHA256** | \`${{ steps.apk_meta.outputs.apk_sha }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Download Link** | [📥 Download SpendSense-Release-APK](${ARTIFACT_URL}) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Artifact Download** | [📥 Download SpendSense-Release-APK](${ARTIFACT_URL}) |" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ inputs.publish_release }}" = "true" ] || [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            RELEASE_URL="${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ steps.release_meta.outputs.tag }}"
+            echo "| **GitHub Release** | [🏷️ View Release ${{ steps.release_meta.outputs.tag }}](${RELEASE_URL}) |" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 💻 Download via GitHub CLI (\`gh\`):" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
@@ -97,11 +137,3 @@ jobs:
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
           echo "/mnt/d/Apps/Android/Sdk/platform-tools/adb.exe install /mnt/c/Users/vuong/Downloads/SpendSense.apk" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-
-      - name: Create GitHub Release (Tags only)
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: artifacts/SpendSense.apk
-          name: SpendSense ${{ github.ref_name }}
-          generate_release_notes: true

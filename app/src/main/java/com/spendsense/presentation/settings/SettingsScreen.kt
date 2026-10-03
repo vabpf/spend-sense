@@ -16,7 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.Lifecycle
 import androidx.compose.ui.unit.dp
@@ -37,6 +37,11 @@ import io.github.fletchmckee.liquid.rememberLiquidState
 import io.github.fletchmckee.liquid.liquefiable
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import com.spendsense.presentation.theme.AppBackgroundOption
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
@@ -54,7 +59,16 @@ fun SettingsScreen(
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
     var showCurrencySelector by remember { mutableStateOf(false) }
+    var showBackgroundSelector by remember { mutableStateOf(false) }
     val settingsLiquidState = rememberLiquidState()
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            viewModel.setCustomBackground(uri, context)
+        }
+    }
 
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -123,21 +137,8 @@ fun SettingsScreen(
                 .padding(bottom = padding.calculateBottomPadding())
         ) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .liquefiable(settingsLiquidState)
+                modifier = Modifier.fillMaxSize()
             ) {
-                Image(
-                    painter = painterResource(id = com.spendsense.R.drawable.bg_pexel),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.30f))
-                )
 
                 Column(
                     modifier = Modifier
@@ -257,6 +258,38 @@ fun SettingsScreen(
                             }
                         )
                     }
+                }
+            }
+
+            // Appearance Section
+            Text(
+                text = "Appearance",
+                style = MaterialTheme.typography.titleLarge.copy(fontSize = 14.sp),
+                modifier = Modifier.padding(top = 12.dp)
+            )
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .glassEffect(
+                        shape = MaterialTheme.shapes.large,
+                        containerColor = GlassSurface.copy(alpha = 0.8f),
+                        borderAlpha = 0.24f
+                    ),
+                shape = MaterialTheme.shapes.medium,
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.Transparent,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                )
+            ) {
+                Column {
+                    val currentTheme = AppBackgroundOption.entries.find { it.key == state.backgroundTheme } ?: AppBackgroundOption.CYBERPUNK
+                    SettingsItem(
+                        icon = Icons.Rounded.Wallpaper,
+                        title = "App Background",
+                        description = "${currentTheme.title} — ${currentTheme.description}",
+                        onClick = { showBackgroundSelector = true }
+                    )
                 }
             }
 
@@ -474,6 +507,131 @@ fun SettingsScreen(
             confirmButton = {},
             dismissButton = {
                 TextButton(onClick = { showCurrencySelector = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (showBackgroundSelector) {
+        GlassAlertDialog(
+            onDismissRequest = { showBackgroundSelector = false },
+            title = {
+                Text(
+                    text = "App Background",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    AppBackgroundOption.entries.forEach { option ->
+                        val isSelected = option.key == state.backgroundTheme
+                        Surface(
+                            onClick = {
+                                if (option == AppBackgroundOption.CUSTOM) {
+                                    if (state.customBackgroundPath == null || isSelected) {
+                                        photoPickerLauncher.launch(
+                                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                        )
+                                        showBackgroundSelector = false
+                                    } else {
+                                        viewModel.updateBackgroundTheme(option.key)
+                                        showBackgroundSelector = false
+                                    }
+                                } else {
+                                    viewModel.updateBackgroundTheme(option.key)
+                                    showBackgroundSelector = false
+                                }
+                            },
+                            color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f) else Color.Transparent,
+                            shape = MaterialTheme.shapes.medium
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .then(
+                                            when (option) {
+                                                AppBackgroundOption.CYBERPUNK -> Modifier.background(
+                                                    Brush.linearGradient(listOf(Color(0xFF38006B), Color(0xFF00E5FF)))
+                                                )
+                                                AppBackgroundOption.DEEP_SPACE -> Modifier.background(
+                                                    Brush.verticalGradient(listOf(Color(0xFF070514), Color(0xFF19113B)))
+                                                )
+                                                AppBackgroundOption.CYBER_NEON -> Modifier.background(
+                                                    Brush.verticalGradient(listOf(Color(0xFF040D18), Color(0xFF0B2D3A)))
+                                                )
+                                                AppBackgroundOption.OLED_BLACK -> Modifier.background(
+                                                    Color.Black
+                                                )
+                                                AppBackgroundOption.CUSTOM -> Modifier.background(
+                                                    Brush.sweepGradient(listOf(Color(0xFFFF007F), Color(0xFF00E5FF), Color(0xFFFFD700), Color(0xFFFF007F)))
+                                                )
+                                            }
+                                        )
+                                        .border(
+                                            width = 1.dp,
+                                            color = if (isSelected) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.2f),
+                                            shape = RoundedCornerShape(8.dp)
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (option == AppBackgroundOption.CUSTOM) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.AddPhotoAlternate,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = option.title,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                    Text(
+                                        text = if (option == AppBackgroundOption.CUSTOM) {
+                                            if (isSelected && state.customBackgroundPath != null) {
+                                                "Active custom photo • Tap to change"
+                                            } else if (state.customBackgroundPath != null) {
+                                                "Saved photo • Tap to activate"
+                                            } else {
+                                                option.description
+                                            }
+                                        } else {
+                                            option.description
+                                        },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+
+                                if (isSelected) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.CheckCircle,
+                                        contentDescription = "Selected",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showBackgroundSelector = false }) { Text("Cancel") }
             }
         )
     }

@@ -3,7 +3,9 @@ package com.spendsense.presentation.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.spendsense.data.local.SecurePreferences
+import com.spendsense.data.local.dao.MerchantCategoryMappingDao
 import com.spendsense.data.local.dao.RawNotificationDao
+import com.spendsense.data.local.entity.MerchantCategoryMappingEntity
 import com.spendsense.data.local.entity.RawNotificationEntity
 import com.spendsense.domain.model.Category
 import com.spendsense.domain.model.Transaction
@@ -24,9 +26,11 @@ class HomeViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository,
     private val categoryRepository: CategoryRepository,
     private val rawNotificationDao: RawNotificationDao,
+    private val merchantCategoryMappingDao: MerchantCategoryMappingDao,
     private val securePreferences: SecurePreferences,
     private val exchangeRateRepository: ExchangeRateRepository
 ) : ViewModel() {
+
 
     private val _transactions = MutableStateFlow<List<Transaction>>(emptyList())
     val transactions: StateFlow<List<Transaction>> = _transactions.asStateFlow()
@@ -173,11 +177,26 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    fun updateTransactionWithMapping(transaction: Transaction) {
+        viewModelScope.launch {
+            transactionRepository.updateTransaction(transaction)
+            if (transaction.merchant.isNotBlank() && transaction.categoryId > 0) {
+                merchantCategoryMappingDao.upsert(
+                    MerchantCategoryMappingEntity(
+                        merchant = transaction.merchant.lowercase(),
+                        categoryId = transaction.categoryId
+                    )
+                )
+            }
+        }
+    }
+
     fun updateTransactions(updatedList: List<Transaction>) {
         viewModelScope.launch {
             updatedList.forEach { transactionRepository.updateTransaction(it) }
         }
     }
+
 
     fun addTransaction(
         amount: Double,

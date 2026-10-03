@@ -74,11 +74,13 @@ fun Modifier.glassEffect(
     borderAlpha: Float = 0.15f,
     sheenAlpha: Float = 0.08f,
     prismAlpha: Float = 0.04f,
-    hazeState: HazeState? = LocalGlassHazeState.current,
-    liquidState: LiquidState? = LocalLiquidState.current,
+    hazeState: HazeState? = null,
+    liquidState: LiquidState? = null,
     contentModifier: Modifier = Modifier
 ): Modifier {
     var modifier: Modifier = this
+
+    val hasShader = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && liquidState != null) || hazeState != null
 
     // Apply Liquid effect on API 33+ if state is provided
     // IMPORTANT: liquid() should be applied early in the chain
@@ -105,14 +107,16 @@ fun Modifier.glassEffect(
     // Clip must be AFTER liquid to ensure proper rendering
     modifier = modifier.clip(shape)
 
-    // Glass effect: the containerColor is used as a tint/overlay, not a solid fill.
-    // Callers pass high alphas (0.82-0.9f) to express color intent, but the liquid/haze
-    // blur is what provides the frosting — so we cap the overlay alpha at 0.35f so
-    // the blur can still show through. This restores the frosted glass look.
-    val glassAlpha = containerColor.alpha.coerceAtMost(0.35f)
+    // Glass effect: if real-time blur shader is applied, cap overlay alpha at 0.35f
+    // so the blur shows through. If no shader is active (fast surface glass), use the full containerColor.
+    val finalColor = if (hasShader) {
+        containerColor.copy(alpha = containerColor.alpha.coerceAtMost(0.35f))
+    } else {
+        containerColor
+    }
     return modifier
         .background(
-            color = containerColor.copy(alpha = glassAlpha)
+            color = finalColor
         )
         .then(contentModifier)
         .border(

@@ -17,6 +17,14 @@
   ```bash
   gh workflow run build.yml -f target=all
   ```
+- **Build Release APK & Publish GitHub Release**:
+  ```bash
+  gh workflow run build.yml -f target=build -f publish_release=true
+  ```
+- **Publish Release with Custom Tag**:
+  ```bash
+  gh workflow run build.yml -f target=build -f publish_release=true -f tag_name=v1.0.0
+  ```
 - **Check status / watch progress**:
   ```bash
   gh run list --limit 3
@@ -64,7 +72,7 @@ This project is indexed by GitNexus as **spend-sense** (1077 symbols, 2377 relat
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **spend-sense** (2248 symbols, 4694 relationships, 102 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **spend-sense** (2693 symbols, 5858 relationships, 118 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

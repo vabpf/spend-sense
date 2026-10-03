@@ -26,7 +26,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
+
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -346,21 +347,8 @@ fun HomeScreen(
                 .padding(bottom = padding.calculateBottomPadding())
         ) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .liquefiable(homeLiquidState)
+                modifier = Modifier.fillMaxSize()
             ) {
-                Image(
-                    painter = painterResource(id = com.spendsense.R.drawable.bg_pexel),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.30f))
-                )
 
                 if (filteredTransactions.isEmpty()) {
                     Box(
@@ -896,14 +884,14 @@ fun HomeScreen(
             onConfirm = { amount, currency, merchant, categoryId ->
                 if (data.transactionId != null && data.transactionId > 0) {
                     val existingTxn = transactions.firstOrNull { it.id == data.transactionId }
-                    viewModel.updateTransaction(
+                    viewModel.updateTransactionWithMapping(
                         com.spendsense.domain.model.Transaction(
                             id = data.transactionId,
                             amount = amount,
                             currencyCode = currency,
                             merchant = merchant,
                             categoryId = categoryId,
-                            timestamp = System.currentTimeMillis(),
+                            timestamp = existingTxn?.timestamp ?: System.currentTimeMillis(),
                             sourcePackageName = data.sourcePackageName,
                             sourceAppName = data.sourceAppName,
                             paymentSource = existingTxn?.paymentSource ?: "Manual",

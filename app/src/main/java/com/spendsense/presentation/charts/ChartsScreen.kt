@@ -71,7 +71,8 @@ fun ChartsScreen(
                             modifier = Modifier.weight(1f),
                             currency = summary.currency,
                             thisMonth = summary.thisMonthTotal,
-                            lastMonth = summary.lastMonthTotal
+                            lastMonth = summary.lastMonthTotal,
+                            monthLabel = if (state.isCurrentMonth) "This Month" else state.selectedMonthLabel
                         )
                         DailyAverageCard(
                             modifier = Modifier.weight(1f),
@@ -107,7 +108,8 @@ fun ChartsScreen(
                 item {
                     CategoryDonutChart(
                         slices = state.categorySlices,
-                        currency = summary.currency
+                        currency = summary.currency,
+                        monthLabel = if (state.isCurrentMonth) null else state.selectedMonthLabel
                     )
                 }
 
@@ -116,7 +118,10 @@ fun ChartsScreen(
                     PaymentSourcesCard(
                         currentMonthSources = state.currentMonthPaymentSources,
                         monthlyData = state.monthlyPaymentSources,
-                        currency = summary.currency
+                        currency = summary.currency,
+                        selectedYear = state.selectedYear,
+                        selectedMonth = state.selectedMonth,
+                        onMonthSelected = { y, m -> viewModel.selectMonth(y, m) }
                     )
                 }
 
@@ -126,6 +131,9 @@ fun ChartsScreen(
                         allTransactions = state.allTransactions,
                         categories = summary.categories,
                         currency = summary.currency,
+                        selectedYear = state.selectedYear,
+                        selectedMonth = state.selectedMonth,
+                        onMonthChanged = { y, m -> viewModel.setMonth(y, m) },
                         onFilterDay = onNavigateToHomeWithFilter
                     )
                 }
@@ -169,7 +177,8 @@ private fun MonthTotalCard(
     modifier: Modifier = Modifier,
     currency: String,
     thisMonth: Double,
-    lastMonth: Double
+    lastMonth: Double,
+    monthLabel: String = "This Month"
 ) {
     val delta = thisMonth - lastMonth
     val deltaPositive = delta >= 0
@@ -185,9 +194,11 @@ private fun MonthTotalCard(
     GlassSummaryCard(modifier = modifier) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                text = "This Month",
+                text = monthLabel,
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = formatAmount(thisMonth, currency),
