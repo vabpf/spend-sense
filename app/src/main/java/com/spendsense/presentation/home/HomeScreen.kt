@@ -818,6 +818,8 @@ fun HomeScreen(
                         }
                     }
                 }
+            }
+        }
 
         // Floating selection toolbar
             if (selectedTransactionIds.isNotEmpty()) {
