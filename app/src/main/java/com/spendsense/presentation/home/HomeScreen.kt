@@ -389,10 +389,9 @@ fun HomeScreen(
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
-                            0.0f to Color.Transparent,
-                            0.22f to Color.White.copy(alpha = 0.55f),
-                            0.36f to Color(0xFFF8FAFC),
-                            1.0f to Color(0xFFF8FAFC)
+                            colors = listOf(Color.Transparent, Color(0xFFF8FAFC)),
+                            startY = 0f,
+                            endY = with(LocalDensity.current) { (statusBarPadding + 280.dp).toPx() }
                         )
                     )
             )
@@ -686,15 +685,15 @@ fun HomeScreen(
                                 ) {
                                     Text(
                                         text = formatDayHeader(item.date),
-                                        style = MaterialTheme.typography.titleMedium,
+                                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp),
                                         fontWeight = FontWeight.Bold,
                                         color = Color(0xFF334155)
                                     )
                                     Text(
                                         text = formatCurrency(item.dayTotal, defaultCurrency),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF0F172A)
+                                        style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp),
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color(0xFF64748B)
                                     )
                                 }
                             }
@@ -1223,8 +1222,8 @@ private fun HomeSummaryCard(
                 Text(
                     text = "Today at a glance",
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = Color(0xFF64748B)
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF0284C7)
                 )
                 IconButton(
                     onClick = onNotificationClick,
@@ -1305,7 +1304,8 @@ private fun HomeSummaryCard(
                     Text(
                         text = "You spent ${formatCurrency(yesterdaySpending, defaultCurrency)} yesterday",
                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
-                        color = Color(0xFF64748B)
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF0369A1)
                     )
                 }
 
@@ -1337,8 +1337,8 @@ private fun HomeSummaryCard(
                             Text(
                                 text = dayLabel,
                                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                                fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isToday) CyberBlue else Color(0xFF94A3B8)
+                                fontWeight = if (isToday) FontWeight.Bold else FontWeight.Medium,
+                                color = if (isToday) CyberBlue else Color(0xFF64748B)
                             )
                         }
                     }
@@ -1365,7 +1365,7 @@ private fun HomeSummaryCard(
                         Icon(
                             imageVector = Icons.Rounded.Segment,
                             contentDescription = null,
-                            tint = Color(0xFF64748B),
+                            tint = Color(0xFF0284C7),
                             modifier = Modifier.size(15.dp)
                         )
                         Text(
@@ -1391,7 +1391,7 @@ private fun HomeSummaryCard(
                         Icon(
                             imageVector = Icons.Rounded.Mail,
                             contentDescription = null,
-                            tint = Color(0xFF64748B),
+                            tint = Color(0xFF0284C7),
                             modifier = Modifier.size(15.dp)
                         )
                         Text(

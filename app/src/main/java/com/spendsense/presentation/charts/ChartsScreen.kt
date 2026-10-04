@@ -87,10 +87,9 @@ fun ChartsScreen(
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
-                            0.0f to Color.Transparent,
-                            0.22f to Color.White.copy(alpha = 0.55f),
-                            0.36f to Color(0xFFF8FAFC),
-                            1.0f to Color(0xFFF8FAFC)
+                            colors = listOf(Color.Transparent, Color(0xFFF8FAFC)),
+                            startY = 0f,
+                            endY = with(LocalDensity.current) { (statusBarPadding + 260.dp).toPx() }
                         )
                     )
             )

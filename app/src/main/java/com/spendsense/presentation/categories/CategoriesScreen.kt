@@ -15,10 +15,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
@@ -56,11 +58,8 @@ fun CategoriesScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val fadeStart = statusBarPadding + 62.dp
-    val fadeDistance = 36.dp
-    val fadeEnd = fadeStart + fadeDistance
+    val fadeEnd = statusBarPadding + 98.dp
     val density = LocalDensity.current
-    val fadeStartPx = with(density) { fadeStart.toPx() }
     val fadeEndPx = with(density) { fadeEnd.toPx() }
 
     Scaffold(
@@ -98,17 +97,14 @@ fun CategoriesScreen(
                 .fillMaxSize()
                 .padding(bottom = padding.calculateBottomPadding())
         ) {
-            // Background scrim: transparent at top wallpaper, smoothly fades into #F8FAFC right below header text
+            // Background scrim: transparent at top wallpaper, smoothly fades directly from 0 to 100 into #F8FAFC
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
-                            0.0f to Color.Transparent,
-                            0.35f to Color(0xFFF8FAFC).copy(alpha = 0.40f),
-                            0.70f to Color(0xFFF8FAFC).copy(alpha = 0.85f),
-                            1.0f to Color(0xFFF8FAFC),
-                            startY = fadeStartPx,
+                            colors = listOf(Color.Transparent, Color(0xFFF8FAFC)),
+                            startY = 0f,
                             endY = fadeEndPx
                         )
                     )
@@ -118,8 +114,8 @@ fun CategoriesScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .fadingEdge(
-                        topFadeStart = fadeStart,
-                        topFadeHeight = fadeDistance
+                        topFadeStart = 0.dp,
+                        topFadeHeight = fadeEnd
                     ),
                 contentPadding = PaddingValues(
                     start = 16.dp, 
@@ -163,15 +159,27 @@ fun CategoriesScreen(
                 Column {
                     Text(
                         text = "Categories",
-                        style = MaterialTheme.typography.headlineMedium,
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            shadow = Shadow(
+                                color = Color.Black.copy(alpha = 0.65f),
+                                offset = Offset(0f, 2f),
+                                blurRadius = 10f
+                            )
+                        ),
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = "Manage expense and income categories",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.85f)
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            shadow = Shadow(
+                                color = Color.Black.copy(alpha = 0.55f),
+                                offset = Offset(0f, 1f),
+                                blurRadius = 6f
+                            )
+                        ),
+                        color = Color.White.copy(alpha = 0.95f)
                     )
                 }
             }

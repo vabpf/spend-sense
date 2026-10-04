@@ -25,7 +25,9 @@ import com.spendsense.presentation.util.GlassAlertDialog
 import com.spendsense.presentation.util.SpendSenseTopBar
 import com.spendsense.presentation.util.glassEffect
 
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.BorderStroke
@@ -42,11 +44,8 @@ fun ProviderDetailScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val fadeStart = statusBarPadding + 62.dp
-    val fadeDistance = 36.dp
-    val fadeEnd = fadeStart + fadeDistance
+    val fadeEnd = statusBarPadding + 98.dp
     val density = LocalDensity.current
-    val fadeStartPx = with(density) { fadeStart.toPx() }
     val fadeEndPx = with(density) { fadeEnd.toPx() }
 
     LaunchedEffect(accountId) {
@@ -62,17 +61,14 @@ fun ProviderDetailScreen(
                 .fillMaxSize()
                 .padding(bottom = padding.calculateBottomPadding())
         ) {
-            // Background scrim: transparent at top wallpaper, smoothly fades into #F8FAFC right below header text
+            // Background scrim: transparent at top wallpaper, smoothly fades directly from 0 to 100 into #F8FAFC
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
-                            0.0f to Color.Transparent,
-                            0.35f to Color(0xFFF8FAFC).copy(alpha = 0.40f),
-                            0.70f to Color(0xFFF8FAFC).copy(alpha = 0.85f),
-                            1.0f to Color(0xFFF8FAFC),
-                            startY = fadeStartPx,
+                            colors = listOf(Color.Transparent, Color(0xFFF8FAFC)),
+                            startY = 0f,
                             endY = fadeEndPx
                         )
                     )
@@ -81,6 +77,10 @@ fun ProviderDetailScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .fadingEdge(
+                        topFadeStart = 0.dp,
+                        topFadeHeight = fadeEnd
+                    )
                     .padding(top = fadeEnd + 6.dp)
             ) {
                 // Header
@@ -240,21 +240,33 @@ fun ProviderDetailScreen(
                     Icon(
                         imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                         contentDescription = "Back",
-                        tint = Color(0xFF0F172A)
+                        tint = Color.White
                     )
                 }
                 Column {
                     Text(
                         text = state.account?.name ?: "Provider",
-                        style = MaterialTheme.typography.headlineMedium,
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            shadow = Shadow(
+                                color = Color.Black.copy(alpha = 0.65f),
+                                offset = Offset(0f, 2f),
+                                blurRadius = 10f
+                            )
+                        ),
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0F172A)
+                        color = Color.White
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = "Manage provider models and configuration",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFF64748B)
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            shadow = Shadow(
+                                color = Color.Black.copy(alpha = 0.55f),
+                                offset = Offset(0f, 1f),
+                                blurRadius = 6f
+                            )
+                        ),
+                        color = Color.White.copy(alpha = 0.95f)
                     )
                 }
             }

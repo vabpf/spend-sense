@@ -15,7 +15,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -78,9 +80,7 @@ fun RegexGeneratorScreen(
     }
 
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val fadeStart = statusBarPadding + 62.dp
-    val fadeDistance = 36.dp
-    val fadeEnd = fadeStart + fadeDistance
+    val fadeEnd = statusBarPadding + 98.dp
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -92,38 +92,27 @@ fun RegexGeneratorScreen(
                 .padding(bottom = padding.calculateBottomPadding())
         ) {
             val density = LocalDensity.current
-            val fadeStartPx = with(density) { fadeStart.toPx() }
             val fadeEndPx = with(density) { fadeEnd.toPx() }
 
-            // Background scrim: transparent over pinned title, fades to #F8FAFC
+            // Background scrim: transparent at top wallpaper, smoothly fades directly from 0 to 100 into #F8FAFC
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
-                            0f to Color.Transparent,
-                            fadeStartPx / fadeEndPx to Color.Transparent,
-                            1f to Color(0xFFF8FAFC),
+                            colors = listOf(Color.Transparent, Color(0xFFF8FAFC)),
                             startY = 0f,
                             endY = fadeEndPx
                         )
                     )
-            )
-            // Solid background below fadeEnd
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = fadeEnd)
-                    .fillMaxHeight()
-                    .background(Color(0xFFF8FAFC))
             )
 
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .fadingEdge(
-                        topFadeStart = fadeStart,
-                        topFadeHeight = fadeDistance
+                        topFadeStart = 0.dp,
+                        topFadeHeight = fadeEnd
                     )
                     .verticalScroll(rememberScrollState())
                     .padding(
@@ -849,21 +838,33 @@ fun RegexGeneratorScreen(
                     Icon(
                         imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                         contentDescription = "Back",
-                        tint = Color(0xFF0F172A)
+                        tint = Color.White
                     )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Column {
                     Text(
                         text = "AI Regex Generator",
-                        style = MaterialTheme.typography.headlineMedium,
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            shadow = Shadow(
+                                color = Color.Black.copy(alpha = 0.65f),
+                                offset = Offset(0f, 2f),
+                                blurRadius = 10f
+                            )
+                        ),
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0F172A)
+                        color = Color.White
                     )
                     Text(
                         text = "Generate regex patterns from notification text",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF64748B)
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            shadow = Shadow(
+                                color = Color.Black.copy(alpha = 0.55f),
+                                offset = Offset(0f, 1f),
+                                blurRadius = 6f
+                            )
+                        ),
+                        color = Color.White.copy(alpha = 0.95f)
                     )
                 }
             }
