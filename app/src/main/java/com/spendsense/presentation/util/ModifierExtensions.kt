@@ -61,8 +61,8 @@ object LiquidTokens {
  * Provides a single source of truth for cards, floating bars, dialogs, and controls.
  */
 object FrostGlassDefaults {
-    val containerColor: Color = Color.White.copy(alpha = 0.75f)
-    val liveBlurContainerColor: Color = Color.White.copy(alpha = 0.75f)
+    val containerColor: Color = Color.White.copy(alpha = 0.58f)
+    val liveBlurContainerColor: Color = Color.White.copy(alpha = 0.58f)
     val borderWidth: Dp = 1.dp
     const val borderAlpha: Float = 0.22f
     const val sheenAlpha: Float = 0.10f
@@ -77,7 +77,7 @@ object FrostGlassDefaults {
 /**
  * Applies a premium frosted glass effect with:
  * - Real Liquid Glass backdrop sampling via [io.github.kyant0:backdrop]
- * - Vibrancy → Blur (14dp) → Lens refraction (on API 33+) pipeline for liveBlur surfaces
+ * - Vibrancy → Blur (7dp) → Lens refraction (on API 33+) pipeline for liveBlur surfaces
  * - Gradient sheen for depth
  * - Prism edge - subtle rainbow color bleeding on edges
  * - High corner radius support
@@ -114,18 +114,18 @@ fun Modifier.glassEffect(
     }
 
     return if (liveBlur && activeBackdrop != null) {
-        // Live blur path: official Backdrop pipeline with enhanced 14dp blur and lens refraction
+        // Live blur path: official Backdrop pipeline with enhanced blur and lens refraction
         this.drawBackdrop(
             backdrop = activeBackdrop,
             shape = { shape },
             effects = {
                 vibrancy()
-                // Increased blur for pure transparent glass without base color
-                blur(14f.dp.toPx())
+                // Reduced blur for clearer underlying backdrop definition
+                blur(7f.dp.toPx())
                 // Lens refraction is API 33+ and strictly requires CornerBasedShape.
                 if (useLens && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && shape is CornerBasedShape) {
                     try {
-                        lens(refractionHeight = 16f.dp.toPx(), refractionAmount = 16f.dp.toPx())
+                        lens(refractionHeight = 26f.dp.toPx(), refractionAmount = 26f.dp.toPx())
                     } catch (_: Throwable) {
                         // Fall back gracefully to vibrancy + blur without crashing
                     }

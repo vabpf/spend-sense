@@ -50,9 +50,10 @@ fun WhitelistedAppsScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val fadeEnd = statusBarPadding + 98.dp
+    val headerBottom = statusBarPadding + 74.dp
+    val fadeHeight = 24.dp
     val density = LocalDensity.current
-    val fadeEndPx = with(density) { fadeEnd.toPx() }
+    val headerBottomPx = with(density) { headerBottom.toPx() }
 
     val suggestedPackageNames = remember(state.suggestedApps) {
         state.suggestedApps.map { it.packageName }.toSet()
@@ -78,7 +79,7 @@ fun WhitelistedAppsScreen(
                         Brush.verticalGradient(
                             colors = listOf(Color.Transparent, Color(0xFFF8FAFC)),
                             startY = 0f,
-                            endY = fadeEndPx
+                            endY = headerBottomPx
                         )
                     )
             )
@@ -87,7 +88,7 @@ fun WhitelistedAppsScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(start = 16.dp, end = 16.dp, top = fadeEnd + 16.dp),
+                        .padding(start = 16.dp, end = 16.dp, top = headerBottom + fadeHeight + 16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Box(modifier = Modifier.fillMaxWidth().height(16.dp).clip(RoundedCornerShape(4.dp)).shimmer())
@@ -104,10 +105,10 @@ fun WhitelistedAppsScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .fadingEdge(
-                            topFadeStart = 0.dp,
-                            topFadeHeight = fadeEnd
+                            topFadeStart = headerBottom,
+                            topFadeHeight = fadeHeight
                         ),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = fadeEnd + 6.dp, bottom = 100.dp),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = headerBottom + fadeHeight + 4.dp, bottom = 100.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     item {
@@ -129,10 +130,14 @@ fun WhitelistedAppsScreen(
                             singleLine = true,
                             shape = RoundedCornerShape(14.dp),
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = Color.White,
-                                unfocusedContainerColor = Color.White,
-                                focusedBorderColor = Color(0xFF00D4FF),
-                                unfocusedBorderColor = Color(0xFFE2E8F0)
+                                focusedContainerColor = Color(0xFFF8FAFC),
+                                unfocusedContainerColor = Color(0xFFF8FAFC),
+                                focusedBorderColor = Color(0xFF0284C7),
+                                unfocusedBorderColor = Color(0xFFCBD5E1),
+                                focusedTextColor = Color(0xFF0F172A),
+                                unfocusedTextColor = Color(0xFF0F172A),
+                                focusedLabelColor = Color(0xFF0284C7),
+                                unfocusedLabelColor = Color(0xFF475569)
                             )
                         )
                     }

@@ -581,18 +581,15 @@ fun HomeScreen(
                                 fontWeight = FontWeight.SemiBold,
                                 color = Color(0xFF0F172A)
                             )
-                            Box(
+                            Surface(
                                 modifier = Modifier
-                                    .glassEffect(
-                                        shape = CircleShape,
-                                        borderWidth = 1.dp,
-                                        borderAlpha = 0.22f
-                                    )
-                                    .clickable { viewModel.discardAllNotifications() }
-                                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                                contentAlignment = Alignment.Center
+                                    .clip(CircleShape)
+                                    .clickable { viewModel.discardAllNotifications() },
+                                shape = CircleShape,
+                                color = Color(0xFFFEE2E2)
                             ) {
                                 Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
@@ -600,13 +597,13 @@ fun HomeScreen(
                                         imageVector = Icons.Rounded.Delete,
                                         contentDescription = "Discard All",
                                         modifier = Modifier.size(16.dp),
-                                        tint = MaterialTheme.colorScheme.error
+                                        tint = Color(0xFFDC2626)
                                     )
                                     Text(
                                         text = "Discard All",
                                         style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.error
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color(0xFFDC2626)
                                     )
                                 }
                             }
@@ -1225,24 +1222,24 @@ private fun HomeSummaryCard(
                     fontWeight = FontWeight.SemiBold,
                     color = Color(0xFF0284C7)
                 )
-                IconButton(
-                    onClick = onNotificationClick,
-                    modifier = Modifier.size(28.dp)
-                ) {
-                    BadgedBox(
-                        badge = {
-                            if (pendingCount > 0) {
-                                Badge(
-                                    containerColor = Color(0xFFEF4444),
-                                    contentColor = Color.White
-                                ) {
-                                    Text(
-                                        text = "$pendingCount",
-                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp)
-                                    )
-                                }
+                BadgedBox(
+                    badge = {
+                        if (pendingCount > 0) {
+                            Badge(
+                                containerColor = Color(0xFFEF4444),
+                                contentColor = Color.White
+                            ) {
+                                Text(
+                                    text = "$pendingCount",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp)
+                                )
                             }
                         }
+                    }
+                ) {
+                    IconButton(
+                        onClick = onNotificationClick,
+                        modifier = Modifier.size(28.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.Notifications,
@@ -1305,7 +1302,7 @@ private fun HomeSummaryCard(
                         text = "You spent ${formatCurrency(yesterdaySpending, defaultCurrency)} yesterday",
                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
                         fontWeight = FontWeight.Medium,
-                        color = Color(0xFF0369A1)
+                        color = Color(0xFF0284C7)
                     )
                 }
 
@@ -1331,14 +1328,14 @@ private fun HomeSummaryCard(
                                     .height(barHeight)
                                     .clip(RoundedCornerShape(999.dp))
                                     .background(
-                                        if (isToday) CyberBlue else Color(0xFFBAE6FD).copy(alpha = 0.55f)
+                                        if (isToday) Color(0xFF0284C7) else Color(0xFFBAE6FD).copy(alpha = 0.55f)
                                     )
                             )
                             Text(
                                 text = dayLabel,
                                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
                                 fontWeight = if (isToday) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isToday) CyberBlue else Color(0xFF64748B)
+                                color = if (isToday) Color(0xFF0284C7) else Color(0xFF64748B)
                             )
                         }
                     }
@@ -1425,17 +1422,14 @@ fun InboxItem(
         }
     }
 
-    Card(
+    Surface(
         modifier = Modifier
             .width(280.dp)
-            .height(148.dp)
-            .glassEffect(
-                shape = MaterialTheme.shapes.medium
-            ),
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(
-            containerColor = Color.Transparent
-        )
+            .height(148.dp),
+        shape = RoundedCornerShape(20.dp),
+        color = Color.White,
+        shadowElevation = 2.dp,
+        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
     ) {
         Box(modifier = Modifier.fillMaxSize().padding(12.dp)) {
             Column(

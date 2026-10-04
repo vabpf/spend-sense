@@ -80,7 +80,21 @@ fun RegexGeneratorScreen(
     }
 
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val fadeEnd = statusBarPadding + 98.dp
+    val headerBottom = statusBarPadding + 74.dp
+    val fadeHeight = 24.dp
+
+    val inputColors = OutlinedTextFieldDefaults.colors(
+        focusedContainerColor = Color(0xFFF8FAFC),
+        unfocusedContainerColor = Color(0xFFF8FAFC),
+        focusedBorderColor = Color(0xFF0284C7),
+        unfocusedBorderColor = Color(0xFFCBD5E1),
+        focusedTextColor = Color(0xFF0F172A),
+        unfocusedTextColor = Color(0xFF0F172A),
+        focusedLabelColor = Color(0xFF0284C7),
+        unfocusedLabelColor = Color(0xFF475569),
+        focusedPlaceholderColor = Color(0xFF94A3B8),
+        unfocusedPlaceholderColor = Color(0xFF94A3B8)
+    )
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -92,7 +106,7 @@ fun RegexGeneratorScreen(
                 .padding(bottom = padding.calculateBottomPadding())
         ) {
             val density = LocalDensity.current
-            val fadeEndPx = with(density) { fadeEnd.toPx() }
+            val headerBottomPx = with(density) { headerBottom.toPx() }
 
             // Background scrim: transparent at top wallpaper, smoothly fades directly from 0 to 100 into #F8FAFC
             Box(
@@ -102,7 +116,7 @@ fun RegexGeneratorScreen(
                         Brush.verticalGradient(
                             colors = listOf(Color.Transparent, Color(0xFFF8FAFC)),
                             startY = 0f,
-                            endY = fadeEndPx
+                            endY = headerBottomPx
                         )
                     )
             )
@@ -111,14 +125,14 @@ fun RegexGeneratorScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .fadingEdge(
-                        topFadeStart = 0.dp,
-                        topFadeHeight = fadeEnd
+                        topFadeStart = headerBottom,
+                        topFadeHeight = fadeHeight
                     )
                     .verticalScroll(rememberScrollState())
                     .padding(
                         start = 16.dp,
                         end = 16.dp,
-                        top = fadeEnd + 6.dp,
+                        top = headerBottom + fadeHeight + 4.dp,
                         bottom = 120.dp
                     ),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -191,7 +205,9 @@ fun RegexGeneratorScreen(
                         modifier = Modifier.fillMaxWidth(),
                         placeholder = { Text("Transaction title from the notification") },
                         label = { Text("Notification Title") },
-                        singleLine = true
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = inputColors
                     )
 
                     OutlinedTextField(
@@ -202,7 +218,9 @@ fun RegexGeneratorScreen(
                             .heightIn(min = 120.dp),
                         placeholder = { Text("Paste the full notification body here...") },
                         label = { Text("Notification Body") },
-                        maxLines = 6
+                        maxLines = 6,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = inputColors
                     )
 
                     HorizontalDivider()
@@ -219,7 +237,9 @@ fun RegexGeneratorScreen(
                         modifier = Modifier.fillMaxWidth(),
                         placeholder = { Text("e.g. x1234 or account number") },
                         label = { Text("Payment Source Identifier") },
-                        singleLine = true
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = inputColors
                     )
 
                     Text("Payment Source Type", style = MaterialTheme.typography.titleSmall)
@@ -233,7 +253,24 @@ fun RegexGeneratorScreen(
                             FilterChip(
                                 selected = state.paymentSourceType == type,
                                 onClick = { viewModel.updatePaymentSourceType(type) },
-                                label = { Text(type) }
+                                label = {
+                                    Text(
+                                        text = type,
+                                        fontWeight = if (state.paymentSourceType == type) FontWeight.Bold else FontWeight.Medium
+                                    )
+                                },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = Color(0xFFDCFCE7),
+                                    selectedLabelColor = Color(0xFF16A34A),
+                                    containerColor = Color(0xFFF8FAFC),
+                                    labelColor = Color(0xFF475569)
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = state.paymentSourceType == type,
+                                    borderColor = Color(0xFFCBD5E1),
+                                    selectedBorderColor = Color(0xFF16A34A)
+                                )
                             )
                         }
                     }
@@ -252,6 +289,8 @@ fun RegexGeneratorScreen(
                         modifier = Modifier.fillMaxWidth(),
                         placeholder = { Text("Enter regex manually or generate with AI...") },
                         label = { Text("Regex Pattern") },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = inputColors,
                         trailingIcon = {
                             if (state.manualPattern.isNotBlank()) {
                                 IconButton(onClick = { viewModel.testManualPattern() }) {
@@ -291,13 +330,15 @@ fun RegexGeneratorScreen(
                             style = MaterialTheme.typography.bodySmall
                         )
                     } else {
-                        OutlinedCard(
+                        Surface(
                             onClick = { showProviderSelector = true },
-                            shape = MaterialTheme.shapes.medium,
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color(0xFFF8FAFC),
+                            border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
-                                modifier = Modifier.padding(12.dp),
+                                modifier = Modifier.padding(14.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
@@ -306,14 +347,17 @@ fun RegexGeneratorScreen(
                                         text = state.selectedModel?.displayName
                                             ?: state.selectedModel?.modelId
                                             ?: "Select a model",
-                                        style = MaterialTheme.typography.bodyLarge
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color(0xFF0F172A)
                                     )
                                     Text(
                                         text = "Tap to choose model",
-                                        style = MaterialTheme.typography.labelSmall
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color(0xFF64748B)
                                     )
                                 }
-                                Icon(Icons.Rounded.ArrowDropDown, contentDescription = null)
+                                Icon(Icons.Rounded.ArrowDropDown, contentDescription = null, tint = Color(0xFF0F172A))
                             }
                         }
                     }
@@ -381,8 +425,17 @@ fun RegexGeneratorScreen(
             // Generate Button
             Button(
                 onClick = { viewModel.generateRegex() },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = state.notificationText.isNotBlank() && !state.isGenerating && state.selectedModel != null
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                enabled = state.notificationText.isNotBlank() && !state.isGenerating && state.selectedModel != null,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF0284C7),
+                    contentColor = Color.White,
+                    disabledContainerColor = Color(0xFFE2E8F0),
+                    disabledContentColor = Color(0xFF94A3B8)
+                ),
+                shape = RoundedCornerShape(12.dp)
             ) {
                 if (state.isGenerating) {
                     CircularProgressIndicator(
@@ -394,7 +447,7 @@ fun RegexGeneratorScreen(
                 } else {
                     Icon(Icons.Rounded.AutoAwesome, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Generate Rule (AI)")
+                    Text("Generate Rule (AI)", fontWeight = FontWeight.SemiBold)
                 }
             }
 
@@ -491,7 +544,9 @@ fun RegexGeneratorScreen(
                                 fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
                             ),
                             placeholder = { Text("Regex pattern...") },
-                            label = { Text("Pattern String") }
+                            label = { Text("Pattern String") },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = inputColors
                         )
 
                         if (state.extractedAmount != null && state.extractedMerchant != null) {
@@ -510,7 +565,9 @@ fun RegexGeneratorScreen(
                                     label = { Text("Transaction Amount") },
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                     modifier = Modifier.fillMaxWidth(),
-                                    singleLine = true
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = inputColors
                                 )
 
                                 OutlinedTextField(
@@ -518,7 +575,9 @@ fun RegexGeneratorScreen(
                                     onValueChange = { editedMerchant = it },
                                     label = { Text("Merchant / Payee") },
                                     modifier = Modifier.fillMaxWidth(),
-                                    singleLine = true
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = inputColors
                                 )
 
                                 Spacer(modifier = Modifier.height(4.dp))
@@ -658,12 +717,15 @@ fun RegexGeneratorScreen(
                             }
                         } else {
                             Box {
-                                OutlinedCard(
+                                Surface(
                                     onClick = { showTargetAppSelector = true },
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = Color(0xFFF8FAFC),
+                                    border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Row(
-                                        modifier = Modifier.padding(12.dp),
+                                        modifier = Modifier.padding(14.dp),
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
@@ -677,7 +739,9 @@ fun RegexGeneratorScreen(
                                                         ?.appName
                                                         ?: state.selectedAppPackage
                                                 },
-                                                style = MaterialTheme.typography.bodyLarge
+                                                style = MaterialTheme.typography.bodyLarge,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color(0xFF0F172A)
                                             )
                                             val subtitle = when (state.selectedAppPackage) {
                                                 "__ALL_WHITELISTED__" -> "Applies to every enabled whitelisted app"
@@ -686,10 +750,11 @@ fun RegexGeneratorScreen(
                                             }
                                             Text(
                                                 text = subtitle,
-                                                style = MaterialTheme.typography.bodySmall
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = Color(0xFF64748B)
                                             )
                                         }
-                                        Icon(Icons.Rounded.ArrowDropDown, contentDescription = null)
+                                        Icon(Icons.Rounded.ArrowDropDown, contentDescription = null, tint = Color(0xFF0F172A))
                                     }
                                 }
 
@@ -757,63 +822,81 @@ fun RegexGeneratorScreen(
                         }
 
                         if (state.isFromInbox && state.extractedAmount != null) {
-                            Button(
-                                onClick = { viewModel.savePatternAndTransaction(editedMerchant, editedAmount) },
-                                modifier = Modifier.fillMaxWidth(),
-                                enabled = !state.isSaving && state.selectedAppPackage.isNotBlank() && state.availableApps.isNotEmpty()
-                            ) {
-                                if (state.isSaving) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(20.dp),
-                                        color = MaterialTheme.colorScheme.onPrimary
-                                    )
+                                Button(
+                                    onClick = { viewModel.savePatternAndTransaction(editedMerchant, editedAmount) },
+                                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                                    enabled = !state.isSaving && state.selectedAppPackage.isNotBlank() && state.availableApps.isNotEmpty(),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFF0284C7),
+                                        contentColor = Color.White,
+                                        disabledContainerColor = Color(0xFFE2E8F0),
+                                        disabledContentColor = Color(0xFF94A3B8)
+                                    ),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    if (state.isSaving) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(20.dp),
+                                            color = MaterialTheme.colorScheme.onPrimary
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Saving...")
+                                    } else {
+                                        Icon(Icons.Rounded.Save, contentDescription = null)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Save Pattern & Transaction", fontWeight = FontWeight.SemiBold)
+                                    }
+                                }
+
+                                OutlinedButton(
+                                    onClick = { viewModel.savePattern() },
+                                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                                    enabled = !state.isSaving && state.selectedAppPackage.isNotBlank() && state.availableApps.isNotEmpty(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = BorderStroke(1.dp, Color(0xFFCBD5E1))
+                                ) {
+                                    Icon(Icons.Rounded.BookmarkAdd, contentDescription = null)
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Saving...")
-                                } else {
-                                    Icon(Icons.Rounded.Save, contentDescription = null)
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Save Pattern & Transaction")
+                                    Text("Save Pattern Only", fontWeight = FontWeight.Medium)
+                                }
+                            } else {
+                                Button(
+                                    onClick = { viewModel.savePattern() },
+                                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                                    enabled = !state.isSaving && state.selectedAppPackage.isNotBlank() && state.availableApps.isNotEmpty(),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFF0284C7),
+                                        contentColor = Color.White,
+                                        disabledContainerColor = Color(0xFFE2E8F0),
+                                        disabledContentColor = Color(0xFF94A3B8)
+                                    ),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    if (state.isSaving) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(20.dp),
+                                            color = MaterialTheme.colorScheme.onPrimary
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Saving...")
+                                    } else {
+                                        Icon(Icons.Rounded.Save, contentDescription = null)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Add to Watchlist", fontWeight = FontWeight.SemiBold)
+                                    }
                                 }
                             }
 
                             OutlinedButton(
-                                onClick = { viewModel.savePattern() },
-                                modifier = Modifier.fillMaxWidth(),
-                                enabled = !state.isSaving && state.selectedAppPackage.isNotBlank() && state.availableApps.isNotEmpty()
+                                onClick = onNavigateToNotificationPatterns,
+                                modifier = Modifier.fillMaxWidth().height(48.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, Color(0xFFCBD5E1))
                             ) {
-                                Icon(Icons.Rounded.BookmarkAdd, contentDescription = null)
+                                Icon(Icons.Rounded.Pattern, contentDescription = null)
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Save Pattern Only")
+                                Text("View Saved Patterns", fontWeight = FontWeight.Medium)
                             }
-                        } else {
-                            Button(
-                                onClick = { viewModel.savePattern() },
-                                modifier = Modifier.fillMaxWidth(),
-                                enabled = !state.isSaving && state.selectedAppPackage.isNotBlank() && state.availableApps.isNotEmpty()
-                            ) {
-                                if (state.isSaving) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(20.dp),
-                                        color = MaterialTheme.colorScheme.onPrimary
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Saving...")
-                                } else {
-                                    Icon(Icons.Rounded.Save, contentDescription = null)
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Add to Watchlist")
-                                }
-                            }
-                        }
-
-                        OutlinedButton(
-                            onClick = onNavigateToNotificationPatterns,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(Icons.Rounded.Pattern, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("View Saved Patterns")
-                        }
                     }
                 }
             } // if (state.generatedRegex != null)

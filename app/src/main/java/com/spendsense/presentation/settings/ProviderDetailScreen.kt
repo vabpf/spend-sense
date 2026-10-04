@@ -44,9 +44,24 @@ fun ProviderDetailScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val fadeEnd = statusBarPadding + 98.dp
+    val headerBottom = statusBarPadding + 74.dp
+    val fadeHeight = 24.dp
     val density = LocalDensity.current
-    val fadeEndPx = with(density) { fadeEnd.toPx() }
+    val headerBottomPx = with(density) { headerBottom.toPx() }
+
+    val inputColors = OutlinedTextFieldDefaults.colors(
+        focusedContainerColor = Color(0xFFF8FAFC),
+        unfocusedContainerColor = Color(0xFFF8FAFC),
+        focusedBorderColor = Color(0xFF0284C7),
+        unfocusedBorderColor = Color(0xFFCBD5E1),
+        focusedTextColor = Color(0xFF0F172A),
+        unfocusedTextColor = Color(0xFF0F172A),
+        focusedLabelColor = Color(0xFF0284C7),
+        unfocusedLabelColor = Color(0xFF64748B),
+        focusedPlaceholderColor = Color(0xFF94A3B8),
+        unfocusedPlaceholderColor = Color(0xFF94A3B8),
+        cursorColor = Color(0xFF0284C7)
+    )
 
     LaunchedEffect(accountId) {
         viewModel.load(accountId)
@@ -69,7 +84,7 @@ fun ProviderDetailScreen(
                         Brush.verticalGradient(
                             colors = listOf(Color.Transparent, Color(0xFFF8FAFC)),
                             startY = 0f,
-                            endY = fadeEndPx
+                            endY = headerBottomPx
                         )
                     )
             )
@@ -78,10 +93,10 @@ fun ProviderDetailScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .fadingEdge(
-                        topFadeStart = 0.dp,
-                        topFadeHeight = fadeEnd
+                        topFadeStart = headerBottom,
+                        topFadeHeight = fadeHeight
                     )
-                    .padding(top = fadeEnd + 6.dp)
+                    .padding(top = headerBottom + fadeHeight + 4.dp)
             ) {
                 // Header
                 Text(
@@ -112,11 +127,16 @@ fun ProviderDetailScreen(
                 Button(
                     onClick = { viewModel.refreshModels() },
                     enabled = !state.isRefreshing,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF0284C7),
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(8.dp),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                     modifier = Modifier.height(32.dp)
                 ) {
                     if (state.isRefreshing) {
-                        CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp, color = Color.White)
                         Spacer(Modifier.width(4.dp))
                     }
                     Text(if (state.isRefreshing) "Refreshing..." else "Refresh", style = MaterialTheme.typography.labelMedium)
@@ -129,8 +149,9 @@ fun ProviderDetailScreen(
                     if (needsKey) {
                         Surface(
                             onClick = { viewModel.showKeyDialog(true) },
-                            shape = MaterialTheme.shapes.small,
-                            color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFFF1F5F9),
+                            border = BorderStroke(1.dp, Color(0xFFCBD5E1)),
                             modifier = Modifier.height(32.dp)
                         ) {
                             Row(
@@ -138,11 +159,12 @@ fun ProviderDetailScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Icon(Icons.Rounded.Key, contentDescription = null, modifier = Modifier.size(14.dp))
+                                Icon(Icons.Rounded.Key, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color(0xFF475569))
                                 Text(
                                     if (state.existingApiKeyPreview != null) "API Key: ${state.existingApiKeyPreview}"
                                     else "Set API Key",
-                                    style = MaterialTheme.typography.labelSmall
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color(0xFF334155)
                                 )
                             }
                         }
@@ -159,15 +181,17 @@ fun ProviderDetailScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 placeholder = { Text("Search models...") },
-                leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+                leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, tint = Color(0xFF64748B)) },
                 trailingIcon = {
                     if (state.searchQuery.isNotBlank()) {
                         IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
-                            Icon(Icons.Rounded.Clear, contentDescription = "Clear")
+                            Icon(Icons.Rounded.Clear, contentDescription = "Clear", tint = Color(0xFF64748B))
                         }
                     }
                 },
                 singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                colors = inputColors,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() })
             )
@@ -295,15 +319,31 @@ fun ProviderDetailScreen(
                         onValueChange = { viewModel.onApiKeyChange(it) },
                         label = { Text("API Key") },
                         placeholder = { Text("Enter API key") },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = inputColors,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
             },
             confirmButton = {
-                TextButton(onClick = { viewModel.saveApiKey() }) { Text("Save & Refresh") }
+                Button(
+                    onClick = { viewModel.saveApiKey() },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF0284C7),
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Save & Refresh")
+                }
             },
             dismissButton = {
-                TextButton(onClick = { viewModel.showKeyDialog(false) }) { Text("Cancel") }
+                TextButton(
+                    onClick = { viewModel.showKeyDialog(false) },
+                    colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFF64748B))
+                ) {
+                    Text("Cancel")
+                }
             }
         )
     }

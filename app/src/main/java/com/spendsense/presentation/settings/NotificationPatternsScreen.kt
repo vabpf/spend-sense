@@ -73,9 +73,10 @@ fun NotificationPatternsScreen(
     val isLoadingHistory by viewModel.isLoadingHistory.collectAsState()
 
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val fadeEnd = statusBarPadding + 98.dp
+    val headerBottom = statusBarPadding + 74.dp
+    val fadeHeight = 24.dp
     val density = LocalDensity.current
-    val fadeEndPx = with(density) { fadeEnd.toPx() }
+    val headerBottomPx = with(density) { headerBottom.toPx() }
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -120,7 +121,7 @@ fun NotificationPatternsScreen(
                         Brush.verticalGradient(
                             colors = listOf(Color.Transparent, Color(0xFFF8FAFC)),
                             startY = 0f,
-                            endY = fadeEndPx
+                            endY = headerBottomPx
                         )
                     )
             )
@@ -133,7 +134,7 @@ fun NotificationPatternsScreen(
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = fadeEnd + 24.dp)
+                        modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = headerBottom + fadeHeight + 24.dp)
                     ) {
                         Icon(
                             Icons.Rounded.Pattern,
@@ -159,13 +160,13 @@ fun NotificationPatternsScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .fadingEdge(
-                            topFadeStart = 0.dp,
-                            topFadeHeight = fadeEnd
+                            topFadeStart = headerBottom,
+                            topFadeHeight = fadeHeight
                         ),
                     contentPadding = PaddingValues(
                         start = 16.dp, 
                         end = 16.dp, 
-                        top = fadeEnd + 6.dp, 
+                        top = headerBottom + fadeHeight + 4.dp, 
                         bottom = 120.dp
                     ),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -436,12 +437,29 @@ private fun AddPatternDialog(
             }
         },
         text = {
+            val inputColors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = Color(0xFFF8FAFC),
+                unfocusedContainerColor = Color(0xFFF8FAFC),
+                focusedBorderColor = Color(0xFF0284C7),
+                unfocusedBorderColor = Color(0xFFCBD5E1),
+                focusedTextColor = Color(0xFF0F172A),
+                unfocusedTextColor = Color(0xFF0F172A),
+                focusedLabelColor = Color(0xFF0284C7),
+                unfocusedLabelColor = Color(0xFF64748B),
+                focusedPlaceholderColor = Color(0xFF94A3B8),
+                unfocusedPlaceholderColor = Color(0xFF94A3B8),
+                cursorColor = Color(0xFF0284C7)
+            )
+
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 // App selector
                 Box {
-                    OutlinedCard(
+                    Surface(
                         onClick = { showAppSelector = true },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFFF8FAFC),
+                        border = BorderStroke(1.dp, Color(0xFFCBD5E1))
                     ) {
                         Row(
                             modifier = Modifier.padding(12.dp),
@@ -453,17 +471,18 @@ private fun AddPatternDialog(
                                     text = if (selectedAppIndex in availableApps.indices)
                                         availableApps[selectedAppIndex].appName
                                     else "Select app",
-                                    style = MaterialTheme.typography.bodyLarge
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = Color(0xFF0F172A)
                                 )
                                 Text(
                                     text = if (selectedAppIndex in availableApps.indices)
                                         availableApps[selectedAppIndex].packageName
                                     else "Choose a whitelisted app",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = Color(0xFF64748B)
                                 )
                             }
-                            Icon(Icons.Rounded.ArrowDropDown, contentDescription = null)
+                            Icon(Icons.Rounded.ArrowDropDown, contentDescription = null, tint = Color(0xFF475569))
                         }
                     }
 
@@ -493,7 +512,7 @@ private fun AddPatternDialog(
                                             Icon(
                                                 Icons.Rounded.Check,
                                                 contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.primary
+                                                tint = Color(0xFF0284C7)
                                             )
                                         }
                                     }
@@ -513,6 +532,8 @@ private fun AddPatternDialog(
                     label = { Text("Notification Title") },
                     placeholder = { Text("e.g. UPI payment received") },
                     singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = inputColors,
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -522,6 +543,8 @@ private fun AddPatternDialog(
                     label = { Text("Regex Pattern (optional)") },
                     placeholder = { Text("Leave blank to match all notifications with this title") },
                     singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = inputColors,
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -532,6 +555,8 @@ private fun AddPatternDialog(
                         label = { Text("Payment Source Identifier") },
                         placeholder = { Text("e.g. x1234 or account number") },
                         singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = inputColors,
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -546,7 +571,22 @@ private fun AddPatternDialog(
                             FilterChip(
                                 selected = paymentSourceType == type,
                                 onClick = { onPaymentSourceTypeChange(type) },
-                                label = { Text(type) }
+                                label = { Text(type, style = MaterialTheme.typography.labelMedium) },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = Color(0xFFDCFCE7),
+                                    selectedLabelColor = Color(0xFF15803D),
+                                    containerColor = Color(0xFFF1F5F9),
+                                    labelColor = Color(0xFF475569)
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = paymentSourceType == type,
+                                    borderColor = Color(0xFFCBD5E1),
+                                    selectedBorderColor = Color(0xFF86EFAC),
+                                    borderWidth = 1.dp,
+                                    selectedBorderWidth = 1.dp
+                                )
                             )
                         }
                     }
@@ -554,9 +594,12 @@ private fun AddPatternDialog(
 
                 Box {
                     val selectedCurrency = Currencies.find(currencyCode)
-                    OutlinedCard(
+                    Surface(
                         onClick = { showCurrencySelector = true },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFFF8FAFC),
+                        border = BorderStroke(1.dp, Color(0xFFCBD5E1))
                     ) {
                         Row(
                             modifier = Modifier.padding(12.dp),
@@ -564,13 +607,14 @@ private fun AddPatternDialog(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Column {
-                                Text("Currency", style = MaterialTheme.typography.labelSmall)
+                                Text("Currency", style = MaterialTheme.typography.labelSmall, color = Color(0xFF64748B))
                                 Text(
                                     "${selectedCurrency.symbol} ${selectedCurrency.code} — ${selectedCurrency.name}",
-                                    style = MaterialTheme.typography.bodyLarge
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = Color(0xFF0F172A)
                                 )
                             }
-                            Icon(Icons.Rounded.ArrowDropDown, contentDescription = null)
+                            Icon(Icons.Rounded.ArrowDropDown, contentDescription = null, tint = Color(0xFF475569))
                         }
                     }
 
@@ -602,15 +646,25 @@ private fun AddPatternDialog(
             }
         },
         confirmButton = {
-            TextButton(
+            Button(
                 onClick = onSave,
-                enabled = title.isNotBlank() && selectedAppIndex >= 0 && (!isTransaction || paymentSource.isNotBlank())
+                enabled = title.isNotBlank() && selectedAppIndex >= 0 && (!isTransaction || paymentSource.isNotBlank()),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF0284C7),
+                    contentColor = Color.White,
+                    disabledContainerColor = Color(0xFFE2E8F0),
+                    disabledContentColor = Color(0xFF94A3B8)
+                ),
+                shape = RoundedCornerShape(10.dp)
             ) {
                 Text("Save")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFF64748B))
+            ) {
                 Text("Cancel")
             }
         }
@@ -654,11 +708,28 @@ private fun EditPatternDialog(
             }
         },
         text = {
+            val inputColors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = Color(0xFFF8FAFC),
+                unfocusedContainerColor = Color(0xFFF8FAFC),
+                focusedBorderColor = Color(0xFF0284C7),
+                unfocusedBorderColor = Color(0xFFCBD5E1),
+                focusedTextColor = Color(0xFF0F172A),
+                unfocusedTextColor = Color(0xFF0F172A),
+                focusedLabelColor = Color(0xFF0284C7),
+                unfocusedLabelColor = Color(0xFF64748B),
+                focusedPlaceholderColor = Color(0xFF94A3B8),
+                unfocusedPlaceholderColor = Color(0xFF94A3B8),
+                cursorColor = Color(0xFF0284C7)
+            )
+
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Box {
-                    OutlinedCard(
+                    Surface(
                         onClick = { showAppSelector = true },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFFF8FAFC),
+                        border = BorderStroke(1.dp, Color(0xFFCBD5E1))
                     ) {
                         Row(
                             modifier = Modifier.padding(12.dp),
@@ -673,17 +744,18 @@ private fun EditPatternDialog(
                                         if (packageName == "__ALL_WHITELISTED__") "All Whitelisted Apps"
                                         else packageName.split(".").lastOrNull()?.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.getDefault()) else it.toString() } ?: packageName
                                     },
-                                    style = MaterialTheme.typography.bodyLarge
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = Color(0xFF0F172A)
                                 )
                                 Text(
                                     text = if (selectedAppIndex in availableApps.indices)
                                         availableApps[selectedAppIndex].packageName
                                     else packageName,
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = Color(0xFF64748B)
                                 )
                             }
-                            Icon(Icons.Rounded.ArrowDropDown, contentDescription = null)
+                            Icon(Icons.Rounded.ArrowDropDown, contentDescription = null, tint = Color(0xFF475569))
                         }
                     }
 
@@ -710,7 +782,7 @@ private fun EditPatternDialog(
                                             )
                                         }
                                         if (isSelected) {
-                                            Icon(Icons.Rounded.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                            Icon(Icons.Rounded.Check, contentDescription = null, tint = Color(0xFF0284C7))
                                         }
                                     }
                                 },
@@ -729,6 +801,8 @@ private fun EditPatternDialog(
                     label = { Text("Notification Title") },
                     placeholder = { Text("e.g. UPI payment received") },
                     singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = inputColors,
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -738,6 +812,8 @@ private fun EditPatternDialog(
                     label = { Text("Regex Pattern (optional)") },
                     placeholder = { Text("Leave blank to match all notifications with this title") },
                     singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = inputColors,
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -748,6 +824,8 @@ private fun EditPatternDialog(
                         label = { Text("Payment Source Identifier") },
                         placeholder = { Text("e.g. x1234 or account number") },
                         singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = inputColors,
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -762,7 +840,22 @@ private fun EditPatternDialog(
                             FilterChip(
                                 selected = paymentSourceType == type,
                                 onClick = { onPaymentSourceTypeChange(type) },
-                                label = { Text(type) }
+                                label = { Text(type, style = MaterialTheme.typography.labelMedium) },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = Color(0xFFDCFCE7),
+                                    selectedLabelColor = Color(0xFF15803D),
+                                    containerColor = Color(0xFFF1F5F9),
+                                    labelColor = Color(0xFF475569)
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = paymentSourceType == type,
+                                    borderColor = Color(0xFFCBD5E1),
+                                    selectedBorderColor = Color(0xFF86EFAC),
+                                    borderWidth = 1.dp,
+                                    selectedBorderWidth = 1.dp
+                                )
                             )
                         }
                     }
@@ -770,9 +863,12 @@ private fun EditPatternDialog(
 
                 Box {
                     val selectedCurrency = Currencies.find(currencyCode)
-                    OutlinedCard(
+                    Surface(
                         onClick = { showCurrencySelector = true },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFFF8FAFC),
+                        border = BorderStroke(1.dp, Color(0xFFCBD5E1))
                     ) {
                         Row(
                             modifier = Modifier.padding(12.dp),
@@ -780,13 +876,14 @@ private fun EditPatternDialog(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Column {
-                                Text("Currency", style = MaterialTheme.typography.labelSmall)
+                                Text("Currency", style = MaterialTheme.typography.labelSmall, color = Color(0xFF64748B))
                                 Text(
                                     "${selectedCurrency.symbol} ${selectedCurrency.code} — ${selectedCurrency.name}",
-                                    style = MaterialTheme.typography.bodyLarge
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = Color(0xFF0F172A)
                                 )
                             }
-                            Icon(Icons.Rounded.ArrowDropDown, contentDescription = null)
+                            Icon(Icons.Rounded.ArrowDropDown, contentDescription = null, tint = Color(0xFF475569))
                         }
                     }
 
@@ -818,15 +915,25 @@ private fun EditPatternDialog(
             }
         },
         confirmButton = {
-            TextButton(
+            Button(
                 onClick = onSave,
-                enabled = title.isNotBlank() && packageName.isNotBlank() && (!isTransaction || paymentSource.isNotBlank())
+                enabled = title.isNotBlank() && packageName.isNotBlank() && (!isTransaction || paymentSource.isNotBlank()),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF0284C7),
+                    contentColor = Color.White,
+                    disabledContainerColor = Color(0xFFE2E8F0),
+                    disabledContentColor = Color(0xFF94A3B8)
+                ),
+                shape = RoundedCornerShape(10.dp)
             ) {
                 Text("Save")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFF64748B))
+            ) {
                 Text("Cancel")
             }
         }

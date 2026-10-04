@@ -222,7 +222,7 @@ private fun MonthTotalCard(
                     text = monthLabel,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Medium,
-                    color = Color(0xFF64748B),
+                    color = Color(0xFF0284C7),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -296,7 +296,7 @@ private fun DailyAverageCard(
                     text = "Daily Average",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Medium,
-                    color = Color(0xFF64748B)
+                    color = Color(0xFF0284C7)
                 )
                 Box(
                     modifier = Modifier
@@ -352,7 +352,7 @@ private fun TopCategoryCard(
                 text = "Top Category",
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Medium,
-                color = Color(0xFF64748B)
+                color = Color(0xFF0284C7)
             )
             if (category != null) {
                 Row(
@@ -420,7 +420,7 @@ private fun BiggestTransactionCard(
                 text = "Biggest Spend",
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Medium,
-                color = Color(0xFF64748B)
+                color = Color(0xFF0284C7)
             )
             if (transaction != null) {
                 Row(

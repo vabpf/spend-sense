@@ -58,9 +58,10 @@ fun CategoriesScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val fadeEnd = statusBarPadding + 98.dp
+    val headerBottom = statusBarPadding + 74.dp
+    val fadeHeight = 24.dp
     val density = LocalDensity.current
-    val fadeEndPx = with(density) { fadeEnd.toPx() }
+    val headerBottomPx = with(density) { headerBottom.toPx() }
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -105,7 +106,7 @@ fun CategoriesScreen(
                         Brush.verticalGradient(
                             colors = listOf(Color.Transparent, Color(0xFFF8FAFC)),
                             startY = 0f,
-                            endY = fadeEndPx
+                            endY = headerBottomPx
                         )
                     )
             )
@@ -114,13 +115,13 @@ fun CategoriesScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .fadingEdge(
-                        topFadeStart = 0.dp,
-                        topFadeHeight = fadeEnd
+                        topFadeStart = headerBottom,
+                        topFadeHeight = fadeHeight
                     ),
                 contentPadding = PaddingValues(
                     start = 16.dp, 
                     end = 16.dp, 
-                    top = fadeEnd + 6.dp, 
+                    top = headerBottom + fadeHeight + 4.dp, 
                     bottom = 120.dp
                 ),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -302,7 +303,18 @@ fun AddEditCategoryDialog(
                     onValueChange = { name = it },
                     label = { Text("Category Name") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = Color(0xFFF8FAFC),
+                        unfocusedContainerColor = Color(0xFFF8FAFC),
+                        focusedBorderColor = Color(0xFF0284C7),
+                        unfocusedBorderColor = Color(0xFFCBD5E1),
+                        focusedTextColor = Color(0xFF0F172A),
+                        unfocusedTextColor = Color(0xFF0F172A),
+                        focusedLabelColor = Color(0xFF0284C7),
+                        unfocusedLabelColor = Color(0xFF475569)
+                    )
                 )
 
                 Text("Select Icon", style = MaterialTheme.typography.labelLarge)
@@ -353,16 +365,23 @@ fun AddEditCategoryDialog(
             }
         },
         confirmButton = {
-            TextButton(
+            Button(
                 onClick = { onSave(name, selectedIcon, selectedColor) },
-                enabled = name.isNotBlank()
+                enabled = name.isNotBlank(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF0284C7),
+                    contentColor = Color.White,
+                    disabledContainerColor = Color(0xFFE2E8F0),
+                    disabledContentColor = Color(0xFF94A3B8)
+                ),
+                shape = RoundedCornerShape(10.dp)
             ) {
                 Text("Save")
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text("Cancel", color = Color(0xFF64748B))
             }
         }
     )

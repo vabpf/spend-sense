@@ -44,9 +44,10 @@ fun AiProvidersScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val fadeEnd = statusBarPadding + 98.dp
+    val headerBottom = statusBarPadding + 74.dp
+    val fadeHeight = 24.dp
     val density = LocalDensity.current
-    val fadeEndPx = with(density) { fadeEnd.toPx() }
+    val headerBottomPx = with(density) { headerBottom.toPx() }
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -91,7 +92,7 @@ fun AiProvidersScreen(
                         Brush.verticalGradient(
                             colors = listOf(Color.Transparent, Color(0xFFF8FAFC)),
                             startY = 0f,
-                            endY = fadeEndPx
+                            endY = headerBottomPx
                         )
                     )
             )
@@ -100,13 +101,13 @@ fun AiProvidersScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .fadingEdge(
-                        topFadeStart = 0.dp,
-                        topFadeHeight = fadeEnd
+                        topFadeStart = headerBottom,
+                        topFadeHeight = fadeHeight
                     ),
                 contentPadding = PaddingValues(
                     start = 16.dp, 
                     end = 16.dp, 
-                    top = fadeEnd + 6.dp, 
+                    top = headerBottom + fadeHeight + 4.dp, 
                     bottom = 120.dp
                 ),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -295,21 +296,68 @@ private fun AddProviderDialog(
     onDismiss: () -> Unit,
     onSave: () -> Unit
 ) {
+    val inputColors = OutlinedTextFieldDefaults.colors(
+        focusedContainerColor = Color(0xFFF8FAFC),
+        unfocusedContainerColor = Color(0xFFF8FAFC),
+        focusedBorderColor = Color(0xFF0284C7),
+        unfocusedBorderColor = Color(0xFFCBD5E1),
+        focusedTextColor = Color(0xFF0F172A),
+        unfocusedTextColor = Color(0xFF0F172A),
+        focusedLabelColor = Color(0xFF0284C7),
+        unfocusedLabelColor = Color(0xFF475569)
+    )
+
     GlassAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Add AI Provider") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = state.name, onValueChange = onNameChange, label = { Text("Name (e.g. OpenRouter)") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = state.baseUrl, onValueChange = onBaseUrlChange, label = { Text("Base URL") }, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = state.apiKey, onValueChange = onApiKeyChange, label = { Text("API Key") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(
+                    value = state.name,
+                    onValueChange = onNameChange,
+                    label = { Text("Name (e.g. OpenRouter)") },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = inputColors,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = state.baseUrl,
+                    onValueChange = onBaseUrlChange,
+                    label = { Text("Base URL") },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = inputColors,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = state.apiKey,
+                    onValueChange = onApiKeyChange,
+                    label = { Text("API Key") },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = inputColors,
+                    modifier = Modifier.fillMaxWidth()
+                )
                 if (state.errorMessage != null) {
                     Text(state.errorMessage, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onSave) { Text("Save") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        confirmButton = {
+            Button(
+                onClick = onSave,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF0284C7),
+                    contentColor = Color.White
+                ),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = Color(0xFF64748B))
+            }
+        }
     )
 }
 

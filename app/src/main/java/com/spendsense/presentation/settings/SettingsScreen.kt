@@ -132,9 +132,10 @@ fun SettingsScreen(
     }
 
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val fadeEnd = statusBarPadding + 98.dp
+    val headerBottom = statusBarPadding + 74.dp
+    val fadeHeight = 24.dp
     val density = LocalDensity.current
-    val fadeEndPx = with(density) { fadeEnd.toPx() }
+    val headerBottomPx = with(density) { headerBottom.toPx() }
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -153,7 +154,7 @@ fun SettingsScreen(
                         Brush.verticalGradient(
                             colors = listOf(Color.Transparent, Color(0xFFF8FAFC)),
                             startY = 0f,
-                            endY = fadeEndPx
+                            endY = headerBottomPx
                         )
                     )
             )
@@ -163,13 +164,13 @@ fun SettingsScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .fadingEdge(
-                        topFadeStart = 0.dp,
-                        topFadeHeight = fadeEnd
+                        topFadeStart = headerBottom,
+                        topFadeHeight = fadeHeight
                     ),
                 contentPadding = PaddingValues(
                     start = 16.dp,
                     end = 16.dp,
-                    top = fadeEnd + 6.dp,
+                    top = headerBottom + fadeHeight + 4.dp,
                     bottom = 120.dp
                 ),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
