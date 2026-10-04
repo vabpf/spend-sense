@@ -8,6 +8,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.spendsense.data.local.Currencies
@@ -103,10 +104,23 @@ fun AddTransactionDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     paymentSourceTypes.forEach { type ->
+                        val selected = paymentSourceType == type
                         FilterChip(
-                            selected = paymentSourceType == type,
+                            selected = selected,
                             onClick = { paymentSourceType = type },
-                            label = { Text(type) }
+                            label = { Text(type) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                containerColor = Color(0xFFF8FAFC),
+                                labelColor = Color(0xFF475569),
+                                selectedContainerColor = Color(0xFFE0F2FE),
+                                selectedLabelColor = Color(0xFF0369A1)
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = selected,
+                                borderColor = Color(0xFFE2E8F0),
+                                selectedBorderColor = Color(0xFF0284C7)
+                            )
                         )
                     }
                 }
@@ -119,8 +133,9 @@ fun AddTransactionDialog(
                 ) {
                     categories.forEach { category ->
                         val categoryColor = parseColor(category.colorHex)
+                        val selected = category.id == selectedCategory?.id
                         FilterChip(
-                            selected = category.id == selectedCategory?.id,
+                            selected = selected,
                             onClick = { selectedCategory = category },
                             leadingIcon = {
                                 Icon(
@@ -130,7 +145,17 @@ fun AddTransactionDialog(
                                     modifier = Modifier.size(18.dp)
                                 )
                             },
-                            label = { Text(category.name, color = categoryColor) }
+                            label = { Text(category.name, color = categoryColor) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                containerColor = Color(0xFFF8FAFC),
+                                selectedContainerColor = categoryColor.copy(alpha = 0.15f)
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = selected,
+                                borderColor = Color(0xFFE2E8F0),
+                                selectedBorderColor = categoryColor
+                            )
                         )
                     }
                 }
@@ -140,7 +165,7 @@ fun AddTransactionDialog(
             val amountDouble = amount.toDoubleOrNull()
             val canSave = amountDouble != null && amountDouble > 0 && merchant.isNotBlank() && selectedCategory != null
 
-            TextButton(
+            Button(
                 onClick = {
                     if (canSave) {
                         selectedCategory?.let { category ->
@@ -155,7 +180,13 @@ fun AddTransactionDialog(
                         }
                     }
                 },
-                enabled = canSave
+                enabled = canSave,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF0284C7),
+                    contentColor = Color.White,
+                    disabledContainerColor = Color(0xFFE2E8F0),
+                    disabledContentColor = Color(0xFF94A3B8)
+                )
             ) {
                 Text("Save")
             }

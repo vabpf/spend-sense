@@ -36,6 +36,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.compose.foundation.border
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.LazyColumn
@@ -431,9 +432,16 @@ fun SettingsScreen(
     if (showCurrencySelector) {
         GlassAlertDialog(
             onDismissRequest = { showCurrencySelector = false },
-            title = { Text("Default Currency") },
+            title = {
+                Text(
+                    text = "Default Currency",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF0F172A)
+                )
+            },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Currencies.SUPPORTED.forEach { cur ->
                         val isSelected = cur.code == state.defaultCurrency
                         Surface(
@@ -441,17 +449,29 @@ fun SettingsScreen(
                                 viewModel.updateDefaultCurrency(cur.code)
                                 showCurrencySelector = false
                             },
-                            color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) else Color.Transparent,
-                            shape = MaterialTheme.shapes.small
+                            color = if (isSelected) Color(0xFFE0F2FE) else Color(0xFFF8FAFC),
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.dp, if (isSelected) Color(0xFF0284C7) else Color(0xFFE2E8F0))
                         ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 14.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("${cur.symbol} ${cur.code} — ${cur.name}", style = MaterialTheme.typography.bodyLarge)
+                                Text(
+                                    text = "${cur.symbol} ${cur.code} — ${cur.name}",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isSelected) Color(0xFF0369A1) else Color(0xFF0F172A)
+                                )
                                 if (isSelected) {
-                                    Icon(Icons.Rounded.Check, contentDescription = "Selected", tint = MaterialTheme.colorScheme.primary)
+                                    Icon(
+                                        imageVector = Icons.Rounded.CheckCircle,
+                                        contentDescription = "Selected",
+                                        tint = Color(0xFF0284C7)
+                                    )
                                 }
                             }
                         }
@@ -472,11 +492,12 @@ fun SettingsScreen(
                 Text(
                     text = "App Background",
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF0F172A)
                 )
             },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     AppBackgroundOption.entries.forEach { option ->
                         val isSelected = option.key == state.backgroundTheme
                         Surface(
@@ -496,13 +517,14 @@ fun SettingsScreen(
                                     showBackgroundSelector = false
                                 }
                             },
-                            color = if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f) else Color.Transparent,
-                            shape = MaterialTheme.shapes.medium
+                            color = if (isSelected) Color(0xFFE0F2FE) else Color(0xFFF8FAFC),
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.dp, if (isSelected) Color(0xFF0284C7) else Color(0xFFE2E8F0))
                         ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -531,7 +553,7 @@ fun SettingsScreen(
                                         )
                                         .border(
                                             width = 1.dp,
-                                            color = if (isSelected) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.2f),
+                                            color = if (isSelected) Color(0xFF0284C7) else Color(0xFFCBD5E1),
                                             shape = RoundedCornerShape(8.dp)
                                         ),
                                     contentAlignment = Alignment.Center
@@ -550,7 +572,7 @@ fun SettingsScreen(
                                     Text(
                                         text = option.title,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                        color = if (isSelected) Color(0xFF0369A1) else Color(0xFF0F172A),
                                         style = MaterialTheme.typography.bodyMedium
                                     )
                                     Text(
@@ -566,7 +588,7 @@ fun SettingsScreen(
                                             option.description
                                         },
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = Color(0xFF64748B)
                                     )
                                 }
 
@@ -574,7 +596,7 @@ fun SettingsScreen(
                                     Icon(
                                         imageVector = Icons.Rounded.CheckCircle,
                                         contentDescription = "Selected",
-                                        tint = MaterialTheme.colorScheme.primary,
+                                        tint = Color(0xFF0284C7),
                                         modifier = Modifier.size(20.dp)
                                     )
                                 }

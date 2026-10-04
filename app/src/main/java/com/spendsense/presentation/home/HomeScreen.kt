@@ -1630,10 +1630,23 @@ fun EditTransactionDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     paymentSourceTypes.forEach { type ->
+                        val selected = paymentSourceType == type
                         FilterChip(
-                            selected = paymentSourceType == type,
+                            selected = selected,
                             onClick = { paymentSourceType = type },
-                            label = { Text(type) }
+                            label = { Text(type) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                containerColor = Color(0xFFF8FAFC),
+                                labelColor = Color(0xFF475569),
+                                selectedContainerColor = Color(0xFFE0F2FE),
+                                selectedLabelColor = Color(0xFF0369A1)
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = selected,
+                                borderColor = Color(0xFFE2E8F0),
+                                selectedBorderColor = Color(0xFF0284C7)
+                            )
                         )
                     }
                 }
@@ -1642,32 +1655,29 @@ fun EditTransactionDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { showDatePicker = true }
-                        .glassEffect(
-                            shape = MaterialTheme.shapes.medium,
-                            containerColor = GlassSurface.copy(alpha = 0.5f),
-                            borderAlpha = 0.15f
-                        ),
-                    shape = MaterialTheme.shapes.medium
+                        .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(12.dp)),
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFFF8FAFC)
                 ) {
                     Row(
-                        modifier = Modifier.padding(12.dp),
+                        modifier = Modifier.padding(14.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            Text("Transaction Date & Time", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Transaction Date & Time", style = MaterialTheme.typography.labelSmall, color = Color(0xFF64748B))
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = dateTimeFormatter.format(Date(transactionTimestamp)),
                                 style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.primary,
+                                color = Color(0xFF0284C7),
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
                         Icon(
                             imageVector = Icons.Rounded.CalendarToday,
                             contentDescription = "Change Date and Time",
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = Color(0xFF0284C7)
                         )
                     }
                 }
@@ -1680,8 +1690,9 @@ fun EditTransactionDialog(
                 ) {
                     categories.forEach { category ->
                         val categoryColor = parseColor(category.colorHex)
+                        val selected = category.id == selectedCategoryId
                         FilterChip(
-                            selected = category.id == selectedCategoryId,
+                            selected = selected,
                             onClick = { selectedCategoryId = category.id },
                             leadingIcon = {
                                 Icon(
@@ -1691,7 +1702,17 @@ fun EditTransactionDialog(
                                     modifier = Modifier.size(18.dp)
                                 )
                             },
-                            label = { Text(category.name, color = categoryColor) }
+                            label = { Text(category.name, color = categoryColor) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                containerColor = Color(0xFFF8FAFC),
+                                selectedContainerColor = categoryColor.copy(alpha = 0.15f)
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = selected,
+                                borderColor = Color(0xFFE2E8F0),
+                                selectedBorderColor = categoryColor
+                            )
                         )
                     }
                 }
@@ -2307,11 +2328,8 @@ fun AdvancedFilterDialog(
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .glassEffect(
-                                shape = MaterialTheme.shapes.medium,
-                                containerColor = GlassSurface.copy(alpha = 0.1f),
-                                borderAlpha = 0.2f
-                            )
+                            .background(Color(0xFFF8FAFC), RoundedCornerShape(12.dp))
+                            .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(12.dp))
                             .clickable(onClick = onSelectStartDate)
                             .padding(12.dp),
                         contentAlignment = Alignment.Center
@@ -2320,14 +2338,14 @@ fun AdvancedFilterDialog(
                             Text(
                                 "Start Date",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = Color(0xFF64748B)
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = filterState.startDateMillis?.let { dateFormat.format(Date(it)) } ?: "Anytime",
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.SemiBold,
-                                color = if (filterState.startDateMillis != null) CyberBlue else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                color = if (filterState.startDateMillis != null) Color(0xFF0284C7) else Color(0xFF94A3B8)
                             )
                         }
                     }
@@ -2335,11 +2353,8 @@ fun AdvancedFilterDialog(
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .glassEffect(
-                                shape = MaterialTheme.shapes.medium,
-                                containerColor = GlassSurface.copy(alpha = 0.1f),
-                                borderAlpha = 0.2f
-                            )
+                            .background(Color(0xFFF8FAFC), RoundedCornerShape(12.dp))
+                            .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(12.dp))
                             .clickable(onClick = onSelectEndDate)
                             .padding(12.dp),
                         contentAlignment = Alignment.Center
@@ -2348,14 +2363,14 @@ fun AdvancedFilterDialog(
                             Text(
                                 "End Date",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = Color(0xFF64748B)
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = filterState.endDateMillis?.let { dateFormat.format(Date(it)) } ?: "Anytime",
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.SemiBold,
-                                color = if (filterState.endDateMillis != null) CyberBlue else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                color = if (filterState.endDateMillis != null) Color(0xFF0284C7) else Color(0xFF94A3B8)
                             )
                         }
                     }
@@ -2423,7 +2438,19 @@ fun AdvancedFilterDialog(
                                         selectedPaymentSourceTypes + type
                                     }
                                 },
-                                label = { Text(type) }
+                                label = { Text(type) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    containerColor = Color(0xFFF8FAFC),
+                                    labelColor = Color(0xFF475569),
+                                    selectedContainerColor = Color(0xFFE0F2FE),
+                                    selectedLabelColor = Color(0xFF0369A1)
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = selected,
+                                    borderColor = Color(0xFFE2E8F0),
+                                    selectedBorderColor = Color(0xFF0284C7)
+                                )
                             )
                         }
                     }
@@ -2451,7 +2478,19 @@ fun AdvancedFilterDialog(
                                         selectedPaymentSources + source
                                     }
                                 },
-                                label = { Text(source) }
+                                label = { Text(source) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    containerColor = Color(0xFFF8FAFC),
+                                    labelColor = Color(0xFF475569),
+                                    selectedContainerColor = Color(0xFFE0F2FE),
+                                    selectedLabelColor = Color(0xFF0369A1)
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = selected,
+                                    borderColor = Color(0xFFE2E8F0),
+                                    selectedBorderColor = Color(0xFF0284C7)
+                                )
                             )
                         }
                     }
@@ -2554,21 +2593,16 @@ fun SortChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val borderAlpha = if (selected) 0.6f else 0.15f
-    val containerAlpha = if (selected) 0.35f else 0.1f
-    val textColor = if (selected) CyberBlue else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-    
+    val backgroundColor = if (selected) Color(0xFFE0F2FE) else Color(0xFFF8FAFC)
+    val borderColor = if (selected) Color(0xFF0284C7) else Color(0xFFE2E8F0)
+    val textColor = if (selected) Color(0xFF0369A1) else Color(0xFF334155)
+
     Box(
         modifier = modifier
-            .glassEffect(
-                shape = MaterialTheme.shapes.small,
-                containerColor = GlassSurface.copy(alpha = containerAlpha),
-                borderWidth = 1.dp,
-                borderAlpha = borderAlpha,
-                useLens = true
-            )
+            .background(color = backgroundColor, shape = RoundedCornerShape(10.dp))
+            .border(width = 1.dp, color = borderColor, shape = RoundedCornerShape(10.dp))
             .clickable(onClick = onClick)
-            .padding(vertical = 10.dp),
+            .padding(vertical = 10.dp, horizontal = 8.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -2694,10 +2728,23 @@ fun BatchEditTransactionsDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     paymentSourceTypes.forEach { type ->
+                        val selected = paymentSourceType == type
                         FilterChip(
-                            selected = paymentSourceType == type,
+                            selected = selected,
                             onClick = { paymentSourceType = type },
-                            label = { Text(type) }
+                            label = { Text(type) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                containerColor = Color(0xFFF8FAFC),
+                                labelColor = Color(0xFF475569),
+                                selectedContainerColor = Color(0xFFE0F2FE),
+                                selectedLabelColor = Color(0xFF0369A1)
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = selected,
+                                borderColor = Color(0xFFE2E8F0),
+                                selectedBorderColor = Color(0xFF0284C7)
+                            )
                         )
                     }
                 }
@@ -2708,16 +2755,30 @@ fun BatchEditTransactionsDialog(
                     modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    val noChangeSelected = selectedCategoryId == -1L || selectedCategoryId == null
                     FilterChip(
-                        selected = selectedCategoryId == -1L || selectedCategoryId == null,
+                        selected = noChangeSelected,
                         onClick = { selectedCategoryId = -1L },
-                        label = { Text("No Change") }
+                        label = { Text("No Change") },
+                        colors = FilterChipDefaults.filterChipColors(
+                            containerColor = Color(0xFFF8FAFC),
+                            labelColor = Color(0xFF475569),
+                            selectedContainerColor = Color(0xFFE0F2FE),
+                            selectedLabelColor = Color(0xFF0369A1)
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = noChangeSelected,
+                            borderColor = Color(0xFFE2E8F0),
+                            selectedBorderColor = Color(0xFF0284C7)
+                        )
                     )
                     
                     categories.forEach { category ->
                         val categoryColor = parseColor(category.colorHex)
+                        val selected = category.id == selectedCategoryId
                         FilterChip(
-                            selected = category.id == selectedCategoryId,
+                            selected = selected,
                             onClick = { selectedCategoryId = category.id },
                             leadingIcon = {
                                 Icon(
@@ -2727,7 +2788,17 @@ fun BatchEditTransactionsDialog(
                                     modifier = Modifier.size(18.dp)
                                 )
                             },
-                            label = { Text(category.name, color = categoryColor) }
+                            label = { Text(category.name, color = categoryColor) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                containerColor = Color(0xFFF8FAFC),
+                                selectedContainerColor = categoryColor.copy(alpha = 0.15f)
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = selected,
+                                borderColor = Color(0xFFE2E8F0),
+                                selectedBorderColor = categoryColor
+                            )
                         )
                     }
                 }

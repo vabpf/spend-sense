@@ -41,6 +41,31 @@ import androidx.compose.foundation.border
 import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.shape.RoundedCornerShape
 
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.runtime.CompositionLocalProvider
+
+private val DialogLightColorScheme = lightColorScheme(
+    primary = Color(0xFF0284C7),
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFFE0F2FE),
+    onPrimaryContainer = Color(0xFF0369A1),
+    secondary = Color(0xFF0F172A),
+    onSecondary = Color.White,
+    secondaryContainer = Color(0xFFF1F5F9),
+    onSecondaryContainer = Color(0xFF334155),
+    background = Color.White,
+    onBackground = Color(0xFF0F172A),
+    surface = Color.White,
+    onSurface = Color(0xFF0F172A),
+    surfaceVariant = Color(0xFFF8FAFC),
+    onSurfaceVariant = Color(0xFF64748B),
+    outline = Color(0xFFCBD5E1),
+    outlineVariant = Color(0xFFE2E8F0),
+    error = Color(0xFFEF4444),
+    onError = Color.White
+)
+
 /**
  * A Material3-style dialog with solid elevated surface styling and clean shadows.
  * Replaces glass backdrop sampling to prevent multi-window wallpaper redraw artifacts.
@@ -71,58 +96,67 @@ fun GlassAlertDialog(
         }
 
         val configuration = LocalConfiguration.current
-        val maxContentHeight = configuration.screenHeightDp.dp * 0.55f
+        val maxContentHeight = (configuration.screenHeightDp.dp * 0.72f).coerceAtMost(620.dp)
 
-        Box(
-            modifier = modifier
-                .fillMaxWidth(0.92f)
-                .widthIn(max = 560.dp)
-                .shadow(
-                    elevation = 16.dp,
-                    shape = shape,
-                    ambientColor = Color.Black.copy(alpha = 0.18f),
-                    spotColor = Color.Black.copy(alpha = 0.12f)
-                )
-                .background(
-                    color = containerColor,
-                    shape = shape
-                )
-                .border(
-                    width = 1.dp,
-                    color = Color(0xFFE2E8F0),
-                    shape = shape
-                )
-                .padding(24.dp)
+        MaterialTheme(
+            colorScheme = DialogLightColorScheme,
+            typography = MaterialTheme.typography,
+            shapes = MaterialTheme.shapes
         ) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+            CompositionLocalProvider(
+                LocalContentColor provides Color(0xFF0F172A)
             ) {
-                if (title != null) {
-                    Box(modifier = Modifier.fillMaxWidth()) {
-                        title()
-                    }
-                }
-                if (text != null) {
-                    val scrollState = rememberScrollState()
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = maxContentHeight)
-                            .fadingScrollEdges(scrollState, 20.dp)
-                            .verticalScroll(scrollState)
-                    ) {
-                        text()
-                    }
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                Box(
+                    modifier = modifier
+                        .fillMaxWidth(0.92f)
+                        .widthIn(max = 560.dp)
+                        .shadow(
+                            elevation = 16.dp,
+                            shape = shape,
+                            ambientColor = Color.Black.copy(alpha = 0.18f),
+                            spotColor = Color.Black.copy(alpha = 0.12f)
+                        )
+                        .background(
+                            color = containerColor,
+                            shape = shape
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = Color(0xFFE2E8F0),
+                            shape = shape
+                        )
+                        .padding(24.dp)
                 ) {
-                    dismissButton()
-                    Spacer(Modifier.width(8.dp))
-                    confirmButton()
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        if (title != null) {
+                            Box(modifier = Modifier.fillMaxWidth()) {
+                                title()
+                            }
+                        }
+                        if (text != null) {
+                            val scrollState = rememberScrollState()
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = maxContentHeight)
+                                    .verticalScroll(scrollState)
+                            ) {
+                                text()
+                            }
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            dismissButton()
+                            Spacer(Modifier.width(8.dp))
+                            confirmButton()
+                        }
+                    }
                 }
             }
         }
