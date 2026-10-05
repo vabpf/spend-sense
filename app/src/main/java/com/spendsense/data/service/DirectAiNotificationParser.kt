@@ -31,14 +31,33 @@ data class DirectAiParseResult(
 )
 
 @Singleton
-open class DirectAiNotificationParser @Inject constructor(
-    private val chatCompletionApi: ChatCompletionApi? = null,
-    private val dynamicBaseUrlInterceptor: DynamicBaseUrlInterceptor? = null,
-    private val accountDao: ProviderAccountDao? = null,
-    private val modelDao: ProviderModelDao? = null,
-    private val securePreferences: SecurePreferences? = null,
-    private val categoryDao: CategoryDao? = null
+open class DirectAiNotificationParser(
+    private val chatCompletionApi: ChatCompletionApi?,
+    private val dynamicBaseUrlInterceptor: DynamicBaseUrlInterceptor?,
+    private val accountDao: ProviderAccountDao?,
+    private val modelDao: ProviderModelDao?,
+    private val securePreferences: SecurePreferences?,
+    private val categoryDao: CategoryDao?
 ) {
+    @Inject
+    constructor(
+        chatCompletionApi: ChatCompletionApi,
+        dynamicBaseUrlInterceptor: DynamicBaseUrlInterceptor,
+        accountDao: ProviderAccountDao,
+        modelDao: ProviderModelDao,
+        securePreferences: SecurePreferences,
+        categoryDao: CategoryDao
+    ) : this(
+        chatCompletionApi = chatCompletionApi as ChatCompletionApi?,
+        dynamicBaseUrlInterceptor = dynamicBaseUrlInterceptor as DynamicBaseUrlInterceptor?,
+        accountDao = accountDao as ProviderAccountDao?,
+        modelDao = modelDao as ProviderModelDao?,
+        securePreferences = securePreferences as SecurePreferences?,
+        categoryDao = categoryDao as CategoryDao?
+    )
+
+    constructor() : this(null, null, null, null, null, null)
+
     private val TAG = "DirectAiParser"
 
     open suspend fun parseNotification(

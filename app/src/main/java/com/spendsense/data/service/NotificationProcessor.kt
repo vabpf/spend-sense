@@ -24,17 +24,61 @@ enum class ProcessResult {
 }
 
 @Singleton
-class NotificationProcessor @Inject constructor(
-    @ApplicationContext private val context: Context,
+class NotificationProcessor(
+    private val context: Context,
     private val notificationPatternDao: NotificationPatternDao,
     private val rawNotificationDao: RawNotificationDao,
     private val transactionRepository: TransactionRepository,
     private val categoryDao: CategoryDao,
     private val merchantCategoryMappingDao: MerchantCategoryMappingDao,
     private val whitelistedAppDao: WhitelistedAppDao,
-    private val securePreferences: SecurePreferences? = null,
-    private val directAiNotificationParser: DirectAiNotificationParser? = null
+    private val securePreferences: SecurePreferences?,
+    private val directAiNotificationParser: DirectAiNotificationParser?
 ) {
+
+    @Inject
+    constructor(
+        @ApplicationContext context: Context,
+        notificationPatternDao: NotificationPatternDao,
+        rawNotificationDao: RawNotificationDao,
+        transactionRepository: TransactionRepository,
+        categoryDao: CategoryDao,
+        merchantCategoryMappingDao: MerchantCategoryMappingDao,
+        whitelistedAppDao: WhitelistedAppDao,
+        securePreferences: SecurePreferences,
+        directAiNotificationParser: DirectAiNotificationParser
+    ) : this(
+        context = context,
+        notificationPatternDao = notificationPatternDao,
+        rawNotificationDao = rawNotificationDao,
+        transactionRepository = transactionRepository,
+        categoryDao = categoryDao,
+        merchantCategoryMappingDao = merchantCategoryMappingDao,
+        whitelistedAppDao = whitelistedAppDao,
+        securePreferences = securePreferences as SecurePreferences?,
+        directAiNotificationParser = directAiNotificationParser as DirectAiNotificationParser?
+    )
+
+    constructor(
+        context: Context,
+        notificationPatternDao: NotificationPatternDao,
+        rawNotificationDao: RawNotificationDao,
+        transactionRepository: TransactionRepository,
+        categoryDao: CategoryDao,
+        merchantCategoryMappingDao: MerchantCategoryMappingDao,
+        whitelistedAppDao: WhitelistedAppDao
+    ) : this(
+        context = context,
+        notificationPatternDao = notificationPatternDao,
+        rawNotificationDao = rawNotificationDao,
+        transactionRepository = transactionRepository,
+        categoryDao = categoryDao,
+        merchantCategoryMappingDao = merchantCategoryMappingDao,
+        whitelistedAppDao = whitelistedAppDao,
+        securePreferences = null,
+        directAiNotificationParser = null
+    )
+
 
     interface NotificationPostListener {
         fun onTransactionProcessed(
