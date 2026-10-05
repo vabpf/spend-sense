@@ -9,10 +9,35 @@ import com.spendsense.domain.repository.TransactionRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.runBlocking
+import com.spendsense.data.local.SecurePreferences
+import com.spendsense.domain.model.NotificationRoutingMode
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class NotificationProcessorTest {
+
+    private fun createFakePreferences(mode: NotificationRoutingMode): SecurePreferences {
+        return object : SecurePreferences(ContextWrapper(null)) {
+            override fun getNotificationRoutingMode(): NotificationRoutingMode = mode
+        }
+    }
+
+    private fun createFakeAiParser(
+        resultToReturn: DirectAiParseResult?,
+        onCalled: (() -> Unit)? = null
+    ): DirectAiNotificationParser {
+        return object : DirectAiNotificationParser() {
+            override suspend fun parseNotification(
+                title: String?,
+                text: String,
+                mode: NotificationRoutingMode
+            ): DirectAiParseResult? {
+                onCalled?.invoke()
+                return resultToReturn
+            }
+        }
+    }
 
     private open class BaseNotificationPatternDao : NotificationPatternDao {
         override suspend fun upsert(pattern: NotificationPatternEntity): Long = 1L
@@ -166,4 +191,283 @@ class NotificationProcessorTest {
 
         assertEquals(ProcessResult.TRANSACTION_CREATED, result)
     }
+
+    @Test
+    fun testProcess_aiOnly_createsTransactionWhenAiDetectsTransaction() = runBlocking {
+        val prefs = createFakePreferences(NotificationRoutingMode.AI_ONLY)
+        val aiParser = createFakeAiParser(
+            DirectAiParseResult(
+                isTransaction = true,
+                amount = 150000.0,
+                currency = "VND",
+                merchant = "Shopee",
+                categoryName = "Shopping"
+            )
+        )
+
+        var insertedTransaction: Transaction? = null
+        val repo = object : BaseTransactionRepository() {
+            override suspend fun insertTransaction(transaction: Transaction): Long {
+                insertedTransaction = transaction
+                return 101L
+            }
+        }
+
+        val processor = NotificationProcessor(
+            context = ContextWrapper(null),
+            notificationPatternDao = BaseNotificationPatternDao(),
+            rawNotificationDao = BaseRawNotificationDao(),
+            transactionRepository = repo,
+            categoryDao = BaseCategoryDao(),
+            merchantCategoryMappingDao = BaseMerchantCategoryMappingDao(),
+            whitelistedAppDao = BaseWhitelistedAppDao(),
+            securePreferences = prefs,
+            directAiNotificationParser = aiParser
+        )
+
+        val result = processor.process(
+            packageName = "com.shopee.app",
+            appName = "Shopee",
+            title = "Order update",
+            text = "Payment of 150,000 VND successful for order #123",
+            timestamp = System.currentTimeMillis()
+        )
+
+        assertEquals(ProcessResult.TRANSACTION_CREATED, result)
+        assertEquals(150000.0, insertedTransaction?.amount ?: 0.0, 0.001)
+        assertEquals("Shopee", insertedTransaction?.merchant)
+    }
+
+    @Test
+    fun testProcess_aiOnly_discardsWhenAiDetectsNonTransaction() = runBlocking {
+        val prefs = createFakePreferences(NotificationRoutingMode.AI_ONLY)
+        val aiParser = createFakeAiParser(
+            DirectAiParseResult(isTransaction = false)
+        )
+
+        val processor = NotificationProcessor(
+            context = ContextWrapper(null),
+            notificationPatternDao = BaseNotificationPatternDao(),
+            rawNotificationDao = BaseRawNotificationDao(),
+            transactionRepository = BaseTransactionRepository(),
+            categoryDao = BaseCategoryDao(),
+            merchantCategoryMappingDao = BaseMerchantCategoryMappingDao(),
+            whitelistedAppDao = BaseWhitelistedAppDao(),
+            securePreferences = prefs,
+            directAiNotificationParser = aiParser
+        )
+
+        val result = processor.process(
+            packageName = "com.bank.app",
+            appName = "Bank",
+            title = "Promo",
+            text = "Apply for credit card today with 0% interest!",
+            timestamp = System.currentTimeMillis()
+        )
+
+        assertEquals(ProcessResult.SILENT_SKIPPED, result)
+    }
+
+    @Test
+    fun testProcess_aiOnly_savesToInboxWhenAiFails() = runBlocking {
+        val prefs = createFakePreferences(NotificationRoutingMode.AI_ONLY)
+        val aiParser = createFakeAiParser(null) // Simulate timeout/offline failure
+
+        var savedRawNotif: RawNotificationEntity? = null
+        val rawDao = object : BaseRawNotificationDao() {
+            override suspend fun insert(notification: RawNotificationEntity): Long {
+                savedRawNotif = notification
+                return 202L
+            }
+        }
+
+        val processor = NotificationProcessor(
+            context = ContextWrapper(null),
+            notificationPatternDao = BaseNotificationPatternDao(),
+            rawNotificationDao = rawDao,
+            transactionRepository = BaseTransactionRepository(),
+            categoryDao = BaseCategoryDao(),
+            merchantCategoryMappingDao = BaseMerchantCategoryMappingDao(),
+            whitelistedAppDao = BaseWhitelistedAppDao(),
+            securePreferences = prefs,
+            directAiNotificationParser = aiParser
+        )
+
+        val result = processor.process(
+            packageName = "com.bank.app",
+            appName = "Bank",
+            title = "Alert",
+            text = "GD: -50,000VND tai POS 123",
+            timestamp = 123456789L
+        )
+
+        assertEquals(ProcessResult.INBOX_CREATED, result)
+        assertEquals("com.bank.app", savedRawNotif?.packageName)
+        assertEquals("GD: -50,000VND tai POS 123", savedRawNotif?.text)
+    }
+
+    @Test
+    fun testProcess_regexAndAi_newAppRoutesToAiAndSavesPattern() = runBlocking {
+        val prefs = createFakePreferences(NotificationRoutingMode.REGEX_AND_AI)
+        val aiParser = createFakeAiParser(
+            DirectAiParseResult(
+                isTransaction = true,
+                amount = 75000.0,
+                currency = "VND",
+                merchant = "Grab",
+                paymentSource = "GrabPay",
+                regex = ".*-(?<amount>[0-9,]+)\\s*VND.*"
+            )
+        )
+
+        var savedPattern: NotificationPatternEntity? = null
+        val patternDao = object : BaseNotificationPatternDao() {
+            override suspend fun getAllForPackage(packageName: String): List<NotificationPatternEntity> = emptyList()
+            override suspend fun upsert(pattern: NotificationPatternEntity): Long {
+                savedPattern = pattern
+                return 501L
+            }
+        }
+
+        val processor = NotificationProcessor(
+            context = ContextWrapper(null),
+            notificationPatternDao = patternDao,
+            rawNotificationDao = BaseRawNotificationDao(),
+            transactionRepository = BaseTransactionRepository(),
+            categoryDao = BaseCategoryDao(),
+            merchantCategoryMappingDao = BaseMerchantCategoryMappingDao(),
+            whitelistedAppDao = BaseWhitelistedAppDao(),
+            securePreferences = prefs,
+            directAiNotificationParser = aiParser
+        )
+
+        val result = processor.process(
+            packageName = "com.grabtaxi.passenger",
+            appName = "Grab",
+            title = "Receipt",
+            text = "Your ride cost: -75,000 VND. Thank you!",
+            timestamp = System.currentTimeMillis()
+        )
+
+        assertEquals(ProcessResult.TRANSACTION_CREATED, result)
+        assertEquals(".*-(?<amount>[0-9,]+)\\s*VND.*", savedPattern?.regex)
+        assertEquals("com.grabtaxi.passenger", savedPattern?.packageName)
+        assertTrue(savedPattern?.isTransaction == true)
+    }
+
+    @Test
+    fun testProcess_regexAndAi_unmatchedPatternRoutesToAi() = runBlocking {
+        val prefs = createFakePreferences(NotificationRoutingMode.REGEX_AND_AI)
+        val aiParser = createFakeAiParser(
+            DirectAiParseResult(
+                isTransaction = true,
+                amount = 200000.0,
+                currency = "VND",
+                merchant = "Highlands",
+                regex = "-(?<amount>[0-9,]+)\\s*VND.*"
+            )
+        )
+
+        val patternDao = object : BaseNotificationPatternDao() {
+            override suspend fun getAllForPackage(packageName: String): List<NotificationPatternEntity> {
+                return listOf(
+                    NotificationPatternEntity(
+                        id = 1L,
+                        packageName = "com.bank.app",
+                        notificationTitle = "Unrelated Pattern",
+                        paymentSource = "",
+                        regex = "BALANCE UPDATE:\\s*(?<amount>[0-9,]+)",
+                        isTransaction = true
+                    )
+                )
+            }
+        }
+
+        val processor = NotificationProcessor(
+            context = ContextWrapper(null),
+            notificationPatternDao = patternDao,
+            rawNotificationDao = BaseRawNotificationDao(),
+            transactionRepository = BaseTransactionRepository(),
+            categoryDao = BaseCategoryDao(),
+            merchantCategoryMappingDao = BaseMerchantCategoryMappingDao(),
+            whitelistedAppDao = BaseWhitelistedAppDao(),
+            securePreferences = prefs,
+            directAiNotificationParser = aiParser
+        )
+
+        val result = processor.process(
+            packageName = "com.bank.app",
+            appName = "Bank",
+            title = "Debit Alert",
+            text = "-200,000 VND at Highlands Coffee",
+            timestamp = System.currentTimeMillis()
+        )
+
+        assertEquals(ProcessResult.TRANSACTION_CREATED, result)
+    }
+
+    @Test
+    fun testProcess_regexAndAi_nonTransactionDiscarded() = runBlocking {
+        val prefs = createFakePreferences(NotificationRoutingMode.REGEX_AND_AI)
+        val aiParser = createFakeAiParser(
+            DirectAiParseResult(isTransaction = false)
+        )
+
+        val patternDao = object : BaseNotificationPatternDao() {
+            override suspend fun getAllForPackage(packageName: String): List<NotificationPatternEntity> = emptyList()
+        }
+
+        val processor = NotificationProcessor(
+            context = ContextWrapper(null),
+            notificationPatternDao = patternDao,
+            rawNotificationDao = BaseRawNotificationDao(),
+            transactionRepository = BaseTransactionRepository(),
+            categoryDao = BaseCategoryDao(),
+            merchantCategoryMappingDao = BaseMerchantCategoryMappingDao(),
+            whitelistedAppDao = BaseWhitelistedAppDao(),
+            securePreferences = prefs,
+            directAiNotificationParser = aiParser
+        )
+
+        val result = processor.process(
+            packageName = "com.bank.app",
+            appName = "Bank",
+            title = "Security Note",
+            text = "Never share your OTP with anyone.",
+            timestamp = System.currentTimeMillis()
+        )
+
+        assertEquals(ProcessResult.SILENT_SKIPPED, result)
+    }
+
+    @Test
+    fun testProcess_regexOnly_unmatchedSavesToInboxWithoutCallingAi() = runBlocking {
+        val prefs = createFakePreferences(NotificationRoutingMode.REGEX_ONLY)
+        var aiWasCalled = false
+        val aiParser = createFakeAiParser(null, onCalled = { aiWasCalled = true })
+
+        val processor = NotificationProcessor(
+            context = ContextWrapper(null),
+            notificationPatternDao = BaseNotificationPatternDao(),
+            rawNotificationDao = BaseRawNotificationDao(),
+            transactionRepository = BaseTransactionRepository(),
+            categoryDao = BaseCategoryDao(),
+            merchantCategoryMappingDao = BaseMerchantCategoryMappingDao(),
+            whitelistedAppDao = BaseWhitelistedAppDao(),
+            securePreferences = prefs,
+            directAiNotificationParser = aiParser
+        )
+
+        val result = processor.process(
+            packageName = "com.bank.app",
+            appName = "Bank",
+            title = "Notice",
+            text = "-99,000 VND subscription",
+            timestamp = System.currentTimeMillis()
+        )
+
+        assertEquals(ProcessResult.INBOX_CREATED, result)
+        assertEquals(false, aiWasCalled)
+    }
 }
+

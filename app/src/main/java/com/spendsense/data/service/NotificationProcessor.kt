@@ -2,10 +2,13 @@ package com.spendsense.data.service
 
 import android.content.Context
 import android.util.Log
+import android.util.LruCache
+import com.spendsense.data.local.SecurePreferences
 import com.spendsense.data.local.dao.*
 import com.spendsense.data.local.entity.NotificationPatternEntity
 import com.spendsense.data.local.entity.RawNotificationEntity
 import com.spendsense.data.local.entity.MerchantCategoryMappingEntity
+import com.spendsense.domain.model.NotificationRoutingMode
 import com.spendsense.domain.repository.TransactionRepository
 import com.spendsense.domain.model.Transaction
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -28,7 +31,9 @@ class NotificationProcessor @Inject constructor(
     private val transactionRepository: TransactionRepository,
     private val categoryDao: CategoryDao,
     private val merchantCategoryMappingDao: MerchantCategoryMappingDao,
-    private val whitelistedAppDao: WhitelistedAppDao
+    private val whitelistedAppDao: WhitelistedAppDao,
+    private val securePreferences: SecurePreferences? = null,
+    private val directAiNotificationParser: DirectAiNotificationParser? = null
 ) {
 
     interface NotificationPostListener {
@@ -60,6 +65,20 @@ class NotificationProcessor @Inject constructor(
     }
 
     private val TAG = "NotificationProcessor"
+    private val regexCache = LruCache<String, Regex>(40)
+
+    private fun getOrCreateRegex(patternStr: String): Regex? {
+        return try {
+            regexCache.get(patternStr) ?: run {
+                val compiled = Regex(patternStr, setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL, RegexOption.MULTILINE))
+                regexCache.put(patternStr, compiled)
+                compiled
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Invalid regex pattern: $patternStr", e)
+            null
+        }
+    }
 
     suspend fun process(
         packageName: String,
@@ -78,15 +97,77 @@ class NotificationProcessor @Inject constructor(
         val cleanText = normalizeNotificationText(text)
         val cleanTitle = title?.let { normalizeNotificationText(it) }?.takeIf { it.isNotBlank() }
 
-        // Build text candidates for pattern matching (text alone, or title + text combinations)
-        val textCandidates = buildTextCandidates(cleanTitle, cleanText)
+        val routingMode = securePreferences?.getNotificationRoutingMode() ?: NotificationRoutingMode.REGEX_ONLY
 
-        // Check if this app has been configured with patterns
+        // ═════════════════════════════════════════════════════════════════════
+        // MODE 2: AI ONLY — Completely bypass regex matching
+        // ═════════════════════════════════════════════════════════════════════
+        if (routingMode == NotificationRoutingMode.AI_ONLY) {
+            val aiResult = directAiNotificationParser?.parseNotification(cleanTitle, cleanText, NotificationRoutingMode.AI_ONLY)
+            if (aiResult == null) {
+                saveToInbox(packageName, title, text, timestamp, null, existingRawNotificationId, appName, listener)
+                Log.d(TAG, "AI Only mode: AI call failed or timed out for $packageName — saved to inbox")
+                return@withContext ProcessResult.INBOX_CREATED
+            }
+            if (!aiResult.isTransaction) {
+                Log.d(TAG, "AI Only mode: non-transaction for $packageName — discarded")
+                if (existingRawNotificationId != null) {
+                    rawNotificationDao.deleteById(existingRawNotificationId)
+                }
+                return@withContext ProcessResult.SILENT_SKIPPED
+            }
+
+            saveAndPostAiTransaction(
+                aiResult = aiResult,
+                packageName = packageName,
+                appName = appName,
+                notificationText = cleanText,
+                notificationTitle = cleanTitle ?: appName,
+                timestamp = timestamp,
+                listener = listener,
+                existingRawNotificationId = existingRawNotificationId
+            )
+            return@withContext ProcessResult.TRANSACTION_CREATED
+        }
+
+        // ═════════════════════════════════════════════════════════════════════
+        // MODES 1 & 3: REGEX & AI OR REGEX ONLY
+        // ═════════════════════════════════════════════════════════════════════
+        val textCandidates = buildTextCandidates(cleanTitle, cleanText)
         val appPatterns = notificationPatternDao.getAllForPackage(packageName)
+
         if (appPatterns.isEmpty()) {
-            saveToInbox(packageName, title, text, timestamp, null, existingRawNotificationId, appName, listener)
-            Log.d(TAG, "New app $packageName — saved to inbox")
-            return@withContext ProcessResult.INBOX_CREATED
+            if (routingMode == NotificationRoutingMode.REGEX_AND_AI) {
+                val aiResult = directAiNotificationParser?.parseNotification(cleanTitle, cleanText, NotificationRoutingMode.REGEX_AND_AI)
+                if (aiResult == null) {
+                    saveToInbox(packageName, title, text, timestamp, null, existingRawNotificationId, appName, listener)
+                    Log.d(TAG, "New app $packageName — AI failed/unavailable, saved to inbox")
+                    return@withContext ProcessResult.INBOX_CREATED
+                }
+                if (!aiResult.isTransaction) {
+                    Log.d(TAG, "New app $packageName — AI determined non-transaction — discarded")
+                    if (existingRawNotificationId != null) {
+                        rawNotificationDao.deleteById(existingRawNotificationId)
+                    }
+                    return@withContext ProcessResult.SILENT_SKIPPED
+                }
+
+                handleAiTransactionWithPattern(
+                    aiResult = aiResult,
+                    packageName = packageName,
+                    appName = appName,
+                    cleanTitle = cleanTitle,
+                    cleanText = cleanText,
+                    timestamp = timestamp,
+                    listener = listener,
+                    existingRawNotificationId = existingRawNotificationId
+                )
+                return@withContext ProcessResult.TRANSACTION_CREATED
+            } else {
+                saveToInbox(packageName, title, text, timestamp, null, existingRawNotificationId, appName, listener)
+                Log.d(TAG, "New app $packageName — saved to inbox")
+                return@withContext ProcessResult.INBOX_CREATED
+            }
         }
 
         // Stage 0: Check if it matches any non-transaction (Skip/Ignore) patterns
@@ -95,15 +176,14 @@ class NotificationProcessor @Inject constructor(
             try {
                 val isTitleMatch = cleanTitle != null && pattern.notificationTitle.isNotBlank() && cleanTitle.contains(pattern.notificationTitle, ignoreCase = true)
                 val isRegexMatch = if (pattern.regex != null) {
-                    val skipRegex = Regex(pattern.regex, setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL, RegexOption.MULTILINE))
-                    textCandidates.any { skipRegex.containsMatchIn(it) }
+                    val skipRegex = getOrCreateRegex(pattern.regex)
+                    skipRegex != null && textCandidates.any { skipRegex.containsMatchIn(it) }
                 } else {
                     isTitleMatch
                 }
 
                 if (isRegexMatch) {
                     if (pattern.regex != null) {
-                        // Regex match case: SAVE it in raw_notifications and prune
                         if (existingRawNotificationId != null) {
                             rawNotificationDao.markAsProcessed(existingRawNotificationId)
                         } else {
@@ -121,7 +201,6 @@ class NotificationProcessor @Inject constructor(
                         rawNotificationDao.pruneProcessedForPackage(packageName, limit = 50)
                         Log.d(TAG, "Notification matched skip pattern (regex): ${pattern.regex} — skipped & saved")
                     } else {
-                        // Title-only match case: DELETE it or DO NOT save it
                         if (existingRawNotificationId != null) {
                             rawNotificationDao.deleteById(existingRawNotificationId)
                         } else {
@@ -142,9 +221,37 @@ class NotificationProcessor @Inject constructor(
 
         val transactionPatterns = appPatterns.filter { it.isTransaction }
         if (transactionPatterns.isEmpty()) {
-            saveToInbox(packageName, title, text, timestamp, null, existingRawNotificationId, appName, listener)
-            Log.d(TAG, "No transaction patterns configured for $packageName — saved to inbox")
-            return@withContext ProcessResult.INBOX_CREATED
+            if (routingMode == NotificationRoutingMode.REGEX_AND_AI) {
+                val aiResult = directAiNotificationParser?.parseNotification(cleanTitle, cleanText, NotificationRoutingMode.REGEX_AND_AI)
+                if (aiResult == null) {
+                    saveToInbox(packageName, title, text, timestamp, null, existingRawNotificationId, appName, listener)
+                    Log.d(TAG, "No transaction patterns for $packageName — AI failed, saved to inbox")
+                    return@withContext ProcessResult.INBOX_CREATED
+                }
+                if (!aiResult.isTransaction) {
+                    Log.d(TAG, "No transaction patterns for $packageName — AI determined non-transaction — discarded")
+                    if (existingRawNotificationId != null) {
+                        rawNotificationDao.deleteById(existingRawNotificationId)
+                    }
+                    return@withContext ProcessResult.SILENT_SKIPPED
+                }
+
+                handleAiTransactionWithPattern(
+                    aiResult = aiResult,
+                    packageName = packageName,
+                    appName = appName,
+                    cleanTitle = cleanTitle,
+                    cleanText = cleanText,
+                    timestamp = timestamp,
+                    listener = listener,
+                    existingRawNotificationId = existingRawNotificationId
+                )
+                return@withContext ProcessResult.TRANSACTION_CREATED
+            } else {
+                saveToInbox(packageName, title, text, timestamp, null, existingRawNotificationId, appName, listener)
+                Log.d(TAG, "No transaction patterns configured for $packageName — saved to inbox")
+                return@withContext ProcessResult.INBOX_CREATED
+            }
         }
 
         // Stage 1: Scan for configured paymentSource identifiers in notification text or title
@@ -158,11 +265,7 @@ class NotificationProcessor @Inject constructor(
             textCandidates.any { it.contains(source, ignoreCase = true) }
         }
 
-        // Stage 2: Prioritize candidate patterns:
-        // 1. Patterns matching detected paymentSource
-        // 2. Patterns matching notificationTitle
-        // 3. Patterns with blank paymentSource
-        // 4. Any other transaction pattern for this package
+        // Stage 2: Prioritize candidate patterns
         val prioritizedPatterns = transactionPatterns.sortedWith(
             compareByDescending<NotificationPatternEntity> { pattern ->
                 matchedPaymentSource != null && pattern.paymentSource.equals(matchedPaymentSource, ignoreCase = true)
@@ -194,10 +297,39 @@ class NotificationProcessor @Inject constructor(
             }
         }
 
-        // If no regex matched, route to pending inbox
-        saveToInbox(packageName, title, text, timestamp, stalePatternId, existingRawNotificationId, appName, listener)
-        Log.d(TAG, "No matching pattern regex for $packageName (stalePatternId=$stalePatternId) — saved to inbox")
-        return@withContext ProcessResult.INBOX_CREATED
+        // If no regex matched:
+        if (routingMode == NotificationRoutingMode.REGEX_AND_AI) {
+            val aiResult = directAiNotificationParser?.parseNotification(cleanTitle, cleanText, NotificationRoutingMode.REGEX_AND_AI)
+            if (aiResult == null) {
+                saveToInbox(packageName, title, text, timestamp, stalePatternId, existingRawNotificationId, appName, listener)
+                Log.d(TAG, "Unmatched regex for $packageName — AI failed/unavailable, saved to inbox")
+                return@withContext ProcessResult.INBOX_CREATED
+            }
+            if (!aiResult.isTransaction) {
+                Log.d(TAG, "Unmatched regex for $packageName — AI determined non-transaction — discarded")
+                if (existingRawNotificationId != null) {
+                    rawNotificationDao.deleteById(existingRawNotificationId)
+                }
+                return@withContext ProcessResult.SILENT_SKIPPED
+            }
+
+            handleAiTransactionWithPattern(
+                aiResult = aiResult,
+                packageName = packageName,
+                appName = appName,
+                cleanTitle = cleanTitle,
+                cleanText = cleanText,
+                timestamp = timestamp,
+                listener = listener,
+                existingRawNotificationId = existingRawNotificationId
+            )
+            return@withContext ProcessResult.TRANSACTION_CREATED
+        } else {
+            // Regex Only mode: route to pending inbox
+            saveToInbox(packageName, title, text, timestamp, stalePatternId, existingRawNotificationId, appName, listener)
+            Log.d(TAG, "No matching pattern regex for $packageName (stalePatternId=$stalePatternId) — saved to inbox")
+            return@withContext ProcessResult.INBOX_CREATED
+        }
     }
 
     private fun normalizeNotificationText(input: String): String {
@@ -211,9 +343,6 @@ class NotificationProcessor @Inject constructor(
         val list = mutableListOf(text)
         if (!title.isNullOrBlank()) {
             list.add("$title\n$text")
-            list.add("$title: $text")
-            list.add("$title - $text")
-            list.add("$title $text")
             list.add(title)
         }
         return list.distinct()
@@ -254,8 +383,8 @@ class NotificationProcessor @Inject constructor(
         existingRawNotificationId: Long?
     ): Boolean {
         val regexStr = pattern.regex ?: return false
+        val regex = getOrCreateRegex(regexStr) ?: return false
         try {
-            val regex = Regex(regexStr, setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL, RegexOption.MULTILINE))
             for (candidate in textCandidates) {
                 val matchResult = regex.find(candidate)
                 if (matchResult != null) {
@@ -370,6 +499,127 @@ class NotificationProcessor @Inject constructor(
             appName = appName,
             rawNotificationId = rawId,
             currencyCode = currencyCode,
+            suggestedCategoryId = suggestedCategoryId,
+            suggestedCategoryName = suggestedCategoryName,
+            transactionId = transactionId
+        )
+    }
+
+    private suspend fun handleAiTransactionWithPattern(
+        aiResult: DirectAiParseResult,
+        packageName: String,
+        appName: String,
+        cleanTitle: String?,
+        cleanText: String,
+        timestamp: Long,
+        listener: NotificationPostListener?,
+        existingRawNotificationId: Long?
+    ) {
+        var savedPatternId: Long? = null
+        if (!aiResult.regex.isNullOrBlank()) {
+            try {
+                Regex(aiResult.regex)
+                val newPattern = NotificationPatternEntity(
+                    packageName = packageName,
+                    notificationTitle = cleanTitle ?: appName,
+                    paymentSource = aiResult.paymentSource,
+                    paymentSourceType = "AI Learned",
+                    regex = aiResult.regex,
+                    currencyCode = aiResult.currency.takeIf { it.isNotBlank() } ?: "USD",
+                    isTransaction = true,
+                    createdAt = System.currentTimeMillis(),
+                    lastMatchedAt = System.currentTimeMillis(),
+                    matchCount = 1
+                )
+                savedPatternId = notificationPatternDao.upsert(newPattern)
+                Log.d(TAG, "Successfully learned and saved new regex pattern #$savedPatternId for $packageName: ${aiResult.regex}")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to compile/save AI generated regex: ${aiResult.regex}", e)
+            }
+        }
+
+        saveAndPostAiTransaction(
+            aiResult = aiResult,
+            packageName = packageName,
+            appName = appName,
+            notificationText = cleanText,
+            notificationTitle = cleanTitle ?: appName,
+            timestamp = timestamp,
+            listener = listener,
+            existingRawNotificationId = existingRawNotificationId,
+            patternId = savedPatternId
+        )
+    }
+
+    private suspend fun saveAndPostAiTransaction(
+        aiResult: DirectAiParseResult,
+        packageName: String,
+        appName: String,
+        notificationText: String,
+        notificationTitle: String,
+        timestamp: Long,
+        listener: NotificationPostListener?,
+        existingRawNotificationId: Long?,
+        patternId: Long? = null
+    ) {
+        val rawId = if (existingRawNotificationId != null) {
+            val existing = rawNotificationDao.getById(existingRawNotificationId)
+            if (existing != null) {
+                rawNotificationDao.update(existing.copy(isProcessed = true, stalePatternId = null))
+            }
+            existingRawNotificationId
+        } else {
+            rawNotificationDao.insert(
+                RawNotificationEntity(
+                    packageName = packageName,
+                    title = notificationTitle,
+                    text = notificationText,
+                    timestamp = timestamp,
+                    isProcessed = true
+                )
+            )
+        }
+
+        rawNotificationDao.pruneProcessedForPackage(packageName, limit = 50)
+
+        val allCategories = categoryDao.getAll()
+        val aiMatchedCategory = aiResult.categoryName?.let { catName ->
+            allCategories.firstOrNull { it.name.equals(catName.trim(), ignoreCase = true) }
+        }
+
+        val mapping = merchantCategoryMappingDao.getByMerchant(aiResult.merchant.lowercase())
+        val suggestedCategoryId = aiMatchedCategory?.id ?: mapping?.categoryId
+        val suggestedCategoryName = aiMatchedCategory?.name ?: if (suggestedCategoryId != null) {
+            allCategories.firstOrNull { it.id == suggestedCategoryId }?.name
+        } else null
+
+        val finalCategoryId = suggestedCategoryId?.takeIf { it > 0 }
+            ?: allCategories.firstOrNull { it.name.equals("Other", ignoreCase = true) }?.id
+            ?: allCategories.firstOrNull()?.id
+            ?: 1L
+
+        val transactionId = transactionRepository.insertTransaction(
+            Transaction(
+                amount = aiResult.amount,
+                currencyCode = aiResult.currency.takeIf { it.isNotBlank() } ?: "USD",
+                merchant = aiResult.merchant.takeIf { it.isNotBlank() } ?: appName,
+                categoryId = finalCategoryId,
+                timestamp = timestamp,
+                sourcePackageName = packageName,
+                sourceAppName = appName,
+                paymentSource = aiResult.paymentSource,
+                paymentSourceType = "AI Detected",
+                patternId = patternId
+            )
+        )
+
+        listener?.onTransactionProcessed(
+            amount = aiResult.amount,
+            merchant = aiResult.merchant.takeIf { it.isNotBlank() } ?: appName,
+            packageName = packageName,
+            appName = appName,
+            rawNotificationId = rawId,
+            currencyCode = aiResult.currency.takeIf { it.isNotBlank() } ?: "USD",
             suggestedCategoryId = suggestedCategoryId,
             suggestedCategoryName = suggestedCategoryName,
             transactionId = transactionId

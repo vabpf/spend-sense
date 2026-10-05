@@ -22,6 +22,9 @@ interface ProviderModelDao {
     @Query("SELECT * FROM provider_models WHERE isEnabled = 1 ORDER BY displayName ASC, modelId ASC")
     fun getEnabledModelsFlow(): Flow<List<ProviderModelEntity>>
 
+    @Query("SELECT * FROM provider_models WHERE id = :id")
+    suspend fun getById(id: Long): ProviderModelEntity?
+
     @Query("UPDATE provider_models SET isEnabled = :isEnabled WHERE id = :id")
     suspend fun setEnabled(id: Long, isEnabled: Boolean)
 

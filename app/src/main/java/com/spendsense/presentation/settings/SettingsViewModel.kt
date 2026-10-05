@@ -6,9 +6,13 @@ import com.spendsense.data.backup.BackupPayload
 import com.spendsense.data.backup.BackupRestoreManager
 import com.spendsense.data.backup.RestoreSummary
 import com.spendsense.data.local.SecurePreferences
+import com.spendsense.data.local.dao.ProviderAccountDao
+import com.spendsense.data.local.dao.ProviderModelDao
 import com.spendsense.data.local.dao.WhitelistedAppDao
+import com.spendsense.data.local.entity.ProviderModelEntity
 import com.spendsense.data.service.NotificationProcessor
 import com.spendsense.data.service.ProcessResult
+import com.spendsense.domain.model.NotificationRoutingMode
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,6 +38,10 @@ data class SettingsState(
     val dailyReportTime: String = "20:00",
     val backgroundTheme: String = "CYBERPUNK_DEFAULT",
     val customBackgroundPath: String? = null,
+    val notificationRoutingMode: NotificationRoutingMode = NotificationRoutingMode.REGEX_ONLY,
+    val activeAiModelId: Long? = null,
+    val activeAiModelName: String? = null,
+    val availableAiModels: List<Pair<ProviderModelEntity, String>> = emptyList(),
     val isImporting: Boolean = false,
     val importResult: ImportResult? = null,
     val isExporting: Boolean = false,
@@ -50,7 +58,9 @@ class SettingsViewModel @Inject constructor(
     private val securePreferences: SecurePreferences,
     private val whitelistedAppDao: WhitelistedAppDao,
     private val notificationProcessor: NotificationProcessor,
-    private val backupRestoreManager: BackupRestoreManager
+    private val backupRestoreManager: BackupRestoreManager,
+    private val providerAccountDao: ProviderAccountDao,
+    private val providerModelDao: ProviderModelDao
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SettingsState())
@@ -62,7 +72,55 @@ class SettingsViewModel @Inject constructor(
             isDailyReportEnabled = securePreferences.isDailyReportEnabled(),
             dailyReportTime = securePreferences.getDailyReportTime(),
             backgroundTheme = securePreferences.getBackgroundTheme(),
-            customBackgroundPath = securePreferences.getCustomBackgroundPath()
+            customBackgroundPath = securePreferences.getCustomBackgroundPath(),
+            notificationRoutingMode = securePreferences.getNotificationRoutingMode()
+        )
+        loadAiModels()
+    }
+
+    fun loadAiModels() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val accounts = try {
+                providerAccountDao.getAll().associateBy { it.id }
+            } catch (_: Exception) {
+                emptyMap()
+            }
+            val enabledModels = try {
+                providerModelDao.getEnabledModels()
+            } catch (_: Exception) {
+                emptyList()
+            }
+            val list = enabledModels.map { model ->
+                val accountName = accounts[model.providerAccountId]?.name ?: "Provider #${model.providerAccountId}"
+                Pair(model, accountName)
+            }
+            val activeModelId = securePreferences.getActiveAiModelId()
+            val activeModelPair = list.firstOrNull { it.first.id == activeModelId }
+                ?: list.firstOrNull()
+
+            _state.value = _state.value.copy(
+                availableAiModels = list,
+                activeAiModelId = activeModelPair?.first?.id,
+                activeAiModelName = activeModelPair?.let { (model, acc) ->
+                    "${model.displayName ?: model.modelId} ($acc)"
+                }
+            )
+        }
+    }
+
+    fun updateNotificationRoutingMode(mode: NotificationRoutingMode) {
+        securePreferences.setNotificationRoutingMode(mode)
+        _state.value = _state.value.copy(notificationRoutingMode = mode)
+    }
+
+    fun selectActiveAiModel(modelId: Long) {
+        securePreferences.setActiveAiModelId(modelId)
+        val selected = _state.value.availableAiModels.firstOrNull { it.first.id == modelId }
+        _state.value = _state.value.copy(
+            activeAiModelId = modelId,
+            activeAiModelName = selected?.let { (model, acc) ->
+                "${model.displayName ?: model.modelId} ($acc)"
+            }
         )
     }
 

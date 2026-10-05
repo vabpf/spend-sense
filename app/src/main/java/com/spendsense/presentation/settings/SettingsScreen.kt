@@ -49,6 +49,7 @@ import com.spendsense.presentation.util.fadingEdge
 import com.spendsense.presentation.theme.AppBackgroundOption
 import java.io.BufferedReader
 import java.io.InputStreamReader
+import com.spendsense.domain.model.NotificationRoutingMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,6 +66,8 @@ fun SettingsScreen(
     val context = LocalContext.current
     var showCurrencySelector by remember { mutableStateOf(false) }
     var showBackgroundSelector by remember { mutableStateOf(false) }
+    var showRoutingModeSelector by remember { mutableStateOf(false) }
+    var showAiModelSelector by remember { mutableStateOf(false) }
     var bitmapToCrop by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
@@ -129,6 +132,7 @@ fun SettingsScreen(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 isAccessGranted = isNotificationAccessGranted(context)
+                viewModel.loadAiModels()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -299,6 +303,40 @@ fun SettingsScreen(
                             iconTint = Color(0xFF2563EB),
                             onClick = onNavigateToAiProviders
                         )
+
+                        HorizontalDivider(color = Color(0xFFF1F5F9))
+
+                        SettingsItem(
+                            icon = Icons.Rounded.AltRoute,
+                            title = "Notification Detection Mode",
+                            description = when (state.notificationRoutingMode) {
+                                NotificationRoutingMode.REGEX_AND_AI -> "Regex & AI (Smart Hybrid)"
+                                NotificationRoutingMode.AI_ONLY -> "AI Only (Bypass Regex)"
+                                NotificationRoutingMode.REGEX_ONLY -> "Regex Only (Baseline)"
+                            },
+                            iconBadgeBg = Color(0xFFFEE2E2),
+                            iconTint = Color(0xFFDC2626),
+                            onClick = { showRoutingModeSelector = true }
+                        )
+
+                        if (state.notificationRoutingMode != NotificationRoutingMode.REGEX_ONLY) {
+                            HorizontalDivider(color = Color(0xFFF1F5F9))
+
+                            SettingsItem(
+                                icon = Icons.Rounded.Psychology,
+                                title = "Active AI Model",
+                                description = state.activeAiModelName ?: if (state.availableAiModels.isEmpty()) "No enabled models configured (tap to set up)" else "Select default AI model",
+                                iconBadgeBg = Color(0xFFE0E7FF),
+                                iconTint = Color(0xFF4F46E5),
+                                onClick = {
+                                    if (state.availableAiModels.isEmpty()) {
+                                        onNavigateToAiProviders()
+                                    } else {
+                                        showAiModelSelector = true
+                                    }
+                                }
+                            )
+                        }
 
                         HorizontalDivider(color = Color(0xFFF1F5F9))
 
@@ -502,6 +540,150 @@ fun SettingsScreen(
             confirmButton = {},
             dismissButton = {
                 TextButton(onClick = { showCurrencySelector = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (showRoutingModeSelector) {
+        GlassAlertDialog(
+            onDismissRequest = { showRoutingModeSelector = false },
+            title = {
+                Text(
+                    text = "Notification Detection Mode",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF0F172A)
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    NotificationRoutingMode.entries.forEach { mode ->
+                        val isSelected = mode == state.notificationRoutingMode
+                        Surface(
+                            onClick = {
+                                viewModel.updateNotificationRoutingMode(mode)
+                                showRoutingModeSelector = false
+                            },
+                            color = if (isSelected) Color(0xFFE0F2FE) else Color(0xFFF8FAFC),
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.dp, if (isSelected) Color(0xFF0284C7) else Color(0xFFE2E8F0))
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = mode.title,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isSelected) Color(0xFF0369A1) else Color(0xFF0F172A),
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                    Text(
+                                        text = mode.description,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color(0xFF64748B)
+                                    )
+                                }
+
+                                if (isSelected) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.CheckCircle,
+                                        contentDescription = "Selected",
+                                        tint = Color(0xFF0284C7),
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showRoutingModeSelector = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (showAiModelSelector) {
+        GlassAlertDialog(
+            onDismissRequest = { showAiModelSelector = false },
+            title = {
+                Text(
+                    text = "Select Active AI Model",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF0F172A)
+                )
+            },
+            text = {
+                if (state.availableAiModels.isEmpty()) {
+                    Text(
+                        text = "No models are currently enabled. Please configure an AI provider and enable at least one model.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF64748B)
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 360.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(state.availableAiModels.size) { index ->
+                            val (model, accountName) = state.availableAiModels[index]
+                            val isSelected = model.id == state.activeAiModelId
+                            Surface(
+                                onClick = {
+                                    viewModel.selectActiveAiModel(model.id)
+                                    showAiModelSelector = false
+                                },
+                                color = if (isSelected) Color(0xFFE0F2FE) else Color(0xFFF8FAFC),
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, if (isSelected) Color(0xFF0284C7) else Color(0xFFE2E8F0))
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = model.displayName ?: model.modelId,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (isSelected) Color(0xFF0369A1) else Color(0xFF0F172A),
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                        Text(
+                                            text = "$accountName • ${model.modelId}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color(0xFF64748B)
+                                        )
+                                    }
+
+                                    if (isSelected) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.CheckCircle,
+                                            contentDescription = "Selected",
+                                            tint = Color(0xFF0284C7),
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showAiModelSelector = false }) { Text("Cancel") }
             }
         )
     }

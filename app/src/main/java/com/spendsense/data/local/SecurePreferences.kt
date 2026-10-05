@@ -3,6 +3,7 @@ package com.spendsense.data.local
 import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.spendsense.domain.model.NotificationRoutingMode
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -11,20 +12,24 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class SecurePreferences @Inject constructor(
+open class SecurePreferences @Inject constructor(
     @ApplicationContext context: Context
 ) {
-    private val masterKey = MasterKey.Builder(context)
-        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-        .build()
+    private val masterKey by lazy {
+        MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
+    }
 
-    private val prefs = EncryptedSharedPreferences.create(
-        context,
-        "secure_prefs",
-        masterKey,
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-    )
+    private val prefs by lazy {
+        EncryptedSharedPreferences.create(
+            context,
+            "secure_prefs",
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    }
 
     fun saveApiKey(providerId: Long, apiKey: String) {
         prefs.edit().putString("api_key_$providerId", apiKey).apply()
@@ -146,5 +151,22 @@ class SecurePreferences @Inject constructor(
             prefs.edit().putString("custom_background_path", path).apply()
         }
         _customBackgroundPathFlow.value = path
+    }
+
+    open fun getNotificationRoutingMode(): NotificationRoutingMode {
+        val saved = prefs.getString("notification_routing_mode", NotificationRoutingMode.REGEX_ONLY.name)
+        return NotificationRoutingMode.fromString(saved)
+    }
+
+    open fun setNotificationRoutingMode(mode: NotificationRoutingMode) {
+        prefs.edit().putString("notification_routing_mode", mode.name).apply()
+    }
+
+    open fun getActiveAiModelId(): Long {
+        return prefs.getLong("active_ai_model_id", -1L)
+    }
+
+    open fun setActiveAiModelId(modelId: Long) {
+        prefs.edit().putLong("active_ai_model_id", modelId).apply()
     }
 }
