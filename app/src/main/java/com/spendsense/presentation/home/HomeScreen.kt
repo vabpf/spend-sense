@@ -142,7 +142,7 @@ fun HomeScreen(
     onReviewHandled: () -> Unit = {},
     initialFilterDate: Long? = null,
     onNavigateToSettings: () -> Unit = {},
-    onNavigateToRegexGenerator: (String?, String?, Long?) -> Unit = { _, _, _ -> }
+    onNavigateToRegexGenerator: (String?, String?, Long?, String?) -> Unit = { _, _, _, _ -> }
 ) {
     val transactions by viewModel.transactions.collectAsState()
     val categories by viewModel.categories.collectAsState()
@@ -625,11 +625,11 @@ fun HomeScreen(
                                 InboxItem(
                                     notification = notification,
                                     onProcess = {
-                                        onNavigateToRegexGenerator(notification.text, notification.title, notification.stalePatternId)
+                                        onNavigateToRegexGenerator(notification.text, notification.title, notification.stalePatternId, notification.packageName)
                                         viewModel.markNotificationAsProcessed(notification)
                                     },
                                     onAddNew = {
-                                        onNavigateToRegexGenerator(notification.text, notification.title, null)
+                                        onNavigateToRegexGenerator(notification.text, notification.title, null, notification.packageName)
                                         viewModel.markNotificationAsProcessed(notification)
                                     },
                                     onDelete = { viewModel.deleteNotification(notification) }
@@ -1431,10 +1431,16 @@ fun InboxItem(
     Surface(
         modifier = Modifier
             .width(280.dp)
-            .height(148.dp),
+            .height(148.dp)
+            .shadow(
+                elevation = 6.dp,
+                shape = RoundedCornerShape(20.dp),
+                ambientColor = Color.Black.copy(alpha = 0.04f),
+                spotColor = Color.Black.copy(alpha = 0.05f)
+            ),
         shape = RoundedCornerShape(20.dp),
         color = Color.White,
-        shadowElevation = 2.dp,
+        shadowElevation = 0.dp,
         border = BorderStroke(1.dp, Color(0xFFE2E8F0))
     ) {
         Box(modifier = Modifier.fillMaxSize().padding(12.dp)) {

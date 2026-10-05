@@ -75,6 +75,12 @@ class NotificationProcessor @Inject constructor(
             return@withContext ProcessResult.SILENT_SKIPPED
         }
 
+        val cleanText = normalizeNotificationText(text)
+        val cleanTitle = title?.let { normalizeNotificationText(it) }?.takeIf { it.isNotBlank() }
+
+        // Build text candidates for pattern matching (text alone, or title + text combinations)
+        val textCandidates = buildTextCandidates(cleanTitle, cleanText)
+
         // Check if this app has been configured with patterns
         val appPatterns = notificationPatternDao.getAllForPackage(packageName)
         if (appPatterns.isEmpty()) {
@@ -87,9 +93,10 @@ class NotificationProcessor @Inject constructor(
         val skipPatterns = appPatterns.filter { !it.isTransaction }
         for (pattern in skipPatterns) {
             try {
-                val isTitleMatch = title != null && title.contains(pattern.notificationTitle, ignoreCase = true)
+                val isTitleMatch = cleanTitle != null && pattern.notificationTitle.isNotBlank() && cleanTitle.contains(pattern.notificationTitle, ignoreCase = true)
                 val isRegexMatch = if (pattern.regex != null) {
-                    Regex(pattern.regex).containsMatchIn(text)
+                    val skipRegex = Regex(pattern.regex, setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL, RegexOption.MULTILINE))
+                    textCandidates.any { skipRegex.containsMatchIn(it) }
                 } else {
                     isTitleMatch
                 }
@@ -143,12 +150,12 @@ class NotificationProcessor @Inject constructor(
         // Stage 1: Scan for configured paymentSource identifiers in notification text or title
         val configuredPaymentSources = transactionPatterns
             .filter { it.paymentSource.isNotBlank() }
-            .map { it.paymentSource }
+            .map { it.paymentSource.trim() }
             .distinct()
             .sortedByDescending { it.length }
 
         val matchedPaymentSource = configuredPaymentSources.firstOrNull { source ->
-            text.contains(source, ignoreCase = true) || (title != null && title.contains(source, ignoreCase = true))
+            textCandidates.any { it.contains(source, ignoreCase = true) }
         }
 
         // Stage 2: Prioritize candidate patterns:
@@ -160,7 +167,7 @@ class NotificationProcessor @Inject constructor(
             compareByDescending<NotificationPatternEntity> { pattern ->
                 matchedPaymentSource != null && pattern.paymentSource.equals(matchedPaymentSource, ignoreCase = true)
             }.thenByDescending { pattern ->
-                title != null && pattern.notificationTitle.isNotBlank() && title.contains(pattern.notificationTitle, ignoreCase = true)
+                cleanTitle != null && pattern.notificationTitle.isNotBlank() && cleanTitle.contains(pattern.notificationTitle, ignoreCase = true)
             }.thenByDescending { pattern ->
                 pattern.paymentSource.isBlank()
             }.thenByDescending { pattern ->
@@ -173,13 +180,13 @@ class NotificationProcessor @Inject constructor(
 
         for (pattern in prioritizedPatterns) {
             if (pattern.regex != null) {
-                val matched = tryMatchPattern(pattern, text, packageName, appName, timestamp, listener, existingRawNotificationId)
+                val matched = tryMatchPattern(pattern, textCandidates, title ?: pattern.notificationTitle, packageName, appName, timestamp, listener, existingRawNotificationId)
                 if (matched) {
                     return@withContext ProcessResult.TRANSACTION_CREATED
                 }
-                
+
                 val isRelevant = (matchedPaymentSource != null && pattern.paymentSource.equals(matchedPaymentSource, ignoreCase = true)) ||
-                        (title != null && pattern.notificationTitle.isNotBlank() && title.contains(pattern.notificationTitle, ignoreCase = true))
+                        (cleanTitle != null && pattern.notificationTitle.isNotBlank() && cleanTitle.contains(pattern.notificationTitle, ignoreCase = true))
                 if (isRelevant) {
                     hasStalePattern = true
                     stalePatternId = pattern.id
@@ -193,21 +200,32 @@ class NotificationProcessor @Inject constructor(
         return@withContext ProcessResult.INBOX_CREATED
     }
 
+    private fun normalizeNotificationText(input: String): String {
+        return input
+            .replace("\r\n", "\n")
+            .replace('\r', '\n')
+            .replace(Regex("[\u00A0\u2007\u202F\uFEFF]"), " ")
+    }
+
+    private fun buildTextCandidates(title: String?, text: String): List<String> {
+        val list = mutableListOf(text)
+        if (!title.isNullOrBlank()) {
+            list.add("$title\n$text")
+            list.add("$title: $text")
+            list.add("$title - $text")
+            list.add("$title $text")
+            list.add(title)
+        }
+        return list.distinct()
+    }
+
     suspend fun reprocessInboxForPattern(
         pattern: NotificationPatternEntity,
         appName: String = "App"
     ): Int = withContext(Dispatchers.IO) {
         var recoveredCount = 0
-        val unprocessed = if (pattern.notificationTitle.isNotBlank()) {
-            val byTitle = rawNotificationDao.getUnprocessedForPackageAndTitle(
-                packageName = pattern.packageName,
-                title = pattern.notificationTitle
-            )
-            if (byTitle.isNotEmpty()) byTitle else rawNotificationDao.getUnprocessedForPackage(pattern.packageName)
-        } else {
-            rawNotificationDao.getUnprocessedForPackage(pattern.packageName)
-        }
-        
+        val unprocessed = rawNotificationDao.getUnprocessedForPackage(pattern.packageName)
+
         for (notif in unprocessed) {
             val outcome = process(
                 packageName = notif.packageName,
@@ -227,7 +245,8 @@ class NotificationProcessor @Inject constructor(
 
     private suspend fun tryMatchPattern(
         pattern: NotificationPatternEntity,
-        notificationText: String,
+        textCandidates: List<String>,
+        notificationTitle: String,
         packageName: String,
         appName: String,
         timestamp: Long,
@@ -236,33 +255,39 @@ class NotificationProcessor @Inject constructor(
     ): Boolean {
         val regexStr = pattern.regex ?: return false
         try {
-            val regex = Regex(regexStr)
-            val matchResult = regex.find(notificationText)
-            if (matchResult != null) {
-                val amountStr = matchResult.groups["amount"]?.value
-                val merchant = matchResult.groups["merchant"]?.value
-                if (amountStr != null && merchant != null) {
-                    val amount = parseAmount(amountStr)
-                    if (amount > 0) {
-                        notificationPatternDao.upsert(pattern.copy(
-                            lastMatchedAt = System.currentTimeMillis()
-                        ))
-                        saveAndPostNotification(
-                            amount = amount,
-                            merchant = merchant,
-                            packageName = packageName,
-                            appName = appName,
-                            currencyCode = pattern.currencyCode,
-                            notificationText = notificationText,
-                            notificationTitle = pattern.notificationTitle,
-                            timestamp = timestamp,
-                            listener = listener,
-                            existingRawNotificationId = existingRawNotificationId,
-                            paymentSource = pattern.paymentSource,
-                            paymentSourceType = pattern.paymentSourceType,
-                            patternId = pattern.id
-                        )
-                        return true
+            val regex = Regex(regexStr, setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL, RegexOption.MULTILINE))
+            for (candidate in textCandidates) {
+                val matchResult = regex.find(candidate)
+                if (matchResult != null) {
+                    val amountStr = matchResult.groups["amount"]?.value
+                    if (amountStr != null) {
+                        val amount = parseAmount(amountStr)
+                        if (amount > 0) {
+                            val rawMerchant = matchResult.groups["merchant"]?.value?.trim()?.takeIf { it.isNotBlank() }
+                            val merchant = rawMerchant
+                                ?: pattern.paymentSource.takeIf { it.isNotBlank() }
+                                ?: appName
+
+                            notificationPatternDao.upsert(pattern.copy(
+                                lastMatchedAt = System.currentTimeMillis()
+                            ))
+                            saveAndPostNotification(
+                                amount = amount,
+                                merchant = merchant,
+                                packageName = packageName,
+                                appName = appName,
+                                currencyCode = pattern.currencyCode,
+                                notificationText = candidate,
+                                notificationTitle = notificationTitle,
+                                timestamp = timestamp,
+                                listener = listener,
+                                existingRawNotificationId = existingRawNotificationId,
+                                paymentSource = pattern.paymentSource,
+                                paymentSourceType = pattern.paymentSourceType,
+                                patternId = pattern.id
+                            )
+                            return true
+                        }
                     }
                 }
             }

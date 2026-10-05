@@ -246,14 +246,16 @@ class MainActivity : ComponentActivity() {
                                                     restoreState = true
                                                 }
                                             },
-                                            onNavigateToRegexGenerator = { text, title, stalePatternId ->
+                                            onNavigateToRegexGenerator = { text, title, stalePatternId, packageName ->
                                                 val encodedText = text?.let { java.net.URLEncoder.encode(it, "UTF-8").replace("+", "%20") }
                                                 val encodedTitle = title?.let { java.net.URLEncoder.encode(it, "UTF-8").replace("+", "%20") }
+                                                val encodedPackage = packageName?.let { java.net.URLEncoder.encode(it, "UTF-8").replace("+", "%20") }
                                                 val baseRoute = "regex_generator?fromInbox=true"
                                                 val textParam = if (encodedText != null) "&text=$encodedText" else ""
                                                 val titleParam = if (encodedTitle != null) "&title=$encodedTitle" else ""
+                                                val packageParam = if (encodedPackage != null) "&packageName=$encodedPackage" else ""
                                                 val staleParam = if (stalePatternId != null) "&stalePatternId=$stalePatternId" else ""
-                                                navController.navigate(baseRoute + textParam + titleParam + staleParam)
+                                                navController.navigate(baseRoute + textParam + titleParam + packageParam + staleParam)
                                             }
                                         )
                                     }
@@ -349,7 +351,7 @@ class MainActivity : ComponentActivity() {
                                     }
 
                                     composable(
-                                          route = "regex_generator?text={text}&title={title}&fromInbox={fromInbox}&stalePatternId={stalePatternId}",
+                                          route = "regex_generator?text={text}&title={title}&packageName={packageName}&fromInbox={fromInbox}&stalePatternId={stalePatternId}",
                                           arguments = listOf(
                                               navArgument("text") {
                                                   type = NavType.StringType
@@ -361,7 +363,12 @@ class MainActivity : ComponentActivity() {
                                                   nullable = true
                                                   defaultValue = null
                                               },
-                                              navArgument("fromInbox") {
+                                              navArgument("packageName") {
+                                                   type = NavType.StringType
+                                                   nullable = true
+                                                   defaultValue = null
+                                               },
+                                               navArgument("fromInbox") {
                                                   type = NavType.BoolType
                                                   defaultValue = false
                                               },
@@ -374,12 +381,14 @@ class MainActivity : ComponentActivity() {
                                       ) { backStackEntry ->
                                           val text = backStackEntry.arguments?.getString("text")
                                           val title = backStackEntry.arguments?.getString("title")
+                                           val pkgName = backStackEntry.arguments?.getString("packageName")
                                           val fromInbox = backStackEntry.arguments?.getBoolean("fromInbox") ?: false
                                           val stalePatternIdStr = backStackEntry.arguments?.getString("stalePatternId")
                                           val stalePatternId = stalePatternIdStr?.toLongOrNull()
                                           RegexGeneratorScreen(
                                               initialNotificationText = text,
                                               initialNotificationTitle = title,
+                                               initialPackageName = pkgName,
                                               isFromInbox = fromInbox,
                                               stalePatternId = stalePatternId,
                                              onNavigateBack = {

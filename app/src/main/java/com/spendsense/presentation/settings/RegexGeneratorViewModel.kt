@@ -341,14 +341,33 @@ Return ONLY valid JSON with no markdown formatting:
 
     private fun testPattern(pattern: String, text: String) {
         try {
-            val regex = Regex(pattern)
-            val matchResult = regex.find(text)
-            if (matchResult != null) {
-                val rawAmount = matchResult.groups["amount"]?.value
-                val merchant = matchResult.groups["merchant"]?.value
-                val amount = rawAmount?.let { parseAmount(it) }?.toString() ?: rawAmount
-                _state.value = _state.value.copy(extractedAmount = amount, extractedMerchant = merchant, errorMessage = null)
-            } else {
+            val cleanText = text
+                .replace("\r\n", "\n")
+                .replace('\r', '\n')
+                .replace(Regex("[\u00A0\u2007\u202F\uFEFF]"), " ")
+            val title = _state.value.notificationTitle.trim().takeIf { it.isNotBlank() }
+            val candidates = mutableListOf(cleanText)
+            if (title != null) {
+                candidates.add("$title\n$cleanText")
+                candidates.add("$title: $cleanText")
+                candidates.add("$title - $cleanText")
+                candidates.add("$title $cleanText")
+            }
+
+            val regex = Regex(pattern, setOf(RegexOption.IGNORE_CASE, RegexOption.DOT_MATCHES_ALL, RegexOption.MULTILINE))
+            var matched = false
+            for (candidate in candidates) {
+                val matchResult = regex.find(candidate)
+                if (matchResult != null) {
+                    val rawAmount = matchResult.groups["amount"]?.value
+                    val merchant = matchResult.groups["merchant"]?.value
+                    val amount = rawAmount?.let { parseAmount(it) }?.toString() ?: rawAmount
+                    _state.value = _state.value.copy(extractedAmount = amount, extractedMerchant = merchant, errorMessage = null)
+                    matched = true
+                    break
+                }
+            }
+            if (!matched) {
                 _state.value = _state.value.copy(extractedAmount = null, extractedMerchant = null, errorMessage = "Pattern does not match the notification text")
             }
         } catch (e: Exception) {

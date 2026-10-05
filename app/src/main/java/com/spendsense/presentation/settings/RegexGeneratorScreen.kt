@@ -46,6 +46,7 @@ fun RegexGeneratorScreen(
     viewModel: RegexGeneratorViewModel = hiltViewModel(),
     initialNotificationText: String? = null,
     initialNotificationTitle: String? = null,
+    initialPackageName: String? = null,
     isFromInbox: Boolean = false,
     stalePatternId: Long? = null,
     onNavigateBack: () -> Unit = {},
@@ -62,14 +63,17 @@ fun RegexGeneratorScreen(
     var showTimePicker by remember { mutableStateOf(false) }
     val dateTimeFormatter = remember { SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()) }
 
-    // Pre-fill initial text and title if provided
-    LaunchedEffect(initialNotificationText, initialNotificationTitle, isFromInbox) {
+    // Pre-fill initial text, title, and target package if provided
+    LaunchedEffect(initialNotificationText, initialNotificationTitle, initialPackageName, isFromInbox) {
         viewModel.setIsFromInbox(isFromInbox)
         if (initialNotificationText != null) {
             viewModel.updateNotificationText(initialNotificationText)
         }
         if (initialNotificationTitle != null) {
             viewModel.updateNotificationTitle(initialNotificationTitle)
+        }
+        if (!initialPackageName.isNullOrBlank()) {
+            viewModel.onTargetAppSelected(initialPackageName)
         }
     }
 
