@@ -4,6 +4,8 @@ import com.spendsense.data.repository.CategoryRepositoryImpl
 import com.spendsense.data.repository.ExchangeRateRepositoryImpl
 import com.spendsense.data.repository.TransactionRepositoryImpl
 import com.spendsense.data.repository.WhitelistedAppRepositoryImpl
+import com.spendsense.data.service.DirectAiNotificationParser
+import com.spendsense.data.service.DirectAiNotificationParserImpl
 import com.spendsense.domain.repository.CategoryRepository
 import com.spendsense.domain.repository.ExchangeRateRepository
 import com.spendsense.domain.repository.TransactionRepository
@@ -41,4 +43,10 @@ abstract class RepositoryModule {
     abstract fun bindWhitelistedAppRepository(
         whitelistedAppRepositoryImpl: WhitelistedAppRepositoryImpl
     ): WhitelistedAppRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindDirectAiNotificationParser(
+        directAiNotificationParserImpl: DirectAiNotificationParserImpl
+    ): DirectAiNotificationParser
 }

@@ -27,7 +27,7 @@ class NotificationProcessorTest {
         resultToReturn: DirectAiParseResult?,
         onCalled: (() -> Unit)? = null
     ): DirectAiNotificationParser {
-        return object : DirectAiNotificationParser() {
+        return object : DirectAiNotificationParser {
             override suspend fun parseNotification(
                 title: String?,
                 text: String,
@@ -140,7 +140,9 @@ class NotificationProcessorTest {
             transactionRepository = BaseTransactionRepository(),
             categoryDao = BaseCategoryDao(),
             merchantCategoryMappingDao = BaseMerchantCategoryMappingDao(),
-            whitelistedAppDao = BaseWhitelistedAppDao()
+            whitelistedAppDao = BaseWhitelistedAppDao(),
+            securePreferences = createFakePreferences(NotificationRoutingMode.REGEX_ONLY),
+            directAiNotificationParser = createFakeAiParser(null)
         )
 
         val result = processor.process(
@@ -178,7 +180,9 @@ class NotificationProcessorTest {
             transactionRepository = BaseTransactionRepository(),
             categoryDao = BaseCategoryDao(),
             merchantCategoryMappingDao = BaseMerchantCategoryMappingDao(),
-            whitelistedAppDao = BaseWhitelistedAppDao()
+            whitelistedAppDao = BaseWhitelistedAppDao(),
+            securePreferences = createFakePreferences(NotificationRoutingMode.REGEX_ONLY),
+            directAiNotificationParser = createFakeAiParser(null)
         )
 
         val result = processor.process(

@@ -30,37 +30,26 @@ data class DirectAiParseResult(
     val regex: String? = null
 )
 
+interface DirectAiNotificationParser {
+    suspend fun parseNotification(
+        title: String?,
+        text: String,
+        mode: NotificationRoutingMode
+    ): DirectAiParseResult?
+}
+
 @Singleton
-open class DirectAiNotificationParser(
-    private val chatCompletionApi: ChatCompletionApi?,
-    private val dynamicBaseUrlInterceptor: DynamicBaseUrlInterceptor?,
-    private val accountDao: ProviderAccountDao?,
-    private val modelDao: ProviderModelDao?,
-    private val securePreferences: SecurePreferences?,
-    private val categoryDao: CategoryDao?
-) {
-    @Inject
-    constructor(
-        chatCompletionApi: ChatCompletionApi,
-        dynamicBaseUrlInterceptor: DynamicBaseUrlInterceptor,
-        accountDao: ProviderAccountDao,
-        modelDao: ProviderModelDao,
-        securePreferences: SecurePreferences,
-        categoryDao: CategoryDao
-    ) : this(
-        chatCompletionApi = chatCompletionApi as ChatCompletionApi?,
-        dynamicBaseUrlInterceptor = dynamicBaseUrlInterceptor as DynamicBaseUrlInterceptor?,
-        accountDao = accountDao as ProviderAccountDao?,
-        modelDao = modelDao as ProviderModelDao?,
-        securePreferences = securePreferences as SecurePreferences?,
-        categoryDao = categoryDao as CategoryDao?
-    )
-
-    constructor() : this(null, null, null, null, null, null)
-
+class DirectAiNotificationParserImpl @Inject constructor(
+    private val chatCompletionApi: ChatCompletionApi,
+    private val dynamicBaseUrlInterceptor: DynamicBaseUrlInterceptor,
+    private val accountDao: ProviderAccountDao,
+    private val modelDao: ProviderModelDao,
+    private val securePreferences: SecurePreferences,
+    private val categoryDao: CategoryDao
+) : DirectAiNotificationParser {
     private val TAG = "DirectAiParser"
 
-    open suspend fun parseNotification(
+    override suspend fun parseNotification(
         title: String?,
         text: String,
         mode: NotificationRoutingMode
