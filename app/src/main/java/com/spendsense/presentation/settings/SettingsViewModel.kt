@@ -80,17 +80,50 @@ class SettingsViewModel @Inject constructor(
                 }?.forEach { it.delete() }
 
                 val destFile = java.io.File(context.filesDir, "custom_background_${System.currentTimeMillis()}.jpg")
-                context.contentResolver.openInputStream(uri)?.use { input ->
-                    destFile.outputStream().use { output ->
-                        input.copyTo(output)
+                val bitmap = com.spendsense.presentation.util.ImageCropUtil.decodeBitmapWithExif(context, uri)
+                if (bitmap != null) {
+                    java.io.FileOutputStream(destFile).use { out ->
+                        bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 92, out)
                     }
+                    securePreferences.setCustomBackgroundPath(destFile.absolutePath)
+                    securePreferences.setBackgroundTheme("CUSTOM_IMAGE")
+                    _state.value = _state.value.copy(
+                        backgroundTheme = "CUSTOM_IMAGE",
+                        customBackgroundPath = destFile.absolutePath
+                    )
                 }
-                securePreferences.setCustomBackgroundPath(destFile.absolutePath)
-                securePreferences.setBackgroundTheme("CUSTOM_IMAGE")
-                _state.value = _state.value.copy(
-                    backgroundTheme = "CUSTOM_IMAGE",
-                    customBackgroundPath = destFile.absolutePath
+            } catch (_: Exception) {}
+        }
+    }
+
+    fun saveCroppedBackground(
+        sourceBitmap: android.graphics.Bitmap,
+        cropRect: android.graphics.RectF,
+        additionalRotation: Float,
+        context: android.content.Context
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                // Delete previous custom background files to prevent disk leak
+                context.filesDir.listFiles { file ->
+                    file.name.startsWith("custom_background")
+                }?.forEach { it.delete() }
+
+                val destFile = java.io.File(context.filesDir, "custom_background_${System.currentTimeMillis()}.jpg")
+                val success = com.spendsense.presentation.util.ImageCropUtil.cropAndSave(
+                    source = sourceBitmap,
+                    cropRectNorm = cropRect,
+                    additionalRotation = additionalRotation,
+                    destFile = destFile
                 )
+                if (success) {
+                    securePreferences.setCustomBackgroundPath(destFile.absolutePath)
+                    securePreferences.setBackgroundTheme("CUSTOM_IMAGE")
+                    _state.value = _state.value.copy(
+                        backgroundTheme = "CUSTOM_IMAGE",
+                        customBackgroundPath = destFile.absolutePath
+                    )
+                }
             } catch (_: Exception) {}
         }
     }

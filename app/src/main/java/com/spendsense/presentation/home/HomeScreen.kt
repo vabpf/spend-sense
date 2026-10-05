@@ -389,7 +389,13 @@ fun HomeScreen(
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, Color(0xFFF8FAFC)),
+                            colorStops = arrayOf(
+                                0.0f to Color(0x00F8FAFC),
+                                0.35f to Color(0x26F8FAFC),
+                                0.70f to Color(0x8CF8FAFC),
+                                0.90f to Color(0xDEF8FAFC),
+                                1.0f to Color(0xFFF8FAFC)
+                            ),
                             startY = 0f,
                             endY = with(LocalDensity.current) { (statusBarPadding + 280.dp).toPx() }
                         )
@@ -1220,7 +1226,7 @@ private fun HomeSummaryCard(
                     text = "Today at a glance",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF0284C7)
+                    color = CyberBlue
                 )
                 BadgedBox(
                     badge = {
@@ -1244,7 +1250,7 @@ private fun HomeSummaryCard(
                         Icon(
                             imageVector = Icons.Rounded.Notifications,
                             contentDescription = "Notifications",
-                            tint = Color(0xFF334155),
+                            tint = Color.White,
                             modifier = Modifier.size(22.dp)
                         )
                     }
@@ -1269,7 +1275,7 @@ private fun HomeSummaryCard(
                             text = formatCurrency(todaySpending, defaultCurrency),
                             style = MaterialTheme.typography.headlineMedium.copy(fontSize = 26.sp),
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF0F172A)
+                            color = Color.White
                         )
 
                         // Trend pill
@@ -1302,7 +1308,7 @@ private fun HomeSummaryCard(
                         text = "You spent ${formatCurrency(yesterdaySpending, defaultCurrency)} yesterday",
                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
                         fontWeight = FontWeight.Medium,
-                        color = Color(0xFF0284C7)
+                        color = CyberBlue
                     )
                 }
 
@@ -1328,14 +1334,14 @@ private fun HomeSummaryCard(
                                     .height(barHeight)
                                     .clip(RoundedCornerShape(999.dp))
                                     .background(
-                                        if (isToday) Color(0xFF0284C7) else Color(0xFFBAE6FD).copy(alpha = 0.55f)
+                                        if (isToday) CyberBlue else Color.White.copy(alpha = 0.40f)
                                     )
                             )
                             Text(
                                 text = dayLabel,
                                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
                                 fontWeight = if (isToday) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isToday) Color(0xFF0284C7) else Color(0xFF64748B)
+                                color = if (isToday) CyberBlue else Color.White.copy(alpha = 0.75f)
                             )
                         }
                     }
@@ -1351,7 +1357,7 @@ private fun HomeSummaryCard(
                 // Entries count pill
                 Surface(
                     shape = RoundedCornerShape(999.dp),
-                    color = Color.White.copy(alpha = 0.65f),
+                    color = Color.White.copy(alpha = 0.15f),
                     shadowElevation = 0.dp
                 ) {
                     Row(
@@ -1362,14 +1368,14 @@ private fun HomeSummaryCard(
                         Icon(
                             imageVector = Icons.Rounded.Segment,
                             contentDescription = null,
-                            tint = Color(0xFF0284C7),
+                            tint = CyberBlue,
                             modifier = Modifier.size(15.dp)
                         )
                         Text(
                             text = "$transactionCount entries",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Medium,
-                            color = Color(0xFF334155)
+                            color = Color.White
                         )
                     }
                 }
@@ -1377,7 +1383,7 @@ private fun HomeSummaryCard(
                 // Pending inbox pill
                 Surface(
                     shape = RoundedCornerShape(999.dp),
-                    color = Color.White.copy(alpha = 0.65f),
+                    color = Color.White.copy(alpha = 0.15f),
                     shadowElevation = 0.dp
                 ) {
                     Row(
@@ -1388,14 +1394,14 @@ private fun HomeSummaryCard(
                         Icon(
                             imageVector = Icons.Rounded.Mail,
                             contentDescription = null,
-                            tint = Color(0xFF0284C7),
+                            tint = CyberBlue,
                             modifier = Modifier.size(15.dp)
                         )
                         Text(
                             text = "$pendingCount pending inbox",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Medium,
-                            color = Color(0xFF334155)
+                            color = Color.White
                         )
                     }
                 }

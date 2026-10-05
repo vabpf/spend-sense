@@ -65,12 +65,18 @@ fun SettingsScreen(
     val context = LocalContext.current
     var showCurrencySelector by remember { mutableStateOf(false) }
     var showBackgroundSelector by remember { mutableStateOf(false) }
+    var bitmapToCrop by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
         if (uri != null) {
-            viewModel.setCustomBackground(uri, context)
+            val bitmap = com.spendsense.presentation.util.ImageCropUtil.decodeBitmapWithExif(context, uri)
+            if (bitmap != null) {
+                bitmapToCrop = bitmap
+            } else {
+                viewModel.setCustomBackground(uri, context)
+            }
         }
     }
 
@@ -152,7 +158,13 @@ fun SettingsScreen(
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, Color(0xFFF8FAFC)),
+                            colorStops = arrayOf(
+                                0.0f to Color(0x00F8FAFC),
+                                0.35f to Color(0x26F8FAFC),
+                                0.70f to Color(0x8CF8FAFC),
+                                0.90f to Color(0xDEF8FAFC),
+                                1.0f to Color(0xFFF8FAFC)
+                            ),
                             startY = 0f,
                             endY = headerBottomPx
                         )
@@ -617,6 +629,19 @@ fun SettingsScreen(
             confirmButton = {},
             dismissButton = {
                 TextButton(onClick = { showBackgroundSelector = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    bitmapToCrop?.let { bmp ->
+        CropBackgroundDialog(
+            sourceBitmap = bmp,
+            onDismiss = {
+                bitmapToCrop = null
+            },
+            onCropConfirmed = { cropRect, rotation ->
+                viewModel.saveCroppedBackground(bmp, cropRect, rotation, context)
+                bitmapToCrop = null
             }
         )
     }

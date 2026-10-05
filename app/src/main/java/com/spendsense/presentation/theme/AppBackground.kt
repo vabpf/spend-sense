@@ -92,7 +92,7 @@ fun AppBackground(
                 val lastModified = customFile?.takeIf { it.exists() }?.lastModified() ?: 0L
                 val bitmap = remember(customImagePath, lastModified) {
                     if (customFile != null && customFile.exists()) {
-                        BitmapFactory.decodeFile(customFile.absolutePath)?.asImageBitmap()
+                        com.spendsense.presentation.util.ImageCropUtil.decodeFileWithExif(customFile.absolutePath)?.asImageBitmap()
                     } else null
                 }
                 if (bitmap != null) {

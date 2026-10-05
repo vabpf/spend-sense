@@ -51,6 +51,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.spendsense.domain.model.Category
 import com.spendsense.domain.model.Transaction
 import com.spendsense.presentation.theme.TextSecondary
+import com.spendsense.presentation.theme.CyberBlue
 import com.spendsense.presentation.util.fadingEdge
 import com.spendsense.presentation.util.getCategoryIcon
 import com.spendsense.presentation.util.glassEffect
@@ -87,7 +88,13 @@ fun ChartsScreen(
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, Color(0xFFF8FAFC)),
+                            colorStops = arrayOf(
+                                0.0f to Color(0x00F8FAFC),
+                                0.35f to Color(0x26F8FAFC),
+                                0.70f to Color(0x8CF8FAFC),
+                                0.90f to Color(0xDEF8FAFC),
+                                1.0f to Color(0xFFF8FAFC)
+                            ),
                             startY = 0f,
                             endY = with(LocalDensity.current) { (statusBarPadding + 260.dp).toPx() }
                         )
@@ -222,7 +229,7 @@ private fun MonthTotalCard(
                     text = monthLabel,
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Medium,
-                    color = Color(0xFF0284C7),
+                    color = CyberBlue,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -245,7 +252,7 @@ private fun MonthTotalCard(
                 text = formatAmount(thisMonth, currency),
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF0F172A),
+                color = Color.White,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -260,7 +267,7 @@ private fun MonthTotalCard(
                     text = deltaLabel,
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Medium,
-                    color = if (lastMonth > 0) deltaColor else Color(0xFF64748B)
+                    color = if (lastMonth > 0) deltaColor else Color.White.copy(alpha = 0.75f)
                 )
             }
         }
@@ -296,7 +303,7 @@ private fun DailyAverageCard(
                     text = "Daily Average",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Medium,
-                    color = Color(0xFF0284C7)
+                    color = CyberBlue
                 )
                 Box(
                     modifier = Modifier
@@ -317,7 +324,7 @@ private fun DailyAverageCard(
                 text = formatAmount(dailyAverage, currency),
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF0F172A),
+                color = Color.White,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -332,7 +339,7 @@ private fun DailyAverageCard(
                     text = deltaLabel,
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Medium,
-                    color = if (lastMonthDailyAverage > 0) deltaColor else Color(0xFF64748B)
+                    color = if (lastMonthDailyAverage > 0) deltaColor else Color.White.copy(alpha = 0.75f)
                 )
             }
         }
@@ -352,7 +359,7 @@ private fun TopCategoryCard(
                 text = "Top Category",
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Medium,
-                color = Color(0xFF0284C7)
+                color = CyberBlue
             )
             if (category != null) {
                 Row(
@@ -380,7 +387,7 @@ private fun TopCategoryCard(
                             text = category.name,
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF0F172A),
+                            color = Color.White,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -388,7 +395,7 @@ private fun TopCategoryCard(
                             text = formatAmount(amount, currency),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF0F172A),
+                            color = Color.White,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -396,7 +403,7 @@ private fun TopCategoryCard(
                     Icon(
                         Icons.Rounded.ChevronRight,
                         contentDescription = null,
-                        tint = Color(0xFF94A3B8),
+                        tint = Color.White.copy(alpha = 0.70f),
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -420,7 +427,7 @@ private fun BiggestTransactionCard(
                 text = "Biggest Spend",
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Medium,
-                color = Color(0xFF0284C7)
+                color = CyberBlue
             )
             if (transaction != null) {
                 Row(
@@ -449,7 +456,7 @@ private fun BiggestTransactionCard(
                             text = transaction.merchant,
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF0F172A),
+                            color = Color.White,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -457,7 +464,7 @@ private fun BiggestTransactionCard(
                             text = formatAmount(transaction.amount, transaction.currencyCode),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF0F172A),
+                            color = Color.White,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -465,7 +472,7 @@ private fun BiggestTransactionCard(
                     Icon(
                         Icons.Rounded.ChevronRight,
                         contentDescription = null,
-                        tint = Color(0xFF94A3B8),
+                        tint = Color.White.copy(alpha = 0.70f),
                         modifier = Modifier.size(18.dp)
                     )
                 }

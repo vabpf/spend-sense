@@ -77,7 +77,13 @@ fun WhitelistedAppsScreen(
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, Color(0xFFF8FAFC)),
+                            colorStops = arrayOf(
+                                0.0f to Color(0x00F8FAFC),
+                                0.35f to Color(0x26F8FAFC),
+                                0.70f to Color(0x8CF8FAFC),
+                                0.90f to Color(0xDEF8FAFC),
+                                1.0f to Color(0xFFF8FAFC)
+                            ),
                             startY = 0f,
                             endY = headerBottomPx
                         )
