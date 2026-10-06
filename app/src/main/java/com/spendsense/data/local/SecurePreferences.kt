@@ -125,11 +125,11 @@ open class SecurePreferences @Inject constructor(
         return prefs.getString("daily_report_time", "20:00") ?: "20:00"
     }
 
-    private val _backgroundThemeFlow = MutableStateFlow(getBackgroundTheme())
-    val backgroundThemeFlow: StateFlow<String> = _backgroundThemeFlow.asStateFlow()
+    private val _backgroundThemeFlow by lazy { MutableStateFlow(getBackgroundTheme()) }
+    val backgroundThemeFlow: StateFlow<String> get() = _backgroundThemeFlow.asStateFlow()
 
-    private val _customBackgroundPathFlow = MutableStateFlow(getCustomBackgroundPath())
-    val customBackgroundPathFlow: StateFlow<String?> = _customBackgroundPathFlow.asStateFlow()
+    private val _customBackgroundPathFlow by lazy { MutableStateFlow(getCustomBackgroundPath()) }
+    val customBackgroundPathFlow: StateFlow<String?> get() = _customBackgroundPathFlow.asStateFlow()
 
     fun getBackgroundTheme(): String {
         return prefs.getString("background_theme", "CYBERPUNK_DEFAULT") ?: "CYBERPUNK_DEFAULT"
