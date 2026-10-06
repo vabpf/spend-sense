@@ -52,6 +52,16 @@ fun CropBackgroundDialog(
 
     var viewportSize by remember { mutableStateOf(IntSize.Zero) }
 
+    val currentBitmap = remember(sourceBitmap, rotation) {
+        val normRot = ((rotation % 360f) + 360f) % 360f
+        if (normRot == 0f) {
+            sourceBitmap
+        } else {
+            val matrix = android.graphics.Matrix().apply { postRotate(normRot) }
+            Bitmap.createBitmap(sourceBitmap, 0, 0, sourceBitmap.width, sourceBitmap.height, matrix, true)
+        }
+    }
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
@@ -145,26 +155,37 @@ fun CropBackgroundDialog(
                         .border(2.dp, CyberBlue, RoundedCornerShape(24.dp))
                         .background(Color.Black)
                         .onSizeChanged { viewportSize = it }
-                        .pointerInput(rotation) {
+                        .pointerInput(currentBitmap) {
                             detectTransformGestures { _, pan, zoom, _ ->
-                                scale = (scale * zoom).coerceIn(1f, 5f)
-                                val maxPanX = (viewportSize.width * (scale - 1f) / 2f).coerceAtLeast(0f)
-                                val maxPanY = (viewportSize.height * (scale - 1f) / 2f).coerceAtLeast(0f)
+                                val newScale = (scale * zoom).coerceIn(1f, 5f)
+                                scale = newScale
+
+                                val vpW = viewportSize.width.toFloat().coerceAtLeast(1f)
+                                val vpH = viewportSize.height.toFloat().coerceAtLeast(1f)
+                                val srcW = currentBitmap.width.toFloat().coerceAtLeast(1f)
+                                val srcH = currentBitmap.height.toFloat().coerceAtLeast(1f)
+
+                                val curBaseScale = max(vpW / srcW, vpH / srcH)
+                                val curDisplayedW = srcW * curBaseScale * newScale
+                                val curDisplayedH = srcH * curBaseScale * newScale
+
+                                val maxPanX = ((curDisplayedW - vpW) / 2f).coerceAtLeast(0f)
+                                val maxPanY = ((curDisplayedH - vpH) / 2f).coerceAtLeast(0f)
+
                                 offsetX = (offsetX + pan.x).coerceIn(-maxPanX, maxPanX)
                                 offsetY = (offsetY + pan.y).coerceIn(-maxPanY, maxPanY)
                             }
                         },
                     contentAlignment = Alignment.Center
                 ) {
-                    val imageBitmap = remember(sourceBitmap) { sourceBitmap.asImageBitmap() }
+                    val currentImageBitmap = remember(currentBitmap) { currentBitmap.asImageBitmap() }
 
                     Image(
-                        bitmap = imageBitmap,
+                        bitmap = currentImageBitmap,
                         contentDescription = "Wallpaper preview",
                         modifier = Modifier
                             .fillMaxSize()
                             .graphicsLayer {
-                                rotationZ = rotation
                                 scaleX = scale
                                 scaleY = scale
                                 translationX = offsetX
@@ -199,9 +220,8 @@ fun CropBackgroundDialog(
                             val vpW = viewportSize.width.toFloat().coerceAtLeast(1f)
                             val vpH = viewportSize.height.toFloat().coerceAtLeast(1f)
 
-                            val isTransposed = (rotation.toInt() % 180 != 0)
-                            val srcW = if (isTransposed) sourceBitmap.height.toFloat() else sourceBitmap.width.toFloat()
-                            val srcH = if (isTransposed) sourceBitmap.width.toFloat() else sourceBitmap.height.toFloat()
+                            val srcW = currentBitmap.width.toFloat().coerceAtLeast(1f)
+                            val srcH = currentBitmap.height.toFloat().coerceAtLeast(1f)
 
                             // Compute scale ratio matching ContentScale.Crop
                             val baseScale = max(vpW / srcW, vpH / srcH)

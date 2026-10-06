@@ -427,10 +427,10 @@ class MainActivity : ComponentActivity() {
                                     .padding(horizontal = 48.dp, vertical = 12.dp)
                                     .offset(y = (-16).dp)
                                     .shadow(
-                                        elevation = 22.dp,
+                                        elevation = 8.dp,
                                         shape = RoundedCornerShape(999.dp),
-                                        ambientColor = Color.Black.copy(alpha = 0.25f),
-                                        spotColor = Color.Black.copy(alpha = 0.18f)
+                                        ambientColor = Color.Black.copy(alpha = 0.04f),
+                                        spotColor = Color.Black.copy(alpha = 0.08f)
                                     )
                                     .glassEffect(
                                         shape = RoundedCornerShape(999.dp),

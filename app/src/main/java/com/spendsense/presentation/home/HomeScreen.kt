@@ -361,10 +361,10 @@ fun HomeScreen(
                     .offset(y = (-90).dp)
                     .size(54.dp)
                     .shadow(
-                        elevation = 8.dp,
+                        elevation = 6.dp,
                         shape = CircleShape,
-                        ambientColor = Color.Black.copy(alpha = 0.25f),
-                        spotColor = Color.Black.copy(alpha = 0.20f)
+                        ambientColor = Color.Black.copy(alpha = 0.04f),
+                        spotColor = Color.Black.copy(alpha = 0.08f)
                     )
                     .background(
                         Brush.linearGradient(listOf(CyberBlue, Color(0xFF00C6FF))),

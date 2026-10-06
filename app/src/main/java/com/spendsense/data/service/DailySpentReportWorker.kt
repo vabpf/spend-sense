@@ -54,12 +54,16 @@ class DailySpentReportWorker(
         calendar.set(Calendar.SECOND, 0)
         calendar.set(Calendar.MILLISECOND, 0)
         val startOfDay = calendar.timeInMillis
-        val endOfDay = startOfDay + 24 * 60 * 60 * 1000 - 1
+        calendar.add(Calendar.DAY_OF_YEAR, 1)
+        val endOfDay = calendar.timeInMillis - 1
 
         val transactions = transactionDao.getByDateRangeFlow(startOfDay, endOfDay).first()
         
         postReportNotification(appContext, transactions)
         
+        // Re-schedule next execution for tomorrow's target local time so it never drifts
+        schedule(appContext, securePreferences.getDailyReportTime(), true)
+
         return Result.success()
     }
 
@@ -177,10 +181,12 @@ class DailySpentReportWorker(
     }
 
     companion object {
+        const val WORK_NAME = "daily_spent_report_work"
+
         fun schedule(context: Context, timeStr: String, enabled: Boolean) {
             val workManager = androidx.work.WorkManager.getInstance(context)
             if (!enabled) {
-                workManager.cancelUniqueWork("daily_spent_report_work")
+                workManager.cancelUniqueWork(WORK_NAME)
                 return
             }
 
@@ -190,13 +196,13 @@ class DailySpentReportWorker(
 
             val delay = calculateDelay(targetHour, targetMinute)
 
-            val workRequest = androidx.work.PeriodicWorkRequestBuilder<DailySpentReportWorker>(24, TimeUnit.HOURS)
+            val workRequest = androidx.work.OneTimeWorkRequestBuilder<DailySpentReportWorker>()
                 .setInitialDelay(delay, TimeUnit.MILLISECONDS)
                 .build()
 
-            workManager.enqueueUniquePeriodicWork(
-                "daily_spent_report_work",
-                androidx.work.ExistingPeriodicWorkPolicy.UPDATE,
+            workManager.enqueueUniqueWork(
+                WORK_NAME,
+                androidx.work.ExistingWorkPolicy.REPLACE,
                 workRequest
             )
         }
@@ -209,8 +215,8 @@ class DailySpentReportWorker(
                 set(Calendar.SECOND, 0)
                 set(Calendar.MILLISECOND, 0)
             }
-            if (dueDate.before(currentDate)) {
-                dueDate.add(Calendar.HOUR_OF_DAY, 24)
+            if (!dueDate.after(currentDate)) {
+                dueDate.add(Calendar.DAY_OF_YEAR, 1)
             }
             return dueDate.timeInMillis - currentDate.timeInMillis
         }

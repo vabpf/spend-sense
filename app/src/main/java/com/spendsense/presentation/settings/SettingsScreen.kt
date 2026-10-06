@@ -245,26 +245,38 @@ fun SettingsScreen(
                         if (state.isDailyReportEnabled) {
                             HorizontalDivider(color = Color(0xFFF1F5F9))
 
+                            val formattedDisplayTime = remember(state.dailyReportTime) {
+                                val parts = state.dailyReportTime.split(":")
+                                val hour = parts.getOrNull(0)?.toIntOrNull() ?: 20
+                                val minute = parts.getOrNull(1)?.toIntOrNull() ?: 0
+                                val cal = java.util.Calendar.getInstance().apply {
+                                    set(java.util.Calendar.HOUR_OF_DAY, hour)
+                                    set(java.util.Calendar.MINUTE, minute)
+                                }
+                                android.text.format.DateFormat.getTimeFormat(context).format(cal.time)
+                            }
+
                             SettingsItem(
                                 icon = Icons.Rounded.Schedule,
                                 title = "Report Delivery Time",
-                                description = "Scheduled at ${state.dailyReportTime}",
+                                description = "Scheduled at $formattedDisplayTime",
                                 iconBadgeBg = Color(0xFFFFEDD5),
                                 iconTint = Color(0xFFEA580C),
                                 onClick = {
                                     val parts = state.dailyReportTime.split(":")
                                     val currentHour = parts.getOrNull(0)?.toIntOrNull() ?: 20
                                     val currentMinute = parts.getOrNull(1)?.toIntOrNull() ?: 0
+                                    val is24Hour = android.text.format.DateFormat.is24HourFormat(context)
 
                                     android.app.TimePickerDialog(
                                         context,
                                         { _, hourOfDay, minute ->
-                                            val formattedTime = String.format("%02d:%02d", hourOfDay, minute)
+                                            val formattedTime = String.format(java.util.Locale.US, "%02d:%02d", hourOfDay, minute)
                                             viewModel.updateDailyReportTime(formattedTime, context)
                                         },
                                         currentHour,
                                         currentMinute,
-                                        true
+                                        is24Hour
                                     ).show()
                                 }
                             )
