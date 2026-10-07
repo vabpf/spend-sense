@@ -7,6 +7,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
@@ -17,10 +18,16 @@ import com.spendsense.presentation.util.GlassAlertDialog
 import com.spendsense.presentation.util.getCategoryIcon
 import com.spendsense.presentation.util.parseColor
 
+data class HistoryPaymentSource(
+    val name: String,
+    val type: String = "Manual"
+)
+
 @Composable
 fun AddTransactionDialog(
     categories: List<Category>,
     defaultCurrency: String = "USD",
+    historyPaymentSources: List<HistoryPaymentSource> = emptyList(),
     onDismiss: () -> Unit,
     onConfirm: (amount: Double, currencyCode: String, merchant: String, categoryId: Long, paymentSource: String, paymentSourceType: String) -> Unit
 ) {
@@ -29,8 +36,13 @@ fun AddTransactionDialog(
     var merchant by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf<Category?>(categories.firstOrNull()) }
     var currencyExpanded by remember { mutableStateOf(false) }
-    var paymentSource by remember { mutableStateOf("Manual") }
-    var paymentSourceType by remember { mutableStateOf("Manual") }
+    var paymentSourceExpanded by remember { mutableStateOf(false) }
+    var paymentSource by remember {
+        mutableStateOf(historyPaymentSources.firstOrNull()?.name ?: "Cash")
+    }
+    var paymentSourceType by remember {
+        mutableStateOf(historyPaymentSources.firstOrNull()?.type ?: "Manual")
+    }
 
     GlassAlertDialog(
         onDismissRequest = onDismiss,
@@ -88,13 +100,126 @@ fun AddTransactionDialog(
                     singleLine = true
                 )
 
-                OutlinedTextField(
-                    value = paymentSource,
-                    onValueChange = { paymentSource = it },
-                    label = { Text("Payment Source Identifier") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
+                Text("Payment Source", style = MaterialTheme.typography.titleSmall)
+
+                // Quick select history sources or + New
+                if (historyPaymentSources.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        historyPaymentSources.forEach { history ->
+                            val isSelected = paymentSource.equals(history.name, ignoreCase = true)
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = {
+                                    paymentSource = history.name
+                                    if (history.type.isNotBlank()) {
+                                        paymentSourceType = history.type
+                                    }
+                                },
+                                label = { Text(history.name) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    containerColor = Color(0xFFF8FAFC),
+                                    labelColor = Color(0xFF475569),
+                                    selectedContainerColor = Color(0xFFE0F2FE),
+                                    selectedLabelColor = Color(0xFF0369A1)
+                                ),
+                                border = FilterChipDefaults.filterChipBorder(
+                                    enabled = true,
+                                    selected = isSelected,
+                                    borderColor = Color(0xFFE2E8F0),
+                                    selectedBorderColor = Color(0xFF0284C7)
+                                )
+                            )
+                        }
+
+                        val isNewCustom = historyPaymentSources.none { it.name.equals(paymentSource.trim(), ignoreCase = true) }
+                        FilterChip(
+                            selected = isNewCustom,
+                            onClick = {
+                                paymentSource = ""
+                            },
+                            label = { Text("+ New") },
+                            colors = FilterChipDefaults.filterChipColors(
+                                containerColor = Color(0xFFF8FAFC),
+                                labelColor = Color(0xFF475569),
+                                selectedContainerColor = Color(0xFFE0F2FE),
+                                selectedLabelColor = Color(0xFF0369A1)
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = isNewCustom,
+                                borderColor = Color(0xFFE2E8F0),
+                                selectedBorderColor = Color(0xFF0284C7)
+                            )
+                        )
+                    }
+                }
+
+                ExposedDropdownMenuBox(
+                    expanded = paymentSourceExpanded,
+                    onExpandedChange = { paymentSourceExpanded = !paymentSourceExpanded }
+                ) {
+                    OutlinedTextField(
+                        value = paymentSource,
+                        onValueChange = {
+                            paymentSource = it
+                            val match = historyPaymentSources.find { h -> h.name.equals(it.trim(), ignoreCase = true) }
+                            if (match != null && match.type.isNotBlank()) {
+                                paymentSourceType = match.type
+                            }
+                        },
+                        label = { Text("Payment Source Identifier") },
+                        placeholder = { Text("e.g. Cash, Momo, Chase") },
+                        trailingIcon = {
+                            if (historyPaymentSources.isNotEmpty()) {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = paymentSourceExpanded)
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(),
+                        singleLine = true
+                    )
+
+                    if (historyPaymentSources.isNotEmpty()) {
+                        ExposedDropdownMenu(
+                            expanded = paymentSourceExpanded,
+                            onDismissRequest = { paymentSourceExpanded = false }
+                        ) {
+                            historyPaymentSources.forEach { history ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(history.name, style = MaterialTheme.typography.bodyMedium)
+                                            Spacer(Modifier.width(16.dp))
+                                            Text(
+                                                history.type,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = Color(0xFF64748B)
+                                            )
+                                        }
+                                    },
+                                    onClick = {
+                                        paymentSource = history.name
+                                        if (history.type.isNotBlank()) {
+                                            paymentSourceType = history.type
+                                        }
+                                        paymentSourceExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
 
                 Text("Payment Source Type", style = MaterialTheme.typography.titleSmall)
 
@@ -172,10 +297,10 @@ fun AddTransactionDialog(
                             onConfirm(
                                 amountDouble!!,
                                 currency,
-                                merchant,
+                                merchant.trim(),
                                 category.id,
-                                paymentSource.trim(),
-                                paymentSourceType.trim()
+                                paymentSource.trim().ifBlank { "Manual" },
+                                paymentSourceType.trim().ifBlank { "Manual" }
                             )
                         }
                     }
