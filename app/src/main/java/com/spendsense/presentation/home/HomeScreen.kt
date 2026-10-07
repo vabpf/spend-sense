@@ -1,6 +1,11 @@
 @file:OptIn(ExperimentalMaterial3Api::class)
 package com.spendsense.presentation.home
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -577,6 +582,117 @@ fun HomeScreen(
                     }
                 }
 
+                // Selection toolbar placed at the top of the transaction items
+                AnimatedVisibility(
+                    visible = selectedTransactionIds.isNotEmpty(),
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut()
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 6.dp)
+                            .shadow(
+                                elevation = 6.dp,
+                                shape = RoundedCornerShape(20.dp),
+                                ambientColor = Color.Black.copy(alpha = 0.12f),
+                                spotColor = Color.Black.copy(alpha = 0.08f)
+                            )
+                            .background(
+                                color = Color.White,
+                                shape = RoundedCornerShape(20.dp)
+                            )
+                            .padding(horizontal = 16.dp, vertical = 10.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                IconButton(
+                                    onClick = { selectedTransactionIds = emptySet() },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Close,
+                                        contentDescription = "Cancel selection",
+                                        tint = Color(0xFF64748B),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                                Column(
+                                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    Text(
+                                        text = "${selectedTransactionIds.size} Selected",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color(0xFF64748B),
+                                        fontWeight = FontWeight.Normal
+                                    )
+                                    Text(
+                                        text = "Total: ${formatCurrency(selectedTotalAmount, defaultCurrency)}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color(0xFF0284C7)
+                                    )
+                                }
+                            }
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                val allVisibleSelected = filteredTransactions.all { selectedTransactionIds.contains(it.id) }
+                                IconButton(
+                                    onClick = {
+                                        selectedTransactionIds = if (allVisibleSelected) {
+                                            emptySet()
+                                        } else {
+                                            filteredTransactions.map { it.id }.toSet()
+                                        }
+                                    },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (allVisibleSelected) Icons.Rounded.Deselect else Icons.Rounded.SelectAll,
+                                        contentDescription = if (allVisibleSelected) "Deselect all" else "Select all",
+                                        tint = Color(0xFF0284C7),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+
+                                IconButton(
+                                    onClick = { showBatchEditDialog = true },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Edit,
+                                        contentDescription = "Edit selection",
+                                        tint = Color(0xFF0284C7),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+
+                                IconButton(
+                                    onClick = { showDeleteConfirmation = true },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Delete,
+                                        contentDescription = "Delete selected",
+                                        tint = NeonRose,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Scrollable transactions dissolving when scrolled up under the pinned chips
                 LazyColumn(
                     state = listState,
@@ -839,113 +955,6 @@ fun HomeScreen(
             }
         }
 
-        // Floating selection toolbar
-            if (selectedTransactionIds.isNotEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = statusBarPadding + 8.dp, start = 16.dp, end = 16.dp)
-                        .fillMaxWidth()
-                        .shadow(
-                            elevation = 8.dp,
-                            shape = RoundedCornerShape(20.dp),
-                            ambientColor = Color.Black.copy(alpha = 0.15f),
-                            spotColor = Color.Black.copy(alpha = 0.10f)
-                        )
-                        .background(
-                            color = Color.White,
-                            shape = RoundedCornerShape(20.dp)
-                        )
-                        .padding(horizontal = 16.dp, vertical = 10.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            IconButton(
-                                onClick = { selectedTransactionIds = emptySet() },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Close,
-                                    contentDescription = "Cancel selection",
-                                    tint = Color(0xFF64748B),
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                            Column(
-                                verticalArrangement = Arrangement.spacedBy(2.dp)
-                            ) {
-                                Text(
-                                    text = "${selectedTransactionIds.size} Selected",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color(0xFF64748B),
-                                    fontWeight = FontWeight.Normal
-                                )
-                                Text(
-                                    text = "Total: ${formatCurrency(selectedTotalAmount, defaultCurrency)}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = CyberBlue
-                                )
-                            }
-                        }
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            val allVisibleSelected = filteredTransactions.all { selectedTransactionIds.contains(it.id) }
-                            IconButton(
-                                onClick = {
-                                    selectedTransactionIds = if (allVisibleSelected) {
-                                        emptySet()
-                                    } else {
-                                        filteredTransactions.map { it.id }.toSet()
-                                    }
-                                },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(
-                                    imageVector = if (allVisibleSelected) Icons.Rounded.Deselect else Icons.Rounded.SelectAll,
-                                    contentDescription = if (allVisibleSelected) "Deselect all" else "Select all",
-                                    tint = CyberBlue,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-
-                            IconButton(
-                                onClick = { showBatchEditDialog = true },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Edit,
-                                    contentDescription = "Edit selection",
-                                    tint = CyberBlue,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-
-                            IconButton(
-                                onClick = { showDeleteConfirmation = true },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Delete,
-                                    contentDescription = "Delete selected",
-                                    tint = NeonRose,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
         }
     }
 
