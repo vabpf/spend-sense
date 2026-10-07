@@ -89,6 +89,7 @@ import com.spendsense.R
 import com.spendsense.presentation.theme.NeonRose
 import com.spendsense.presentation.util.LocalBackdrop
 import com.spendsense.presentation.util.glassEffect
+import com.spendsense.presentation.util.softDropShadow
 import com.spendsense.presentation.whitelistedapps.WhitelistedAppsScreen
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
@@ -452,11 +453,17 @@ class MainActivity : ComponentActivity() {
                                     .fillMaxWidth()
                                     .padding(horizontal = 48.dp, vertical = 12.dp)
                                     .offset(y = (-16).dp)
-                                    .shadow(
-                                        elevation = 12.dp,
+                                    .softDropShadow(
                                         shape = RoundedCornerShape(999.dp),
-                                        ambientColor = Color.Black.copy(alpha = 0.14f),
-                                        spotColor = Color.Black.copy(alpha = 0.12f)
+                                        color = Color.Black.copy(alpha = 0.20f),
+                                        blur = 18.dp,
+                                        offsetY = 6.dp
+                                    )
+                                    .shadow(
+                                        elevation = 16.dp,
+                                        shape = RoundedCornerShape(999.dp),
+                                        ambientColor = Color.Black,
+                                        spotColor = Color.Black
                                     )
                                     .glassEffect(
                                         shape = RoundedCornerShape(999.dp),

@@ -22,6 +22,12 @@ import com.kyant.backdrop.effects.vibrancy
 import com.spendsense.presentation.theme.CyberBlue
 import com.spendsense.presentation.theme.GlassSurface
 import androidx.compose.ui.composed
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.asAndroidPath
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
+import android.graphics.Paint as AndroidPaint
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -255,6 +261,51 @@ fun Modifier.neonGlow(
             )
         )
     )
+
+/**
+ * Applies a true Gaussian soft drop shadow behind the element using hardware-accelerated Skia blur.
+ * Unlike native RenderNode elevation, this renders a guaranteed, visible, customizable soft shadow
+ * that does not rely on ambient/spot alpha attenuation or opaque background constraints.
+ */
+fun Modifier.softDropShadow(
+    shape: Shape,
+    color: Color = Color.Black.copy(alpha = 0.18f),
+    blur: Dp = 16.dp,
+    offsetY: Dp = 4.dp,
+    offsetX: Dp = 0.dp
+): Modifier = this.drawBehind {
+    val blurPx = blur.toPx()
+    if (blurPx <= 0f) return@drawBehind
+    drawIntoCanvas { canvas ->
+        val nativePaint = AndroidPaint(AndroidPaint.ANTI_ALIAS_FLAG).apply {
+            this.color = android.graphics.Color.argb(1, 0, 0, 0)
+            setShadowLayer(
+                blurPx,
+                offsetX.toPx(),
+                offsetY.toPx(),
+                color.toArgb()
+            )
+        }
+        val outline = shape.createOutline(size, layoutDirection, this)
+        when (outline) {
+            is Outline.Rectangle -> {
+                val r = outline.rect
+                canvas.nativeCanvas.drawRect(r.left, r.top, r.right, r.bottom, nativePaint)
+            }
+            is Outline.Rounded -> {
+                val rr = outline.roundRect
+                canvas.nativeCanvas.drawRoundRect(
+                    rr.left, rr.top, rr.right, rr.bottom,
+                    rr.topLeftCornerRadius.x, rr.topLeftCornerRadius.y,
+                    nativePaint
+                )
+            }
+            is Outline.Generic -> {
+                canvas.nativeCanvas.drawPath(outline.path.asAndroidPath(), nativePaint)
+            }
+        }
+    }
+}
 
 /**
  * GLASS CARD - full glassmorphism with optional border

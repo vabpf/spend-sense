@@ -63,6 +63,7 @@ import com.spendsense.presentation.util.prismEdge
 import com.spendsense.presentation.util.parseColor
 import com.spendsense.presentation.util.bounceClickable
 import com.spendsense.presentation.util.combinedBounceClickable
+import com.spendsense.presentation.util.softDropShadow
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.layout.ContentScale
@@ -379,11 +380,23 @@ fun HomeScreen(
                 modifier = Modifier
                     .offset(y = (-90).dp)
                     .size(54.dp)
-                    .shadow(
-                        elevation = 8.dp,
+                    .softDropShadow(
                         shape = CircleShape,
-                        ambientColor = Color.Black.copy(alpha = 0.16f),
-                        spotColor = Color.Black.copy(alpha = 0.14f)
+                        color = Color.Black.copy(alpha = 0.22f),
+                        blur = 12.dp,
+                        offsetY = 5.dp
+                    )
+                    .softDropShadow(
+                        shape = CircleShape,
+                        color = CyberBlue.copy(alpha = 0.35f),
+                        blur = 14.dp,
+                        offsetY = 2.dp
+                    )
+                    .shadow(
+                        elevation = 10.dp,
+                        shape = CircleShape,
+                        ambientColor = Color.Black,
+                        spotColor = Color.Black
                     )
                     .background(
                         Brush.linearGradient(listOf(CyberBlue, Color(0xFF00C6FF))),

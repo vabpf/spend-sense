@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Shadow
 import com.spendsense.presentation.util.SpendSenseTopBar
 import com.spendsense.presentation.util.glassEffect
+import com.spendsense.presentation.util.softDropShadow
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.draw.shadow
@@ -86,11 +87,23 @@ fun NotificationPatternsScreen(
                 modifier = Modifier
                     .offset(y = (-20).dp)
                     .size(56.dp)
-                    .shadow(
-                        elevation = 8.dp,
+                    .softDropShadow(
                         shape = CircleShape,
-                        ambientColor = Color.Black.copy(alpha = 0.16f),
-                        spotColor = Color.Black.copy(alpha = 0.14f)
+                        color = Color.Black.copy(alpha = 0.22f),
+                        blur = 12.dp,
+                        offsetY = 5.dp
+                    )
+                    .softDropShadow(
+                        shape = CircleShape,
+                        color = CyberBlue.copy(alpha = 0.35f),
+                        blur = 14.dp,
+                        offsetY = 2.dp
+                    )
+                    .shadow(
+                        elevation = 10.dp,
+                        shape = CircleShape,
+                        ambientColor = Color.Black,
+                        spotColor = Color.Black
                     )
                     .background(
                         Brush.linearGradient(listOf(CyberBlue, Color(0xFF00C6FF))),
