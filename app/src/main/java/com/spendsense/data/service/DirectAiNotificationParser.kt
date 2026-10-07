@@ -26,6 +26,7 @@ data class DirectAiParseResult(
     val currency: String = "USD",
     val merchant: String = "Unknown",
     val paymentSource: String = "",
+    val paymentSourceType: String = "Bank Account",
     val categoryName: String? = null,
     val regex: String? = null
 )
@@ -149,6 +150,9 @@ Notification Text: "$text"
 Available Expense Categories:
 $catListStr
 
+Allowed Payment Source Types:
+Bank Account, Credit Card, Debit Card, Wallet
+
 Requirements:
 1. Determine if this notification describes an actual financial expenditure/payment/purchase/money-transfer (true) or non-financial alert/OTP/marketing/spam/balance-inquiry (false).
 2. If true:
@@ -156,6 +160,7 @@ Requirements:
    - Extract the currency code (e.g. "VND", "USD", "EUR"). Default to "USD" if unspecified.
    - Extract the merchant / recipient name (e.g. "GrabFood", "Target", "Amazon").
    - Extract the account/card identifier (e.g. "x1234", "03xxx589") or empty string if none.
+   - Classify the payment source type strictly into one of the Allowed Payment Source Types above ("Bank Account", "Credit Card", "Debit Card", "Wallet"). Default to "Bank Account" if unspecified or unclear.
    - Select the MOST SUITABLE category strictly from the Available Expense Categories list above.
 3. If false:
    - Set isTransaction to false.
@@ -167,6 +172,7 @@ Return ONLY a single valid JSON object (no markdown, no backticks, no comments):
   "currency": "VND",
   "merchant": "GrabFood",
   "paymentSource": "03xxx589",
+  "paymentSourceType": "Bank Account",
   "category": "Food & Dining"
 }
 """.trimIndent()
@@ -184,6 +190,9 @@ Notification Text: "$text"
 Available Expense Categories:
 $catListStr
 
+Allowed Payment Source Types:
+Bank Account, Credit Card, Debit Card, Wallet
+
 Requirements:
 1. Determine if this notification describes a financial expenditure/payment/purchase/money-transfer (true) or non-financial alert/OTP/marketing/balance-inquiry (false).
 2. If true:
@@ -191,6 +200,7 @@ Requirements:
    - Extract the currency code (e.g. "VND", "USD").
    - Extract the merchant / recipient name.
    - Extract the account / card identifier or empty string.
+   - Classify the payment source type strictly into one of the Allowed Payment Source Types above ("Bank Account", "Credit Card", "Debit Card", "Wallet"). Default to "Bank Account" if unspecified or unclear.
    - Select the best category strictly from the Available Expense Categories list.
    - Generate a resilient Kotlin-compatible regular expression matching this notification template.
      - The regex MUST contain named group (?<amount>...) and named group (?<merchant>...).
@@ -206,6 +216,7 @@ Return ONLY a single valid JSON object (no markdown, no backticks, no comments):
   "currency": "VND",
   "merchant": "GrabFood",
   "paymentSource": "03xxx589",
+  "paymentSourceType": "Bank Account",
   "category": "Food & Dining",
   "regex": "pattern"
 }
@@ -241,6 +252,8 @@ Return ONLY a single valid JSON object (no markdown, no backticks, no comments):
             val currency = json.optString("currency", "USD").takeIf { it.isNotBlank() && it != "null" } ?: "USD"
             val merchant = json.optString("merchant", "Unknown").takeIf { it.isNotBlank() && it != "null" } ?: "Unknown"
             val paymentSource = json.optString("paymentSource", "").takeIf { it != "null" } ?: ""
+            val rawPaymentSourceType = json.optString("paymentSourceType", "").takeIf { it.isNotBlank() && it != "null" } ?: ""
+            val paymentSourceType = normalizePaymentSourceType(rawPaymentSourceType)
             val category = json.optString("category", null)?.takeIf { it.isNotBlank() && it != "null" }
             val regex = json.optString("regex", null)?.takeIf { it.isNotBlank() && it != "null" }
 
@@ -250,12 +263,25 @@ Return ONLY a single valid JSON object (no markdown, no backticks, no comments):
                 currency = currency,
                 merchant = merchant,
                 paymentSource = paymentSource,
+                paymentSourceType = paymentSourceType,
                 categoryName = category,
                 regex = regex
             )
         } catch (e: Exception) {
             Log.e(TAG, "Failed to parse AI JSON response: $response", e)
             return null
+        }
+    }
+
+    private fun normalizePaymentSourceType(raw: String): String {
+        val trimmed = raw.trim()
+        return when {
+            trimmed.equals("Credit Card", ignoreCase = true) || trimmed.contains("credit", ignoreCase = true) -> "Credit Card"
+            trimmed.equals("Debit Card", ignoreCase = true) || trimmed.contains("debit", ignoreCase = true) -> "Debit Card"
+            trimmed.equals("Wallet", ignoreCase = true) || trimmed.contains("wallet", ignoreCase = true) || trimmed.contains("ví", ignoreCase = true) -> "Wallet"
+            trimmed.equals("Manual", ignoreCase = true) -> "Manual"
+            trimmed.equals("Bank Account", ignoreCase = true) || trimmed.contains("bank", ignoreCase = true) || trimmed.contains("account", ignoreCase = true) || trimmed.contains("tài khoản", ignoreCase = true) -> "Bank Account"
+            else -> "Bank Account"
         }
     }
 

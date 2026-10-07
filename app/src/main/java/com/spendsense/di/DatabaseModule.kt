@@ -2,6 +2,8 @@ package com.spendsense.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.RoomDatabase
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.spendsense.data.local.SpendSenseDatabase
 import com.spendsense.data.local.dao.*
 import dagger.Module
@@ -26,6 +28,32 @@ object DatabaseModule {
             .enableMultiInstanceInvalidation()
             .fallbackToDestructiveMigration()
             .fallbackToDestructiveMigrationOnDowngrade()
+            .addCallback(object : RoomDatabase.Callback() {
+                override fun onOpen(db: SupportSQLiteDatabase) {
+                    super.onOpen(db)
+                    try {
+                        db.execSQL(
+                            """
+                            UPDATE transactions 
+                            SET notes = CASE 
+                                WHEN notes IS NULL OR notes = '' THEN paymentSourceType 
+                                ELSE notes || ' • ' || paymentSourceType 
+                            END,
+                            paymentSourceType = 'Bank Account'
+                            WHERE paymentSourceType IN ('AI Detected', 'AI Learned')
+                            """.trimIndent()
+                        )
+                        db.execSQL(
+                            """
+                            UPDATE notification_patterns 
+                            SET paymentSourceType = 'Bank Account' 
+                            WHERE paymentSourceType IN ('AI Detected', 'AI Learned')
+                            """.trimIndent()
+                        )
+                    } catch (_: Exception) {
+                    }
+                }
+            })
             .build()
     }
 

@@ -240,6 +240,8 @@ class NotificationProcessorTest {
         assertEquals(ProcessResult.TRANSACTION_CREATED, result)
         assertEquals(150000.0, insertedTransaction?.amount ?: 0.0, 0.001)
         assertEquals("Shopee", insertedTransaction?.merchant)
+        assertEquals("AI Detected", insertedTransaction?.notes)
+        assertEquals("Bank Account", insertedTransaction?.paymentSourceType)
     }
 
     @Test
@@ -333,11 +335,19 @@ class NotificationProcessorTest {
             }
         }
 
+        var insertedTx: Transaction? = null
+        val repo = object : BaseTransactionRepository() {
+            override suspend fun insertTransaction(transaction: Transaction): Long {
+                insertedTx = transaction
+                return 201L
+            }
+        }
+
         val processor = NotificationProcessor(
             context = ContextWrapper(null),
             notificationPatternDao = patternDao,
             rawNotificationDao = BaseRawNotificationDao(),
-            transactionRepository = BaseTransactionRepository(),
+            transactionRepository = repo,
             categoryDao = BaseCategoryDao(),
             merchantCategoryMappingDao = BaseMerchantCategoryMappingDao(),
             whitelistedAppDao = BaseWhitelistedAppDao(),
@@ -356,7 +366,10 @@ class NotificationProcessorTest {
         assertEquals(ProcessResult.TRANSACTION_CREATED, result)
         assertEquals(".*-(?<amount>[0-9,]+)\\s*VND.*", savedPattern?.regex)
         assertEquals("com.grabtaxi.passenger", savedPattern?.packageName)
+        assertEquals("Bank Account", savedPattern?.paymentSourceType)
         assertTrue(savedPattern?.isTransaction == true)
+        assertEquals("AI Learned", insertedTx?.notes)
+        assertEquals("Bank Account", insertedTx?.paymentSourceType)
     }
 
     @Test
@@ -472,6 +485,55 @@ class NotificationProcessorTest {
 
         assertEquals(ProcessResult.INBOX_CREATED, result)
         assertEquals(false, aiWasCalled)
+    }
+
+    @Test
+    fun testProcess_aiPaymentSourceType_allowedTypeAndNotesInTransaction() = runBlocking {
+        val prefs = createFakePreferences(NotificationRoutingMode.AI_ONLY)
+        val aiParser = createFakeAiParser(
+            DirectAiParseResult(
+                isTransaction = true,
+                amount = 45.0,
+                currency = "USD",
+                merchant = "Amazon",
+                paymentSource = "Card 1234",
+                paymentSourceType = "Credit Card",
+                categoryName = "Shopping"
+            )
+        )
+
+        var insertedTransaction: Transaction? = null
+        val repo = object : BaseTransactionRepository() {
+            override suspend fun insertTransaction(transaction: Transaction): Long {
+                insertedTransaction = transaction
+                return 102L
+            }
+        }
+
+        val processor = NotificationProcessor(
+            context = ContextWrapper(null),
+            notificationPatternDao = BaseNotificationPatternDao(),
+            rawNotificationDao = BaseRawNotificationDao(),
+            transactionRepository = repo,
+            categoryDao = BaseCategoryDao(),
+            merchantCategoryMappingDao = BaseMerchantCategoryMappingDao(),
+            whitelistedAppDao = BaseWhitelistedAppDao(),
+            securePreferences = prefs,
+            directAiNotificationParser = aiParser
+        )
+
+        val result = processor.process(
+            packageName = "com.amazon.app",
+            appName = "Amazon",
+            title = "Order Shipped",
+            text = "Your card was charged $45.00",
+            timestamp = System.currentTimeMillis()
+        )
+
+        assertEquals(ProcessResult.TRANSACTION_CREATED, result)
+        assertEquals(45.0, insertedTransaction?.amount ?: 0.0, 0.001)
+        assertEquals("Credit Card", insertedTransaction?.paymentSourceType)
+        assertEquals("AI Detected", insertedTransaction?.notes)
     }
 }
 

@@ -478,6 +478,19 @@ class NotificationProcessor @Inject constructor(
                 ?: 1L
         }
 
+        val isAiLegacy = paymentSourceType in setOf("AI Detected", "AI Learned")
+        val safePaymentSourceType = if (isAiLegacy) {
+            resolveAllowedPaymentSourceType(
+                packageName = packageName,
+                paymentSource = paymentSource,
+                aiSuggestedType = null,
+                textCandidates = listOf(notificationTitle, notificationText)
+            )
+        } else {
+            paymentSourceType
+        }
+        val safeNotes = if (isAiLegacy) paymentSourceType else null
+
         val transactionId = transactionRepository.insertTransaction(
             Transaction(
                 amount = amount,
@@ -487,8 +500,9 @@ class NotificationProcessor @Inject constructor(
                 timestamp = timestamp,
                 sourcePackageName = packageName,
                 sourceAppName = appName,
+                notes = safeNotes,
                 paymentSource = paymentSource,
-                paymentSourceType = paymentSourceType,
+                paymentSourceType = safePaymentSourceType,
                 patternId = patternId
             )
         )
@@ -506,6 +520,61 @@ class NotificationProcessor @Inject constructor(
         )
     }
 
+    private val ALLOWED_PAYMENT_SOURCE_TYPES = setOf("Bank Account", "Credit Card", "Debit Card", "Wallet", "Manual")
+
+    private fun resolveAllowedPaymentSourceType(
+        packageName: String,
+        paymentSource: String,
+        aiSuggestedType: String?,
+        textCandidates: List<String>
+    ): String {
+        val existingPatterns = try {
+            notificationPatternDao.getAllForPackage(packageName)
+        } catch (_: Exception) {
+            emptyList()
+        }
+
+        if (paymentSource.isNotBlank()) {
+            val matchedPattern = existingPatterns.firstOrNull {
+                it.paymentSource.equals(paymentSource, ignoreCase = true) &&
+                        it.paymentSourceType in ALLOWED_PAYMENT_SOURCE_TYPES &&
+                        it.paymentSourceType !in setOf("AI Detected", "AI Learned")
+            }
+            if (matchedPattern != null) {
+                return matchedPattern.paymentSourceType
+            }
+        }
+
+        val packagePattern = existingPatterns.firstOrNull {
+            it.paymentSourceType in ALLOWED_PAYMENT_SOURCE_TYPES &&
+                    it.paymentSourceType !in setOf("AI Detected", "AI Learned")
+        }
+        if (packagePattern != null && paymentSource.isBlank()) {
+            return packagePattern.paymentSourceType
+        }
+
+        if (!aiSuggestedType.isNullOrBlank()) {
+            val normalizedAi = when {
+                aiSuggestedType.equals("Credit Card", ignoreCase = true) || aiSuggestedType.contains("credit", ignoreCase = true) -> "Credit Card"
+                aiSuggestedType.equals("Debit Card", ignoreCase = true) || aiSuggestedType.contains("debit", ignoreCase = true) -> "Debit Card"
+                aiSuggestedType.equals("Wallet", ignoreCase = true) || aiSuggestedType.contains("wallet", ignoreCase = true) || aiSuggestedType.contains("ví", ignoreCase = true) -> "Wallet"
+                aiSuggestedType.equals("Manual", ignoreCase = true) -> "Manual"
+                aiSuggestedType.equals("Bank Account", ignoreCase = true) || aiSuggestedType.contains("bank", ignoreCase = true) || aiSuggestedType.contains("account", ignoreCase = true) || aiSuggestedType.contains("tài khoản", ignoreCase = true) -> "Bank Account"
+                else -> null
+            }
+            if (normalizedAi != null) return normalizedAi
+        }
+
+        val combinedText = textCandidates.joinToString(" ").lowercase()
+        return when {
+            combinedText.contains("credit") || combinedText.contains("tín dụng") -> "Credit Card"
+            combinedText.contains("debit") || combinedText.contains("ghi nợ") -> "Debit Card"
+            combinedText.contains("ví") || combinedText.contains("wallet") || combinedText.contains("momo") || combinedText.contains("zalopay") || combinedText.contains("shopeepay") || combinedText.contains("apple pay") || combinedText.contains("google pay") -> "Wallet"
+            combinedText.contains("tk") || combinedText.contains("tài khoản") || combinedText.contains("account") || combinedText.contains("bank") || combinedText.contains("ngân hàng") || combinedText.contains("stk") -> "Bank Account"
+            else -> "Bank Account"
+        }
+    }
+
     private suspend fun handleAiTransactionWithPattern(
         aiResult: DirectAiParseResult,
         packageName: String,
@@ -516,6 +585,13 @@ class NotificationProcessor @Inject constructor(
         listener: NotificationPostListener?,
         existingRawNotificationId: Long?
     ) {
+        val resolvedPaymentSourceType = resolveAllowedPaymentSourceType(
+            packageName = packageName,
+            paymentSource = aiResult.paymentSource,
+            aiSuggestedType = aiResult.paymentSourceType,
+            textCandidates = listOfNotNull(cleanTitle, cleanText)
+        )
+
         var savedPatternId: Long? = null
         if (!aiResult.regex.isNullOrBlank()) {
             try {
@@ -524,7 +600,7 @@ class NotificationProcessor @Inject constructor(
                     packageName = packageName,
                     notificationTitle = cleanTitle ?: appName,
                     paymentSource = aiResult.paymentSource,
-                    paymentSourceType = "AI Learned",
+                    paymentSourceType = resolvedPaymentSourceType,
                     regex = aiResult.regex,
                     currencyCode = aiResult.currency.takeIf { it.isNotBlank() } ?: "USD",
                     isTransaction = true,
@@ -548,7 +624,9 @@ class NotificationProcessor @Inject constructor(
             timestamp = timestamp,
             listener = listener,
             existingRawNotificationId = existingRawNotificationId,
-            patternId = savedPatternId
+            patternId = savedPatternId,
+            paymentSourceType = resolvedPaymentSourceType,
+            note = if (savedPatternId != null) "AI Learned" else "AI Detected"
         )
     }
 
@@ -561,7 +639,9 @@ class NotificationProcessor @Inject constructor(
         timestamp: Long,
         listener: NotificationPostListener?,
         existingRawNotificationId: Long?,
-        patternId: Long? = null
+        patternId: Long? = null,
+        paymentSourceType: String? = null,
+        note: String = "AI Detected"
     ) {
         val rawId = if (existingRawNotificationId != null) {
             val existing = rawNotificationDao.getById(existingRawNotificationId)
@@ -599,6 +679,13 @@ class NotificationProcessor @Inject constructor(
             ?: allCategories.firstOrNull()?.id
             ?: 1L
 
+        val finalPaymentSourceType = paymentSourceType ?: resolveAllowedPaymentSourceType(
+            packageName = packageName,
+            paymentSource = aiResult.paymentSource,
+            aiSuggestedType = aiResult.paymentSourceType,
+            textCandidates = listOf(notificationTitle, notificationText)
+        )
+
         val transactionId = transactionRepository.insertTransaction(
             Transaction(
                 amount = aiResult.amount,
@@ -608,8 +695,9 @@ class NotificationProcessor @Inject constructor(
                 timestamp = timestamp,
                 sourcePackageName = packageName,
                 sourceAppName = appName,
+                notes = note,
                 paymentSource = aiResult.paymentSource,
-                paymentSourceType = "AI Detected",
+                paymentSourceType = finalPaymentSourceType,
                 patternId = patternId
             )
         )
