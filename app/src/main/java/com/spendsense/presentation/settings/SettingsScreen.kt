@@ -145,7 +145,6 @@ fun SettingsScreen(
 
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     val headerBottom = statusBarPadding + 74.dp
-    val fadeHeight = 24.dp
     val density = LocalDensity.current
     val headerBottomPx = with(density) { headerBottom.toPx() }
 
@@ -158,7 +157,7 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .padding(bottom = padding.calculateBottomPadding())
         ) {
-            // Background scrim: transparent at top wallpaper, smoothly fades directly from 0 to 100 into #F8FAFC
+            // Background scrim: linear transition from 0% opacity (transparent) to 100% opacity (#F8FAFC)
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -166,9 +165,6 @@ fun SettingsScreen(
                         Brush.verticalGradient(
                             colorStops = arrayOf(
                                 0.0f to Color(0x00F8FAFC),
-                                0.35f to Color(0x26F8FAFC),
-                                0.70f to Color(0x8CF8FAFC),
-                                0.90f to Color(0xDEF8FAFC),
                                 1.0f to Color(0xFFF8FAFC)
                             ),
                             startY = 0f,
@@ -177,18 +173,17 @@ fun SettingsScreen(
                     )
             )
 
-            // Scrollable settings cards with dissolve effect matching the exact background fade position
+            // Scrollable settings cards with matching 0 to 100 opacity dissolve mask over the header
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
                     .fadingEdge(
-                        topFadeStart = headerBottom,
-                        topFadeHeight = fadeHeight
+                        topFadeHeight = headerBottom
                     ),
                 contentPadding = PaddingValues(
                     start = 16.dp,
                     end = 16.dp,
-                    top = headerBottom + fadeHeight + 4.dp,
+                    top = headerBottom + 12.dp,
                     bottom = 120.dp
                 ),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
