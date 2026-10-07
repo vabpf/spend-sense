@@ -89,8 +89,8 @@ fun NotificationPatternsScreen(
                     .shadow(
                         elevation = 8.dp,
                         shape = CircleShape,
-                        ambientColor = Color.Black.copy(alpha = 0.25f),
-                        spotColor = Color.Black.copy(alpha = 0.20f)
+                        ambientColor = Color.Black.copy(alpha = 0.16f),
+                        spotColor = Color.Black.copy(alpha = 0.14f)
                     )
                     .background(
                         Brush.linearGradient(listOf(CyberBlue, Color(0xFF00C6FF))),
