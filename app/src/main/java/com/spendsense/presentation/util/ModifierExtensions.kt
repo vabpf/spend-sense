@@ -61,8 +61,8 @@ object LiquidTokens {
  * Provides a single source of truth for cards, floating bars, dialogs, and controls.
  */
 object FrostGlassDefaults {
-    val containerColor: Color = Color.White.copy(alpha = 0.58f)
-    val liveBlurContainerColor: Color = Color.White.copy(alpha = 0.58f)
+    val containerColor: Color = Color.White.copy(alpha = 0.82f)
+    val liveBlurContainerColor: Color = Color.White.copy(alpha = 0.82f)
     val borderWidth: Dp = 1.dp
     const val borderAlpha: Float = 0.22f
     const val sheenAlpha: Float = 0.10f

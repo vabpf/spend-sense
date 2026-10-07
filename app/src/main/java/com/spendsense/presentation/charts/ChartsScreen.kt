@@ -228,8 +228,8 @@ private fun MonthTotalCard(
                 Text(
                     text = monthLabel,
                     style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = CyberBlue,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF0284C7),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -252,7 +252,7 @@ private fun MonthTotalCard(
                 text = formatAmount(thisMonth, currency),
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = Color(0xFF0F172A),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -267,7 +267,7 @@ private fun MonthTotalCard(
                     text = deltaLabel,
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Medium,
-                    color = if (lastMonth > 0) deltaColor else Color.White.copy(alpha = 0.75f)
+                    color = if (lastMonth > 0) deltaColor else Color(0xFF64748B)
                 )
             }
         }
@@ -302,8 +302,8 @@ private fun DailyAverageCard(
                 Text(
                     text = "Daily Average",
                     style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = CyberBlue
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF0284C7)
                 )
                 Box(
                     modifier = Modifier
@@ -324,7 +324,7 @@ private fun DailyAverageCard(
                 text = formatAmount(dailyAverage, currency),
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = Color(0xFF0F172A),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -339,7 +339,7 @@ private fun DailyAverageCard(
                     text = deltaLabel,
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Medium,
-                    color = if (lastMonthDailyAverage > 0) deltaColor else Color.White.copy(alpha = 0.75f)
+                    color = if (lastMonthDailyAverage > 0) deltaColor else Color(0xFF64748B)
                 )
             }
         }
@@ -358,8 +358,8 @@ private fun TopCategoryCard(
             Text(
                 text = "Top Category",
                 style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Medium,
-                color = CyberBlue
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF0284C7)
             )
             if (category != null) {
                 Row(
@@ -387,7 +387,7 @@ private fun TopCategoryCard(
                             text = category.name,
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color.White,
+                            color = Color(0xFF0F172A),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -395,7 +395,7 @@ private fun TopCategoryCard(
                             text = formatAmount(amount, currency),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White,
+                            color = Color(0xFF0F172A),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -403,7 +403,7 @@ private fun TopCategoryCard(
                     Icon(
                         Icons.Rounded.ChevronRight,
                         contentDescription = null,
-                        tint = Color.White.copy(alpha = 0.70f),
+                        tint = Color(0xFF64748B),
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -426,8 +426,8 @@ private fun BiggestTransactionCard(
             Text(
                 text = "Biggest Spend",
                 style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Medium,
-                color = CyberBlue
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF0284C7)
             )
             if (transaction != null) {
                 Row(
@@ -456,7 +456,7 @@ private fun BiggestTransactionCard(
                             text = transaction.merchant,
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color.White,
+                            color = Color(0xFF0F172A),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -464,7 +464,7 @@ private fun BiggestTransactionCard(
                             text = formatAmount(transaction.amount, transaction.currencyCode),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White,
+                            color = Color(0xFF0F172A),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -472,7 +472,7 @@ private fun BiggestTransactionCard(
                     Icon(
                         Icons.Rounded.ChevronRight,
                         contentDescription = null,
-                        tint = Color.White.copy(alpha = 0.70f),
+                        tint = Color(0xFF64748B),
                         modifier = Modifier.size(18.dp)
                     )
                 }
