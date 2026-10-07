@@ -2025,10 +2025,11 @@ fun TransactionItem(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    val sourceText = if (transaction.paymentSource.equals("Manual", ignoreCase = true)) {
-                        "Manual"
-                    } else {
-                        "${transaction.paymentSourceType} (${transaction.paymentSource})"
+                    val sourceText = when {
+                        transaction.paymentSource.equals("Manual", ignoreCase = true) -> "Manual"
+                        transaction.paymentSource.isBlank() -> transaction.paymentSourceType
+                        transaction.paymentSourceType.isBlank() -> transaction.paymentSource
+                        else -> "${transaction.paymentSourceType} (${transaction.paymentSource})"
                     }
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(5.dp),
@@ -2041,7 +2042,7 @@ fun TransactionItem(
                             color = categoryColor,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false)
+                            modifier = Modifier.widthIn(max = 100.dp)
                         )
                         Text(
                             text = "•",
@@ -2065,8 +2066,7 @@ fun TransactionItem(
                             text = formatTime(transaction.timestamp),
                             style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
                             color = Color(0xFF64748B),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            maxLines = 1
                         )
                     }
                 }

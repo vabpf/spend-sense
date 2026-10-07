@@ -522,7 +522,7 @@ class NotificationProcessor @Inject constructor(
 
     private val ALLOWED_PAYMENT_SOURCE_TYPES = setOf("Bank Account", "Credit Card", "Debit Card", "Wallet", "Manual")
 
-    private fun resolveAllowedPaymentSourceType(
+    private suspend fun resolveAllowedPaymentSourceType(
         packageName: String,
         paymentSource: String,
         aiSuggestedType: String?,
