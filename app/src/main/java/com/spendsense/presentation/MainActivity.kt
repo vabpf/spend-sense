@@ -6,10 +6,13 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Arrangement
@@ -34,9 +37,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -161,6 +167,16 @@ class MainActivity : ComponentActivity() {
         setContent {
             SpendSenseTheme {
                 val navController = rememberNavController()
+                val pagerState = rememberPagerState(initialPage = 0) { 3 }
+                val coroutineScope = rememberCoroutineScope()
+                var homeFilterDate by remember { mutableStateOf<Long?>(null) }
+
+                LaunchedEffect(reviewData) {
+                    if (reviewData != null) {
+                        pagerState.animateScrollToPage(0)
+                    }
+                }
+
                 val backgroundBackdrop = rememberLayerBackdrop()
                 val contentBackdrop = rememberLayerBackdrop()
                 val backgroundTheme by securePreferences.backgroundThemeFlow.collectAsState()
@@ -193,36 +209,30 @@ class MainActivity : ComponentActivity() {
                                     navController = navController,
                                     startDestination = "home",
                                     enterTransition = {
-                                        fadeIn(animationSpec = tween(240, easing = FastOutSlowInEasing)) +
-                                            slideIntoContainer(
-                                                towards = AnimatedContentTransitionScope.SlideDirection.Start,
-                                                animationSpec = tween(240, easing = FastOutSlowInEasing),
-                                                initialOffset = { it / 10 }
-                                            )
+                                        slideIntoContainer(
+                                            towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                                            animationSpec = tween(280, easing = FastOutSlowInEasing)
+                                        ) + fadeIn(animationSpec = tween(200))
                                     },
                                     exitTransition = {
-                                        fadeOut(animationSpec = tween(180, easing = FastOutSlowInEasing)) +
-                                            slideOutOfContainer(
-                                                towards = AnimatedContentTransitionScope.SlideDirection.Start,
-                                                animationSpec = tween(180, easing = FastOutSlowInEasing),
-                                                targetOffset = { it / 10 }
-                                            )
+                                        slideOutOfContainer(
+                                            towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                                            animationSpec = tween(280, easing = FastOutSlowInEasing),
+                                            targetOffset = { -it / 3 }
+                                        ) + fadeOut(animationSpec = tween(200))
                                     },
                                     popEnterTransition = {
-                                        fadeIn(animationSpec = tween(240, easing = FastOutSlowInEasing)) +
-                                            slideIntoContainer(
-                                                towards = AnimatedContentTransitionScope.SlideDirection.End,
-                                                animationSpec = tween(240, easing = FastOutSlowInEasing),
-                                                initialOffset = { it / 10 }
-                                            )
+                                        slideIntoContainer(
+                                            towards = AnimatedContentTransitionScope.SlideDirection.End,
+                                            animationSpec = tween(280, easing = FastOutSlowInEasing),
+                                            initialOffset = { -it / 3 }
+                                        ) + fadeIn(animationSpec = tween(200))
                                     },
                                     popExitTransition = {
-                                        fadeOut(animationSpec = tween(180, easing = FastOutSlowInEasing)) +
-                                            slideOutOfContainer(
-                                                towards = AnimatedContentTransitionScope.SlideDirection.End,
-                                                animationSpec = tween(180, easing = FastOutSlowInEasing),
-                                                targetOffset = { it / 10 }
-                                            )
+                                        slideOutOfContainer(
+                                            towards = AnimatedContentTransitionScope.SlideDirection.End,
+                                            animationSpec = tween(280, easing = FastOutSlowInEasing)
+                                        ) + fadeOut(animationSpec = tween(200))
                                     }
                                 ) {
                                     composable(
@@ -234,70 +244,87 @@ class MainActivity : ComponentActivity() {
                                             }
                                         )
                                     ) { backStackEntry ->
-                                        val filterDate = backStackEntry.arguments?.getLong("filterDate") ?: -1L
-                                        HomeScreen(
-                                            reviewData = reviewData,
-                                            onReviewHandled = { reviewData = null },
-                                            initialFilterDate = if (filterDate != -1L) filterDate else null,
-                                            onNavigateToSettings = {
-                                                navController.navigate("settings") {
-                                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                                    launchSingleTop = true
-                                                    restoreState = true
-                                                }
-                                            },
-                                            onNavigateToRegexGenerator = { text, title, stalePatternId, packageName ->
-                                                val encodedText = text?.let { java.net.URLEncoder.encode(it, "UTF-8").replace("+", "%20") }
-                                                val encodedTitle = title?.let { java.net.URLEncoder.encode(it, "UTF-8").replace("+", "%20") }
-                                                val encodedPackage = packageName?.let { java.net.URLEncoder.encode(it, "UTF-8").replace("+", "%20") }
-                                                val baseRoute = "regex_generator?fromInbox=true"
-                                                val textParam = if (encodedText != null) "&text=$encodedText" else ""
-                                                val titleParam = if (encodedTitle != null) "&title=$encodedTitle" else ""
-                                                val packageParam = if (encodedPackage != null) "&packageName=$encodedPackage" else ""
-                                                val staleParam = if (stalePatternId != null) "&stalePatternId=$stalePatternId" else ""
-                                                navController.navigate(baseRoute + textParam + titleParam + packageParam + staleParam)
+                                        val navFilterDate = backStackEntry.arguments?.getLong("filterDate") ?: -1L
+                                        val effectiveFilterDate = if (navFilterDate != -1L) navFilterDate else homeFilterDate
+
+                                        BackHandler(enabled = pagerState.currentPage != 0) {
+                                            coroutineScope.launch {
+                                                pagerState.animateScrollToPage(0)
                                             }
-                                        )
+                                        }
+
+                                        HorizontalPager(
+                                            state = pagerState,
+                                            modifier = Modifier.fillMaxSize()
+                                        ) { page ->
+                                            when (page) {
+                                                0 -> HomeScreen(
+                                                    reviewData = reviewData,
+                                                    onReviewHandled = { reviewData = null },
+                                                    initialFilterDate = effectiveFilterDate,
+                                                    onNavigateToSettings = {
+                                                        coroutineScope.launch {
+                                                            pagerState.animateScrollToPage(2)
+                                                        }
+                                                    },
+                                                    onNavigateToRegexGenerator = { text, title, stalePatternId, packageName ->
+                                                        val encodedText = text?.let { java.net.URLEncoder.encode(it, "UTF-8").replace("+", "%20") }
+                                                        val encodedTitle = title?.let { java.net.URLEncoder.encode(it, "UTF-8").replace("+", "%20") }
+                                                        val encodedPackage = packageName?.let { java.net.URLEncoder.encode(it, "UTF-8").replace("+", "%20") }
+                                                        val baseRoute = "regex_generator?fromInbox=true"
+                                                        val textParam = if (encodedText != null) "&text=$encodedText" else ""
+                                                        val titleParam = if (encodedTitle != null) "&title=$encodedTitle" else ""
+                                                        val packageParam = if (encodedPackage != null) "&packageName=$encodedPackage" else ""
+                                                        val staleParam = if (stalePatternId != null) "&stalePatternId=$stalePatternId" else ""
+                                                        navController.navigate(baseRoute + textParam + titleParam + packageParam + staleParam)
+                                                    }
+                                                )
+                                                1 -> ChartsScreen(
+                                                    onNavigateToHomeWithFilter = { date ->
+                                                        homeFilterDate = date
+                                                        coroutineScope.launch {
+                                                            pagerState.animateScrollToPage(0)
+                                                        }
+                                                    }
+                                                )
+                                                2 -> SettingsScreen(
+                                                    onNavigateBack = {
+                                                        coroutineScope.launch {
+                                                            pagerState.animateScrollToPage(0)
+                                                        }
+                                                    },
+                                                    onNavigateToRegexGenerator = {
+                                                        navController.navigate("regex_generator")
+                                                    },
+                                                    onNavigateToAiProviders = {
+                                                        navController.navigate("ai_providers")
+                                                    },
+                                                    onNavigateToWhitelistedApps = {
+                                                        navController.navigate("whitelisted_apps")
+                                                    },
+                                                    onNavigateToCategories = {
+                                                        navController.navigate("categories")
+                                                    },
+                                                    onNavigateToNotificationPatterns = {
+                                                        navController.navigate("notification_patterns")
+                                                    }
+                                                )
+                                            }
+                                        }
                                     }
 
                                     composable("charts") {
-                                        ChartsScreen(
-                                            onNavigateToHomeWithFilter = { date ->
-                                                navController.navigate("home?filterDate=$date") {
-                                                    popUpTo(navController.graph.findStartDestination().id) {
-                                                        // clear backstack up to home to apply the new argument cleanly
-                                                    }
-                                                    launchSingleTop = true
-                                                }
-                                            }
-                                        )
+                                        LaunchedEffect(Unit) {
+                                            pagerState.scrollToPage(1)
+                                            navController.popBackStack()
+                                        }
                                     }
 
                                     composable("settings") {
-                                        SettingsScreen(
-                                            onNavigateBack = {
-                                                navController.navigate("home") {
-                                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                                    launchSingleTop = true
-                                                    restoreState = true
-                                                }
-                                            },
-                                            onNavigateToRegexGenerator = {
-                                                navController.navigate("regex_generator")
-                                            },
-                                            onNavigateToAiProviders = {
-                                                navController.navigate("ai_providers")
-                                            },
-                                            onNavigateToWhitelistedApps = {
-                                                navController.navigate("whitelisted_apps")
-                                            },
-                                            onNavigateToCategories = {
-                                                navController.navigate("categories")
-                                            },
-                                            onNavigateToNotificationPatterns = {
-                                                navController.navigate("notification_patterns")
-                                            }
-                                        )
+                                        LaunchedEffect(Unit) {
+                                            pagerState.scrollToPage(2)
+                                            navController.popBackStack()
+                                        }
                                     }
 
                                     composable("whitelisted_apps") {
@@ -408,15 +435,14 @@ class MainActivity : ComponentActivity() {
                         val navBackStackEntry by navController.currentBackStackEntryAsState()
                         val currentDestination = navBackStackEntry?.destination
 
-                        val mainScreens = listOf("home", "charts", "settings")
                         val navItems = listOf(
-                            Triple("home", Icons.Rounded.Home, "Home"),
-                            Triple("charts", Icons.Rounded.BarChart, "Charts"),
-                            Triple("settings", Icons.Rounded.Settings, "Settings")
+                            Triple(0, Icons.Rounded.Home, "Home"),
+                            Triple(1, Icons.Rounded.BarChart, "Charts"),
+                            Triple(2, Icons.Rounded.Settings, "Settings")
                         )
 
                         val isMainScreen = currentDestination?.route?.let { route ->
-                            route.startsWith("home") || route == "charts" || route == "settings"
+                            route.startsWith("home")
                         } ?: false
 
                         if (isMainScreen) {
@@ -447,26 +473,16 @@ class MainActivity : ComponentActivity() {
                                     horizontalArrangement = Arrangement.SpaceEvenly,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    navItems.forEach { (route, icon, label) ->
-                                        val selected = currentDestination?.hierarchy?.any { dest ->
-                                            if (route == "home") {
-                                                dest.route?.startsWith("home") == true
-                                            } else {
-                                                dest.route == route
-                                            }
-                                        } == true
+                                    navItems.forEach { (pageIndex, icon, label) ->
+                                        val selected = pagerState.currentPage == pageIndex
 
                                         Box(
                                              modifier = Modifier
                                                 .weight(1f)
                                                 .clip(RoundedCornerShape(999.dp))
                                                 .clickable {
-                                                    navController.navigate(route) {
-                                                        popUpTo(navController.graph.findStartDestination().id) {
-                                                            saveState = true
-                                                        }
-                                                        launchSingleTop = true
-                                                        restoreState = true
+                                                    coroutineScope.launch {
+                                                        pagerState.animateScrollToPage(pageIndex)
                                                     }
                                                 }
                                                 .padding(vertical = 4.dp),
