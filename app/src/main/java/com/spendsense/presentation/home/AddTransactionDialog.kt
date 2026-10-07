@@ -100,65 +100,6 @@ fun AddTransactionDialog(
                     singleLine = true
                 )
 
-                Text("Payment Source", style = MaterialTheme.typography.titleSmall)
-
-                // Quick select history sources or + New
-                if (historyPaymentSources.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        historyPaymentSources.forEach { history ->
-                            val isSelected = paymentSource.equals(history.name, ignoreCase = true)
-                            FilterChip(
-                                selected = isSelected,
-                                onClick = {
-                                    paymentSource = history.name
-                                    if (history.type.isNotBlank()) {
-                                        paymentSourceType = history.type
-                                    }
-                                },
-                                label = { Text(history.name) },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    containerColor = Color(0xFFF8FAFC),
-                                    labelColor = Color(0xFF475569),
-                                    selectedContainerColor = Color(0xFFE0F2FE),
-                                    selectedLabelColor = Color(0xFF0369A1)
-                                ),
-                                border = FilterChipDefaults.filterChipBorder(
-                                    enabled = true,
-                                    selected = isSelected,
-                                    borderColor = Color(0xFFE2E8F0),
-                                    selectedBorderColor = Color(0xFF0284C7)
-                                )
-                            )
-                        }
-
-                        val isNewCustom = historyPaymentSources.none { it.name.equals(paymentSource.trim(), ignoreCase = true) }
-                        FilterChip(
-                            selected = isNewCustom,
-                            onClick = {
-                                paymentSource = ""
-                            },
-                            label = { Text("+ New") },
-                            colors = FilterChipDefaults.filterChipColors(
-                                containerColor = Color(0xFFF8FAFC),
-                                labelColor = Color(0xFF475569),
-                                selectedContainerColor = Color(0xFFE0F2FE),
-                                selectedLabelColor = Color(0xFF0369A1)
-                            ),
-                            border = FilterChipDefaults.filterChipBorder(
-                                enabled = true,
-                                selected = isNewCustom,
-                                borderColor = Color(0xFFE2E8F0),
-                                selectedBorderColor = Color(0xFF0284C7)
-                            )
-                        )
-                    }
-                }
 
                 ExposedDropdownMenuBox(
                     expanded = paymentSourceExpanded,
