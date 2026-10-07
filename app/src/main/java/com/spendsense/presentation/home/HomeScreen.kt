@@ -382,18 +382,18 @@ fun HomeScreen(
                     .size(54.dp)
                     .softDropShadow(
                         shape = CircleShape,
-                        color = Color.Black.copy(alpha = 0.22f),
+                        color = Color.Black.copy(alpha = 0.10f),
                         blur = 12.dp,
-                        offsetY = 5.dp
+                        offsetY = 4.dp
                     )
                     .softDropShadow(
                         shape = CircleShape,
-                        color = CyberBlue.copy(alpha = 0.35f),
-                        blur = 14.dp,
+                        color = CyberBlue.copy(alpha = 0.25f),
+                        blur = 12.dp,
                         offsetY = 2.dp
                     )
                     .shadow(
-                        elevation = 10.dp,
+                        elevation = 4.dp,
                         shape = CircleShape,
                         ambientColor = Color.Black,
                         spotColor = Color.Black

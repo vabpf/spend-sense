@@ -455,12 +455,12 @@ class MainActivity : ComponentActivity() {
                                     .offset(y = (-16).dp)
                                     .softDropShadow(
                                         shape = RoundedCornerShape(999.dp),
-                                        color = Color.Black.copy(alpha = 0.20f),
-                                        blur = 18.dp,
+                                        color = Color.Black.copy(alpha = 0.08f),
+                                        blur = 20.dp,
                                         offsetY = 6.dp
                                     )
                                     .shadow(
-                                        elevation = 16.dp,
+                                        elevation = 4.dp,
                                         shape = RoundedCornerShape(999.dp),
                                         ambientColor = Color.Black,
                                         spotColor = Color.Black
