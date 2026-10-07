@@ -31,17 +31,6 @@
   gh run watch <run_id> --exit-status
   ```
 
-### 2. Download Built APK to Local Machine
-Once the GitHub Action completes, download `SpendSense.apk` directly into the Windows Downloads folder:
-```bash
-rm -f /mnt/c/Users/vuong/Downloads/SpendSense.apk && gh run download <run_id> -n SpendSense-Release-APK -D /mnt/c/Users/vuong/Downloads
-```
-
-### 3. Install to Device (via ADB)
-```bash
-/mnt/d/Apps/Android/Sdk/platform-tools/adb.exe install -r /mnt/c/Users/vuong/Downloads/SpendSense.apk
-```
-
 ---
 
 ## Project Structure & Architecture

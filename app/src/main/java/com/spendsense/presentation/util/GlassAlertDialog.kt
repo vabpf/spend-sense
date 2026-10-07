@@ -80,7 +80,8 @@ fun GlassAlertDialog(
     text: @Composable (() -> Unit)? = null,
     shape: Shape = RoundedCornerShape(24.dp),
     containerColor: Color = Color.White,
-    borderAlpha: Float = FrostGlassDefaults.borderAlpha
+    borderAlpha: Float = FrostGlassDefaults.borderAlpha,
+    scrollable: Boolean = true
 ) {
     Dialog(
         onDismissRequest = onDismissRequest,
@@ -137,14 +138,22 @@ fun GlassAlertDialog(
                             }
                         }
                         if (text != null) {
-                            val scrollState = rememberScrollState()
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(max = maxContentHeight)
-                                    .verticalScroll(scrollState)
-                            ) {
-                                text()
+                            if (scrollable) {
+                                val scrollState = rememberScrollState()
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(max = maxContentHeight)
+                                        .verticalScroll(scrollState)
+                                ) {
+                                    text()
+                                }
+                            } else {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    text()
+                                }
                             }
                         }
                         Row(

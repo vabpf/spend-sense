@@ -69,6 +69,7 @@ fun SettingsScreen(
     var showBackgroundSelector by remember { mutableStateOf(false) }
     var showRoutingModeSelector by remember { mutableStateOf(false) }
     var showAiModelSelector by remember { mutableStateOf(false) }
+    var showTimePicker by remember { mutableStateOf(false) }
     var bitmapToCrop by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
@@ -262,23 +263,7 @@ fun SettingsScreen(
                                 description = "Scheduled at $formattedDisplayTime",
                                 iconBadgeBg = Color(0xFFFFEDD5),
                                 iconTint = Color(0xFFEA580C),
-                                onClick = {
-                                    val parts = state.dailyReportTime.split(":")
-                                    val currentHour = parts.getOrNull(0)?.toIntOrNull() ?: 20
-                                    val currentMinute = parts.getOrNull(1)?.toIntOrNull() ?: 0
-                                    val is24Hour = android.text.format.DateFormat.is24HourFormat(context)
-
-                                    android.app.TimePickerDialog(
-                                        context,
-                                        { _, hourOfDay, minute ->
-                                            val formattedTime = String.format(java.util.Locale.US, "%02d:%02d", hourOfDay, minute)
-                                            viewModel.updateDailyReportTime(formattedTime, context)
-                                        },
-                                        currentHour,
-                                        currentMinute,
-                                        is24Hour
-                                    ).show()
-                                }
+                                onClick = { showTimePicker = true }
                             )
                         }
                     }
@@ -837,6 +822,105 @@ fun SettingsScreen(
             onCropConfirmed = { cropRect, rotation ->
                 viewModel.saveCroppedBackground(bmp, cropRect, rotation, context)
                 bitmapToCrop = null
+            }
+        )
+    }
+
+    if (showTimePicker) {
+        val parts = remember(state.dailyReportTime) { state.dailyReportTime.split(":") }
+        val initialHour = remember(parts) { parts.getOrNull(0)?.toIntOrNull() ?: 20 }
+        val initialMinute = remember(parts) { parts.getOrNull(1)?.toIntOrNull() ?: 0 }
+        val is24Hour = android.text.format.DateFormat.is24HourFormat(context)
+
+        val timePickerState = rememberTimePickerState(
+            initialHour = initialHour,
+            initialMinute = initialMinute,
+            is24Hour = is24Hour
+        )
+        var showKeyboardInput by remember { mutableStateOf(false) }
+
+        val timePickerColors = TimePickerDefaults.colors(
+            clockDialColor = Color(0xFFF1F5F9),
+            clockDialSelectedContentColor = Color.White,
+            clockDialUnselectedContentColor = Color(0xFF1E293B),
+            selectorColor = Color(0xFF0284C7),
+            containerColor = Color.White,
+            periodSelectorBorderColor = Color(0xFFCBD5E1),
+            periodSelectorSelectedContainerColor = Color(0xFFE0F2FE),
+            periodSelectorSelectedContentColor = Color(0xFF0284C7),
+            periodSelectorUnselectedContainerColor = Color(0xFFF8FAFC),
+            periodSelectorUnselectedContentColor = Color(0xFF64748B),
+            timeSelectorSelectedContainerColor = Color(0xFFE0F2FE),
+            timeSelectorSelectedContentColor = Color(0xFF0284C7),
+            timeSelectorUnselectedContainerColor = Color(0xFFF1F5F9),
+            timeSelectorUnselectedContentColor = Color(0xFF0F172A)
+        )
+
+        GlassAlertDialog(
+            onDismissRequest = { showTimePicker = false },
+            scrollable = false,
+            title = {
+                Text(
+                    text = "Report Delivery Time",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF0F172A)
+                )
+            },
+            text = {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (showKeyboardInput) {
+                        TimeInput(
+                            state = timePickerState,
+                            colors = timePickerColors
+                        )
+                    } else {
+                        TimePicker(
+                            state = timePickerState,
+                            colors = timePickerColors
+                        )
+                    }
+                }
+            },
+            dismissButton = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    IconButton(
+                        onClick = { showKeyboardInput = !showKeyboardInput }
+                    ) {
+                        Icon(
+                            imageVector = if (showKeyboardInput) Icons.Rounded.Schedule else Icons.Rounded.Keyboard,
+                            contentDescription = if (showKeyboardInput) "Switch to clock" else "Switch to text input",
+                            tint = Color(0xFF64748B)
+                        )
+                    }
+                    TextButton(
+                        onClick = { showTimePicker = false }
+                    ) {
+                        Text("Cancel", color = Color(0xFF64748B), fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val formattedTime = String.format(java.util.Locale.US, "%02d:%02d", timePickerState.hour, timePickerState.minute)
+                        viewModel.updateDailyReportTime(formattedTime, context)
+                        showTimePicker = false
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF0284C7),
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("OK", fontWeight = FontWeight.Bold)
+                }
             }
         )
     }
