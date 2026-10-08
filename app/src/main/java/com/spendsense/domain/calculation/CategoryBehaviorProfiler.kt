@@ -164,7 +164,7 @@ object CategoryBehaviorProfiler {
         // ── 3. Top Venues / Merchants Profiling ──────────────────────────────────
         val topMerchants = categoryTransactions
             .map { txn ->
-                val m = txn.merchant.trim().ifBlank { txn.description.trim() }.ifBlank { "Direct / Unnamed" }
+                val m = txn.merchant.trim().ifBlank { txn.notes?.trim() ?: "" }.ifBlank { "Direct / Unnamed" }
                 txn.copy(merchant = m)
             }
             .groupBy { it.merchant }
