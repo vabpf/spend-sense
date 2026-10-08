@@ -6,6 +6,7 @@ import com.spendsense.data.local.dao.TransactionDao
 import com.spendsense.data.local.entity.MerchantCategoryMappingEntity
 import com.spendsense.data.local.entity.TransactionEntity
 import com.spendsense.domain.model.Transaction
+import com.spendsense.domain.repository.AggregationRepository
 import com.spendsense.domain.repository.TransactionRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -16,11 +17,13 @@ import javax.inject.Singleton
 class TransactionRepositoryImpl @Inject constructor(
     private val transactionDao: TransactionDao,
     private val merchantCategoryMappingDao: MerchantCategoryMappingDao,
-    private val notificationPatternDao: NotificationPatternDao
+    private val notificationPatternDao: NotificationPatternDao,
+    private val aggregationRepository: AggregationRepository
 ) : TransactionRepository {
 
     override suspend fun insertTransaction(transaction: Transaction): Long {
         val id = transactionDao.insert(transaction.toEntity())
+        val savedTransaction = if (transaction.id == 0L) transaction.copy(id = id) else transaction
         merchantCategoryMappingDao.upsert(
             MerchantCategoryMappingEntity(
                 merchant = transaction.merchant.lowercase(),
@@ -35,11 +38,19 @@ class TransactionRepositoryImpl @Inject constructor(
                 ))
             }
         }
+        aggregationRepository.recordTransactionInserted(savedTransaction)
         return id
     }
 
     override suspend fun updateTransaction(transaction: Transaction) {
+        val oldEntity = transactionDao.getById(transaction.id)
+        val oldDomain = oldEntity?.toDomain()
         transactionDao.update(transaction.toEntity())
+        if (oldDomain != null) {
+            aggregationRepository.recordTransactionUpdated(oldDomain, transaction)
+        } else {
+            aggregationRepository.recordTransactionInserted(transaction)
+        }
     }
 
     override suspend fun deleteTransaction(transaction: Transaction) {
@@ -52,6 +63,7 @@ class TransactionRepositoryImpl @Inject constructor(
                 ))
             }
         }
+        aggregationRepository.recordTransactionDeleted(transaction)
     }
 
     override suspend fun getTransactionById(id: Long): Transaction? {

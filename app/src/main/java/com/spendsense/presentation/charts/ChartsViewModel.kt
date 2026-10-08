@@ -9,7 +9,10 @@ import com.spendsense.domain.calculation.ForecastEngine
 import com.spendsense.domain.calculation.MonthForecastResult
 import com.spendsense.domain.model.Category
 import com.spendsense.domain.model.CreditCardConfig
+import com.spendsense.domain.model.DailyAggregation
+import com.spendsense.domain.model.MonthlyPaymentAggregation
 import com.spendsense.domain.model.Transaction
+import com.spendsense.domain.repository.AggregationRepository
 import com.spendsense.domain.repository.CategoryRepository
 import com.spendsense.domain.repository.CreditCardConfigRepository
 import com.spendsense.domain.repository.ExchangeRateRepository
@@ -23,6 +26,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import java.util.Locale
 import javax.inject.Inject
 
 data class CategorySlice(
@@ -95,10 +99,16 @@ data class ChartsDataState(
     val creditCardConfigs: List<CreditCardConfig> = emptyList()
 )
 
-private data class ChartsRawInput(
+private data class CoreDataPayload(
     val transactions: List<Transaction>,
     val categories: List<Category>,
     val creditConfigs: List<CreditCardConfig>,
+    val dailyAggs: List<DailyAggregation>,
+    val allMonthlyPaymentAggs: List<MonthlyPaymentAggregation>
+)
+
+private data class ChartsRawInput(
+    val payload: CoreDataPayload,
     val selYear: Int,
     val selMonth: Int
 )
@@ -108,6 +118,7 @@ class ChartsViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository,
     private val categoryRepository: CategoryRepository,
     private val creditCardConfigRepository: CreditCardConfigRepository,
+    private val aggregationRepository: AggregationRepository,
     private val securePreferences: SecurePreferences,
     private val exchangeRateRepository: ExchangeRateRepository
 ) : ViewModel() {
@@ -124,17 +135,29 @@ class ChartsViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            combine(
+            aggregationRepository.ensureBackfillCompleted()
+        }
+
+        viewModelScope.launch {
+            val coreDataFlow = combine(
                 transactionRepository.getAllTransactions(),
                 categoryRepository.getAllCategories(),
                 creditCardConfigRepository.getAllConfigs(),
+                aggregationRepository.getDailySpendingLastNDaysFlow(14),
+                aggregationRepository.getAllMonthlyPaymentsFlow()
+            ) { transactions, categories, creditConfigs, dailyAggs, allMonthlyPaymentAggs ->
+                CoreDataPayload(transactions, categories, creditConfigs, dailyAggs, allMonthlyPaymentAggs)
+            }
+
+            combine(
+                coreDataFlow,
                 _selectedYear,
                 _selectedMonth
-            ) { transactions, categories, creditConfigs, selYear, selMonth ->
-                ChartsRawInput(transactions, categories, creditConfigs, selYear, selMonth)
+            ) { payload, selYear, selMonth ->
+                ChartsRawInput(payload, selYear, selMonth)
             }.collect { input ->
-                val transactions = input.transactions
-                val categories = input.categories
+                val transactions = input.payload.transactions
+                val categories = input.payload.categories
                 val selectedYear = input.selYear
                 val selectedMonth = input.selMonth
 
@@ -256,29 +279,31 @@ class ChartsViewModel @Inject constructor(
                     CategorySlice(cat, amount, (amount / sliceTotal).toFloat())
                 }
 
-                // ── Daily bar: last 7 days ────────────────────────────────────
+                // ── Daily bar: last 7 days (Indexed pre-aggregated lookup) ────
                 val dayLabels = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+                val dailyMap = input.payload.dailyAggs.associateBy { it.dateKey }
                 val dailyBars = (6 downTo 0).map { daysBack ->
                     val dayCal = Calendar.getInstance().apply {
                         add(Calendar.DAY_OF_YEAR, -daysBack)
-                        set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
-                        set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
                     }
-                    val dayStart = dayCal.timeInMillis
-                    val dayEnd = dayStart + 86_400_000L
+                    val y = dayCal.get(Calendar.YEAR)
+                    val m = dayCal.get(Calendar.MONTH) + 1
+                    val d = dayCal.get(Calendar.DAY_OF_MONTH)
+                    val dateKey = String.format(Locale.US, "%04d-%02d-%02d", y, m, d)
                     val label = dayLabels[dayCal.get(Calendar.DAY_OF_WEEK) - 1]
-                    val dayTxns = convertedTransactions.filter { it.timestamp in dayStart until dayEnd }
-                    DailyBar(label, dayTxns.sumOf { it.amount }, dayTxns.size)
+                    val agg = dailyMap[dateKey]
+                    DailyBar(label, agg?.totalAmount ?: 0.0, agg?.transactionCount ?: 0)
                 }
 
-                // ── Monthly trend: last 6 months ──────────────────────────────
+                // ── Monthly trend: last 6 months (Pre-aggregated rollups) ─────
                 val monthlyPoints = (5 downTo 0).map { monthsBack ->
                     val mCal = Calendar.getInstance().apply { add(Calendar.MONTH, -monthsBack) }
-                    val mStart = monthStart(mCal, 0)
-                    val mEnd = monthStart(mCal, 1)
-                    val label = monthLabels[mCal.get(Calendar.MONTH)]
-                    val total = convertedTransactions.filter { it.timestamp in mStart until mEnd }.sumOf { it.amount }
-                    MonthlyPoint(label, total)
+                    val y = mCal.get(Calendar.YEAR)
+                    val m = mCal.get(Calendar.MONTH)
+                    val total = input.payload.allMonthlyPaymentAggs
+                        .filter { it.year == y && it.month == m }
+                        .sumOf { it.totalAmount }
+                    MonthlyPoint(monthLabels[m], total)
                 }
 
                 // ── Payment source: selected month breakdown ──────────────────
@@ -289,23 +314,20 @@ class ChartsViewModel @Inject constructor(
                     }
                     .sortedByDescending { it.amount }
 
-                // ── Payment source: monthly stacked data (6 months) ───────────
+                // ── Payment source: monthly stacked data (6 months pre-aggregated) ──
                 val monthlyPaymentSources = (5 downTo 0).map { monthsBack ->
                     val mCal = Calendar.getInstance().apply { add(Calendar.MONTH, -monthsBack) }
-                    val mStart = monthStart(mCal, 0)
-                    val mEnd = monthStart(mCal, 1)
-                    val monthTxns = convertedTransactions.filter { it.timestamp in mStart until mEnd }
-                    val monthTotal = monthTxns.sumOf { it.amount }.takeIf { it > 0 } ?: 1.0
-                    val typeGroups = monthTxns
+                    val y = mCal.get(Calendar.YEAR)
+                    val m = mCal.get(Calendar.MONTH)
+                    val monthRows = input.payload.allMonthlyPaymentAggs.filter { it.year == y && it.month == m }
+                    val monthTotal = monthRows.sumOf { it.totalAmount }.takeIf { it > 0 } ?: 1.0
+                    val typeGroups = monthRows
                         .groupBy { it.paymentSourceType }
-                        .map { (type, txns) ->
-                            val typeAmount = txns.sumOf { it.amount }
-                            val sourceList = txns
-                                .groupBy { it.paymentSource }
-                                .map { (src, srcTxns) ->
-                                    PaymentSourceBreakdown(type, src, srcTxns.sumOf { it.amount })
-                                }
-                                .sortedByDescending { it.amount }
+                        .map { (type, rows) ->
+                            val typeAmount = rows.sumOf { it.totalAmount }
+                            val sourceList = rows.map { r ->
+                                PaymentSourceBreakdown(type, r.paymentSource, r.totalAmount)
+                            }.sortedByDescending { it.amount }
                             MonthlyPaymentSourceSlice(
                                 type = type,
                                 amount = typeAmount,
@@ -315,16 +337,16 @@ class ChartsViewModel @Inject constructor(
                         }
                         .sortedByDescending { it.amount }
                     MonthlyPaymentSourceData(
-                        monthLabel = monthLabels[mCal.get(Calendar.MONTH)],
-                        year = mCal.get(Calendar.YEAR),
-                        month = mCal.get(Calendar.MONTH),
+                        monthLabel = monthLabels[m],
+                        year = y,
+                        month = m,
                         slices = typeGroups,
                         total = monthTotal
                     )
                 }
 
                 val liquiditySummary = CreditStatementEngine.calculateLiquiditySummary(
-                    configs = input.creditConfigs,
+                    configs = input.payload.creditConfigs,
                     allTransactions = convertedTransactions,
                     currentMonthTransactions = selMonthTxns
                 )
@@ -344,7 +366,7 @@ class ChartsViewModel @Inject constructor(
                     isCurrentMonth = isCurrentMonth,
                     monthForecast = monthForecast,
                     creditLiquiditySummary = liquiditySummary,
-                    creditCardConfigs = input.creditConfigs
+                    creditCardConfigs = input.payload.creditConfigs
                 )
             }
         }

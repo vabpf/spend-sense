@@ -55,4 +55,10 @@ abstract class RepositoryModule {
     abstract fun bindCreditCardConfigRepository(
         creditCardConfigRepositoryImpl: com.spendsense.data.repository.CreditCardConfigRepositoryImpl
     ): com.spendsense.domain.repository.CreditCardConfigRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindAggregationRepository(
+        aggregationRepositoryImpl: com.spendsense.data.repository.AggregationRepositoryImpl
+    ): com.spendsense.domain.repository.AggregationRepository
 }

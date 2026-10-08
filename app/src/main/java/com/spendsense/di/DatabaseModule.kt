@@ -25,6 +25,7 @@ object DatabaseModule {
             SpendSenseDatabase::class.java,
             SpendSenseDatabase.DATABASE_NAME
         )
+            .addMigrations(SpendSenseDatabase.MIGRATION_1_2)
             .enableMultiInstanceInvalidation()
             .fallbackToDestructiveMigration()
             .fallbackToDestructiveMigrationOnDowngrade()
@@ -100,5 +101,10 @@ object DatabaseModule {
     @Provides
     fun provideProviderModelDao(database: SpendSenseDatabase): ProviderModelDao {
         return database.providerModelDao()
+    }
+
+    @Provides
+    fun provideAggregationDao(database: SpendSenseDatabase): AggregationDao {
+        return database.aggregationDao()
     }
 }
