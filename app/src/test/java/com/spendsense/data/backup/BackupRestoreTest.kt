@@ -37,6 +37,7 @@ class BackupRestoreTest {
         override fun exchangeRateDao() = TODO()
         override fun providerAccountDao() = TODO()
         override fun providerModelDao() = TODO()
+        override fun aggregationDao() = TODO()
         override fun clearAllTables() {}
         override fun createInvalidationTracker() = TODO()
         override fun createOpenHelper(config: androidx.room.DatabaseConfiguration) = TODO()
