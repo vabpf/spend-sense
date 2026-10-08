@@ -1,0 +1,5 @@
+[workspace]
+members = [
+    "rust/spend_sense_core",
+]
+resolver = "2"

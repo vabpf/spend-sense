@@ -74,7 +74,7 @@ jobs:
             export ANDROID_NDK_HOME=$(find "$ANDROID_HOME/ndk" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort -V | tail -n 1)
           fi
           echo "Using Android NDK: $ANDROID_NDK_HOME"
-          cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -o app/src/main/jniLibs build --release --manifest-path rust/spend_sense_core/Cargo.toml
+          (cd rust/spend_sense_core && cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -o ../../app/src/main/jniLibs build --release)
 
       - name: Run Unit Tests
         if: ${{ inputs.target == 'all' || inputs.target == 'test' }}
