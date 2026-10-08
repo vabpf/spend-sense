@@ -1,5 +1,6 @@
 package com.spendsense.domain.calculation
 
+import com.spendsense.core.SpendSenseCore
 import com.spendsense.domain.model.Transaction
 import kotlin.math.roundToInt
 
@@ -32,10 +33,31 @@ data class MonthForecastResult(
  * 2. Bayesian Shrinkage: For early month (days 1-4), smoothly shrinks the variable
  *    burn rate towards the prior month's daily baseline to prevent wild swings.
  * 3. Assembly: Projects remaining days and derives actionable safe spending pace.
+ *
+ * Automatically delegates to high-performance Rust core (via [SpendSenseCore])
+ * when native libraries are loaded, falling back seamlessly to pure Kotlin.
  */
 object ForecastEngine {
 
     fun calculateMonthForecast(
+        currentMonthTransactions: List<Transaction>,
+        daysElapsed: Int,
+        totalDaysInMonth: Int,
+        priorMonthTotal: Double = 0.0,
+        priorMonthTotalDays: Int = 30,
+        spendingTarget: Double? = null
+    ): MonthForecastResult {
+        return SpendSenseCore.forecast(
+            currentMonthTransactions = currentMonthTransactions,
+            daysElapsed = daysElapsed,
+            totalDaysInMonth = totalDaysInMonth,
+            priorMonthTotal = priorMonthTotal,
+            priorMonthTotalDays = priorMonthTotalDays,
+            spendingTarget = spendingTarget
+        )
+    }
+
+    internal fun calculateMonthForecastPureKotlin(
         currentMonthTransactions: List<Transaction>,
         daysElapsed: Int,
         totalDaysInMonth: Int,
@@ -90,8 +112,6 @@ object ForecastEngine {
             Double.MAX_VALUE
         }
 
-        // Outlier condition: significantly above Tukey upper fence OR >= 3x median
-        // Minimum amount threshold ($20 / 50k VND) to avoid micro variations being flagged
         val isolatedSpikes = currentMonthTransactions.filter { txn ->
             val amt = txn.amount
             val isTukeyOutlier = amt > tukeyUpper && amt > median * 2.0 && amt >= 20.0
@@ -107,7 +127,6 @@ object ForecastEngine {
         val currentDailyVariableRate = variableSpendToDate / safeElapsed
         val priorDailyRate = if (priorMonthTotalDays > 0) priorMonthTotal / priorMonthTotalDays else 0.0
 
-        // wt: weight of current month evidence. Day 1 -> 0.20, Day 4 -> 0.50, Day 10 -> 0.71
         val wt = safeElapsed.toDouble() / (safeElapsed + 4.0)
 
         val lambdaBurn = if (priorDailyRate > 0.0) {

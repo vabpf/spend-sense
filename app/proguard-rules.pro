@@ -6,3 +6,9 @@
 -keep class com.spendsense.data.** { *; }
 -keep class com.kyant.backdrop.** { *; }
 -dontwarn com.kyant.backdrop.**
+
+# SpendSenseCore JNI bindings & internal transfer models
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
+-keep class com.spendsense.core.** { *; }

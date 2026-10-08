@@ -20,6 +20,12 @@ release/
 .gradle/
 build/
 */build/
+app/src/main/jniLibs/
+
+# Rust artifacts
+target/
+**/target/
+Cargo.lock
 
 # Local configuration file (sdk path, etc)
 local.properties

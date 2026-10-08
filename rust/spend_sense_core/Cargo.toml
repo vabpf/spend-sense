@@ -1,0 +1,23 @@
+[package]
+name = "spend_sense_core"
+version = "0.1.0"
+edition = "2021"
+authors = ["SpendSense Authors"]
+description = "High-performance, pure computational core for SpendSense"
+
+[lib]
+name = "spend_sense_core"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+jni = { version = "0.21", default-features = false }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+regex = "1.10"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

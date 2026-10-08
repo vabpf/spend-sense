@@ -265,6 +265,42 @@ class AggregationRepositoryImpl @Inject constructor(
         aggregationDao.clearAllAggregations()
         if (transactions.isEmpty()) return@withContext
 
+        // High-performance native batch rollup when available
+        val nativeRollup = com.spendsense.core.SpendSenseCore.aggregateBatch(transactions)
+        if (nativeRollup != null) {
+            aggregationDao.upsertDailyAll(nativeRollup.daily.map {
+                DailySpendingAggregationEntity(
+                    dateKey = it.dateKey,
+                    year = it.year,
+                    month = it.month,
+                    day = it.day,
+                    timestampDayStart = it.timestampDayStart,
+                    totalAmount = it.totalAmount,
+                    transactionCount = it.transactionCount
+                )
+            })
+            aggregationDao.upsertCategoryAll(nativeRollup.categories.map {
+                MonthlyCategoryAggregationEntity(
+                    year = it.year,
+                    month = it.month,
+                    categoryId = it.categoryId,
+                    totalAmount = it.totalAmount,
+                    transactionCount = it.transactionCount
+                )
+            })
+            aggregationDao.upsertPaymentAll(nativeRollup.payments.map {
+                MonthlyPaymentAggregationEntity(
+                    year = it.year,
+                    month = it.month,
+                    paymentSource = it.paymentSource,
+                    paymentSourceType = it.paymentSourceType,
+                    totalAmount = it.totalAmount,
+                    transactionCount = it.transactionCount
+                )
+            })
+            return@withContext
+        }
+
         // 1. Group daily
         val dailyMap = mutableMapOf<String, DailySpendingAggregationEntity>()
         // 2. Group monthly category

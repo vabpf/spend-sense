@@ -1,5 +1,6 @@
 package com.spendsense.domain.calculation
 
+import com.spendsense.core.SpendSenseCore
 import com.spendsense.domain.model.Category
 import com.spendsense.domain.model.Transaction
 import java.util.Calendar
@@ -40,6 +41,14 @@ data class CategoryBehaviorProfile(
 object CategoryBehaviorProfiler {
 
     fun profileCategory(
+        category: Category,
+        categoryTransactions: List<Transaction>,
+        currency: String
+    ): CategoryBehaviorProfile {
+        return SpendSenseCore.profileCategory(category, categoryTransactions, currency)
+    }
+
+    internal fun profileCategoryPureKotlin(
         category: Category,
         categoryTransactions: List<Transaction>,
         currency: String
