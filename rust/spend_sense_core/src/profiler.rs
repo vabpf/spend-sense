@@ -235,6 +235,16 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_profiling_empty() {
+        let profile = profile_category(&[], "USD");
+        assert_eq!(profile.transaction_count, 0);
+        assert_eq!(profile.total_amount, 0.0);
+        assert!(profile.time_buckets.is_empty());
+        assert!(profile.ticket_tiers.is_empty());
+        assert!(profile.top_merchants.is_empty());
+    }
+
+    #[test]
     fn test_profiling_ticket_tiers() {
         let txns = vec![
             ProfileTransactionInput { amount: 5.0, timestamp: 1000, merchant: "A".into(), notes: None },
@@ -248,5 +258,48 @@ mod tests {
         assert_eq!(profile.transaction_count, 6);
         let total_count: i32 = profile.ticket_tiers.iter().map(|t| t.count).sum();
         assert_eq!(total_count, 6);
+        let total_sum: f64 = profile.ticket_tiers.iter().map(|t| t.total_amount).sum();
+        assert_eq!(total_sum, 228.0);
+    }
+
+    #[test]
+    fn test_single_and_two_transactions_tiers() {
+        // Single transaction
+        let single = vec![ProfileTransactionInput { amount: 50.0, timestamp: 1000, merchant: "A".into(), notes: None }];
+        let p1 = profile_category(&single, "USD");
+        assert_eq!(p1.ticket_tiers.len(), 1);
+        assert_eq!(p1.ticket_tiers[0].tier_name, "Standard Purchases");
+
+        // Two distinct transactions
+        let double = vec![
+            ProfileTransactionInput { amount: 10.0, timestamp: 1000, merchant: "A".into(), notes: None },
+            ProfileTransactionInput { amount: 90.0, timestamp: 2000, merchant: "B".into(), notes: None },
+        ];
+        let p2 = profile_category(&double, "USD");
+        assert_eq!(p2.ticket_tiers.len(), 2);
+    }
+
+    #[test]
+    fn test_top_merchants_notes_and_blank_handling() {
+        let txns = vec![
+            ProfileTransactionInput { amount: 30.0, timestamp: 1000, merchant: "Starbucks".into(), notes: None },
+            ProfileTransactionInput { amount: 20.0, timestamp: 2000, merchant: "".into(), notes: Some("Highlands".into()) },
+            ProfileTransactionInput { amount: 10.0, timestamp: 3000, merchant: "".into(), notes: None },
+        ];
+        let profile = profile_category(&txns, "USD");
+        assert_eq!(profile.top_merchants.len(), 3);
+        assert_eq!(profile.top_merchants[0].merchant_name, "Starbucks");
+        assert_eq!(profile.top_merchants[1].merchant_name, "Highlands");
+        assert_eq!(profile.top_merchants[2].merchant_name, "Direct / Unnamed");
+    }
+
+    #[test]
+    fn test_vnd_formatting() {
+        let txns = vec![
+            ProfileTransactionInput { amount: 25000.0, timestamp: 1000, merchant: "A".into(), notes: None },
+            ProfileTransactionInput { amount: 95000.0, timestamp: 2000, merchant: "B".into(), notes: None },
+        ];
+        let profile = profile_category(&txns, "VND");
+        assert!(profile.ticket_tiers[0].threshold_label.contains('₫'));
     }
 }

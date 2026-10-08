@@ -175,20 +175,94 @@ mod tests {
     }
 
     #[test]
-    fn test_aggregate_batch() {
+    fn test_leap_year_feb29() {
+        // 2024-02-29T12:00:00Z = 1709208000000 ms
+        let (key, year, month, day, _) = epoch_to_date_info(1709208000000, 0);
+        assert_eq!(key, "2024-02-29");
+        assert_eq!(year, 2024);
+        assert_eq!(month, 1); // 0-based February
+        assert_eq!(day, 29);
+    }
+
+    #[test]
+    fn test_year_end_boundary() {
+        // 2025-12-31T23:59:59Z = 1767225599000 ms
+        let (key, year, month, day, _) = epoch_to_date_info(1767225599000, 0);
+        assert_eq!(key, "2025-12-31");
+        assert_eq!(year, 2025);
+        assert_eq!(month, 11); // 0-based December
+        assert_eq!(day, 31);
+
+        // 1 second later: 2026-01-01T00:00:00Z = 1767225600000 ms
+        let (key_new, year_new, month_new, day_new, _) = epoch_to_date_info(1767225600000, 0);
+        assert_eq!(key_new, "2026-01-01");
+        assert_eq!(year_new, 2026);
+        assert_eq!(month_new, 0); // 0-based January
+        assert_eq!(day_new, 1);
+    }
+
+    #[test]
+    fn test_timezone_offset_day_shift() {
+        // 2026-10-08T22:00:00Z = 1791496800000 ms
+        // UTC: Oct 8
+        let (key_utc, _, _, day_utc, _) = epoch_to_date_info(1791496800000, 0);
+        assert_eq!(key_utc, "2026-10-08");
+        assert_eq!(day_utc, 8);
+
+        // UTC+7 (+25,200,000 ms): 22:00 + 7h = next day 05:00 AM Oct 9
+        let (key_tz7, _, _, day_tz7, _) = epoch_to_date_info(1791496800000, 25_200_000);
+        assert_eq!(key_tz7, "2026-10-09");
+        assert_eq!(day_tz7, 9);
+    }
+
+    #[test]
+    fn test_empty_batch() {
+        let result = aggregate_batch(&[], 0);
+        assert!(result.daily.is_empty());
+        assert!(result.categories.is_empty());
+        assert!(result.payments.is_empty());
+    }
+
+    #[test]
+    fn test_blank_payment_sources_defaults_to_manual() {
+        let txns = vec![RawTransactionInput {
+            id: 1,
+            amount: 25.0,
+            timestamp: 1791417600000,
+            category_id: 5,
+            payment_source: "".into(),
+            payment_source_type: "  ".into(),
+        }];
+
+        let result = aggregate_batch(&txns, 0);
+        assert_eq!(result.payments.len(), 1);
+        assert_eq!(result.payments[0].payment_source, "Manual");
+        assert_eq!(result.payments[0].payment_source_type, "Manual");
+    }
+
+    #[test]
+    fn test_aggregate_batch_sorting() {
         let txns = vec![
             RawTransactionInput {
                 id: 1,
                 amount: 50.0,
-                timestamp: 1791417600000,
+                timestamp: 1791417600000, // Oct 8
                 category_id: 10,
                 payment_source: "Chase".into(),
                 payment_source_type: "Credit Card".into(),
             },
             RawTransactionInput {
                 id: 2,
+                amount: 150.0,
+                timestamp: 1791417600000, // Oct 8
+                category_id: 20,
+                payment_source: "Cash".into(),
+                payment_source_type: "Manual".into(),
+            },
+            RawTransactionInput {
+                id: 3,
                 amount: 30.0,
-                timestamp: 1791417600000,
+                timestamp: 1791331200000, // Oct 7
                 category_id: 10,
                 payment_source: "Chase".into(),
                 payment_source_type: "Credit Card".into(),
@@ -196,14 +270,29 @@ mod tests {
         ];
 
         let result = aggregate_batch(&txns, 0);
-        assert_eq!(result.daily.len(), 1);
-        assert_eq!(result.daily[0].total_amount, 80.0);
+
+        // Daily sorted descending by date_key: Oct 8 ($200) before Oct 7 ($30)
+        assert_eq!(result.daily.len(), 2);
+        assert_eq!(result.daily[0].date_key, "2026-10-08");
+        assert_eq!(result.daily[0].total_amount, 200.0);
         assert_eq!(result.daily[0].transaction_count, 2);
 
-        assert_eq!(result.categories.len(), 1);
-        assert_eq!(result.categories[0].total_amount, 80.0);
+        assert_eq!(result.daily[1].date_key, "2026-10-07");
+        assert_eq!(result.daily[1].total_amount, 30.0);
+        assert_eq!(result.daily[1].transaction_count, 1);
 
-        assert_eq!(result.payments.len(), 1);
-        assert_eq!(result.payments[0].total_amount, 80.0);
+        // Categories sorted descending by total_amount: Cat 20 ($150) before Cat 10 ($80)
+        assert_eq!(result.categories.len(), 2);
+        assert_eq!(result.categories[0].category_id, 20);
+        assert_eq!(result.categories[0].total_amount, 150.0);
+        assert_eq!(result.categories[1].category_id, 10);
+        assert_eq!(result.categories[1].total_amount, 80.0);
+
+        // Payments sorted descending by total_amount: Cash ($150) before Chase ($80)
+        assert_eq!(result.payments.len(), 2);
+        assert_eq!(result.payments[0].payment_source, "Cash");
+        assert_eq!(result.payments[0].total_amount, 150.0);
+        assert_eq!(result.payments[1].payment_source, "Chase");
+        assert_eq!(result.payments[1].total_amount, 80.0);
     }
 }

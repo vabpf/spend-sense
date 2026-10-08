@@ -63,4 +63,30 @@ mod tests {
         assert_eq!(res.currency.as_deref(), Some("VND"));
         assert_eq!(res.merchant.as_deref(), Some("Highlands Coffee"));
     }
+
+    #[test]
+    fn test_invalid_regex_does_not_panic() {
+        let text = "Sample text";
+        let pattern = r"(unclosed bracket";
+        let res = match_notification(text, pattern);
+        assert!(!res.is_match);
+    }
+
+    #[test]
+    fn test_no_match() {
+        let text = "Your statement balance is $500";
+        let pattern = r"Transaction: \$(?P<amount>[0-9]+)";
+        let res = match_notification(text, pattern);
+        assert!(!res.is_match);
+    }
+
+    #[test]
+    fn test_dollar_notification_format() {
+        let text = "Debit: $45.20 at Trader Joe's";
+        let pattern = r"Debit:\s*(?P<currency>\$)(?P<amount>[0-9]+(?:\.[0-9]+)?)\s*at\s*(?P<merchant>.+)";
+        let res = match_notification(text, pattern);
+        assert!(res.is_match);
+        assert_eq!(res.currency.as_deref(), Some("$"));
+        assert_eq!(res.merchant.as_deref(), Some("Trader Joe's"));
+    }
 }

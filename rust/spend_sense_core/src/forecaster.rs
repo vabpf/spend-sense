@@ -184,5 +184,38 @@ mod tests {
         let forecast = calculate_month_forecast(&amounts, 10, 30, 1200.0, 30);
         assert_eq!(forecast.isolated_spikes_count, 1);
         assert_eq!(forecast.isolated_spikes_total, 400.0);
+        assert!((forecast.variable_daily_burn_rate - 40.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_empty_transactions_with_prior() {
+        let forecast = calculate_month_forecast(&[], 0, 30, 1200.0, 30);
+        assert_eq!(forecast.spend_to_date, 0.0);
+        assert_eq!(forecast.days_remaining, 30);
+        assert_eq!(forecast.variable_daily_burn_rate, 40.0); // 1200 / 30
+        assert_eq!(forecast.projected_remaining_spend, 1200.0);
+        assert_eq!(forecast.projected_month_end_total, 1200.0);
+        assert!(forecast.is_stabilizing_with_prior);
+    }
+
+    #[test]
+    fn test_end_of_month_convergence() {
+        let amounts = vec![150.0, 250.0];
+        let forecast = calculate_month_forecast(&amounts, 30, 30, 500.0, 30);
+        assert_eq!(forecast.days_remaining, 0);
+        assert_eq!(forecast.projected_remaining_spend, 0.0);
+        assert_eq!(forecast.projected_month_end_total, 400.0);
+        assert_eq!(forecast.spend_to_date, 400.0);
+        assert!(!forecast.is_stabilizing_with_prior);
+    }
+
+    #[test]
+    fn test_safe_remaining_daily_pace() {
+        let amounts = vec![300.0];
+        // Day 10 of 30. Remaining: 20 days. Prior total = 900.
+        // Remaining budget = 900 - 300 = 600.
+        // Safe pace = 600 / 20 = 30.
+        let forecast = calculate_month_forecast(&amounts, 10, 30, 900.0, 30);
+        assert_eq!(forecast.safe_remaining_daily_pace, Some(30.0));
     }
 }
