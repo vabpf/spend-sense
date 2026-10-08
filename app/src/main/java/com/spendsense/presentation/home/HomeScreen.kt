@@ -157,6 +157,7 @@ fun HomeScreen(
     val convertedTotal by viewModel.convertedTotal.collectAsState()
     val todayConvertedTotal by viewModel.todayConvertedTotal.collectAsState()
     val yesterdayConvertedTotal by viewModel.yesterdayConvertedTotal.collectAsState()
+    val currentDailyAverage by viewModel.currentDailyAverage.collectAsState()
     
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -458,7 +459,7 @@ fun HomeScreen(
                     // 1. "Today at a glance" Summary Card
                     HomeSummaryCard(
                         todaySpending = todayConvertedTotal,
-                        yesterdaySpending = yesterdayConvertedTotal,
+                        dailyAverage = currentDailyAverage,
                         weeklySpending = weeklySpending,
                         currentDayIndex = currentDayIndex,
                         transactionCount = transactions.size,
@@ -1234,7 +1235,7 @@ fun HomeScreen(
 @Composable
 private fun HomeSummaryCard(
     todaySpending: Double,
-    yesterdaySpending: Double,
+    dailyAverage: Double,
     weeklySpending: List<Pair<String, Double>>,
     currentDayIndex: Int,
     transactionCount: Int,
@@ -1318,9 +1319,9 @@ private fun HomeSummaryCard(
                             color = Color(0xFF0F172A)
                         )
 
-                        // Trend pill
-                        val percentDiff = if (yesterdaySpending > 0.0) {
-                            (((todaySpending - yesterdaySpending) / yesterdaySpending) * 100).roundToInt()
+                        // Trend pill: compare today's spending with current daily average
+                        val percentDiff = if (dailyAverage > 0.0) {
+                            (((todaySpending - dailyAverage) / dailyAverage) * 100).roundToInt()
                         } else null
 
                         if (percentDiff != null && percentDiff != 0) {
@@ -1345,7 +1346,7 @@ private fun HomeSummaryCard(
                     }
 
                     Text(
-                        text = "You spent ${formatCurrency(yesterdaySpending, defaultCurrency)} yesterday",
+                        text = "Daily average: ${formatCurrency(dailyAverage, defaultCurrency)}",
                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
                         fontWeight = FontWeight.Medium,
                         color = Color(0xFF64748B)

@@ -53,6 +53,9 @@ class HomeViewModel @Inject constructor(
     private val _yesterdayConvertedTotal = MutableStateFlow(0.0)
     val yesterdayConvertedTotal: StateFlow<Double> = _yesterdayConvertedTotal.asStateFlow()
 
+    private val _currentDailyAverage = MutableStateFlow(0.0)
+    val currentDailyAverage: StateFlow<Double> = _currentDailyAverage.asStateFlow()
+
     init {
         loadTransactions()
         loadCategories()
@@ -114,17 +117,25 @@ class HomeViewModel @Inject constructor(
             val todayCal = Calendar.getInstance()
             val yesterdayCal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
             val tempCal = Calendar.getInstance()
+
+            val curYear = todayCal.get(Calendar.YEAR)
+            val curMonth = todayCal.get(Calendar.MONTH)
+            val curDay = todayCal.get(Calendar.DAY_OF_MONTH).coerceAtLeast(1)
             
             val todayTxns = mutableListOf<Transaction>()
             val yesterdayTxns = mutableListOf<Transaction>()
+            val currentMonthTxns = mutableListOf<Transaction>()
             
             for (txn in transactions) {
                 tempCal.timeInMillis = txn.timestamp
-                val isSameYear = tempCal.get(Calendar.YEAR) == todayCal.get(Calendar.YEAR)
+                val isSameYear = tempCal.get(Calendar.YEAR) == curYear
                 if (isSameYear && tempCal.get(Calendar.DAY_OF_YEAR) == todayCal.get(Calendar.DAY_OF_YEAR)) {
                     todayTxns.add(txn)
                 } else if (tempCal.get(Calendar.YEAR) == yesterdayCal.get(Calendar.YEAR) && tempCal.get(Calendar.DAY_OF_YEAR) == yesterdayCal.get(Calendar.DAY_OF_YEAR)) {
                     yesterdayTxns.add(txn)
+                }
+                if (isSameYear && tempCal.get(Calendar.MONTH) == curMonth) {
+                    currentMonthTxns.add(txn)
                 }
             }
 
@@ -140,14 +151,23 @@ class HomeViewModel @Inject constructor(
                 }
             }
 
+            val currentMonthDeferred = currentMonthTxns.map { txn ->
+                async {
+                    convertTransactionAmount(txn, currency)
+                }
+            }
+
             val allDeferred = transactions.map { txn ->
                 async {
                     convertTransactionAmount(txn, currency)
                 }
             }
 
+            val currentMonthTotal = currentMonthDeferred.sumOf { it.await() }
+
             _todayConvertedTotal.value = todayDeferred.sumOf { it.await() }
             _yesterdayConvertedTotal.value = yesterdayDeferred.sumOf { it.await() }
+            _currentDailyAverage.value = if (curDay > 0) currentMonthTotal / curDay else 0.0
             _convertedTotal.value = allDeferred.sumOf { it.await() }
         }
     }

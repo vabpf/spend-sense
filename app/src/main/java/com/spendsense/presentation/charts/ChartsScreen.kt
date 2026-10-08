@@ -125,7 +125,8 @@ fun ChartsScreen(
                             currency = summary.currency,
                             thisMonth = summary.thisMonthTotal,
                             lastMonth = summary.lastMonthTotal,
-                            monthLabel = if (state.isCurrentMonth) "This Month" else state.selectedMonthLabel
+                            monthLabel = if (state.isCurrentMonth) "This Month" else state.selectedMonthLabel,
+                            isSamePeriod = summary.isSamePeriodComparison
                         )
                         DailyAverageCard(
                             modifier = Modifier.weight(1f),
@@ -205,7 +206,8 @@ private fun MonthTotalCard(
     currency: String,
     thisMonth: Double,
     lastMonth: Double,
-    monthLabel: String = "This Month"
+    monthLabel: String = "This Month",
+    isSamePeriod: Boolean = false
 ) {
     val delta = thisMonth - lastMonth
     val deltaPositive = delta >= 0
@@ -213,9 +215,9 @@ private fun MonthTotalCard(
     val deltaIcon = if (deltaPositive) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward
     val deltaLabel = if (lastMonth > 0) {
         val pct = (abs(delta) / lastMonth * 100).toInt()
-        "$pct% vs last month"
+        if (isSamePeriod) "$pct% vs this time last month" else "$pct% vs last month"
     } else {
-        "No data last month"
+        if (isSamePeriod) "No data this time last month" else "No data last month"
     }
 
     GlassSummaryCard(modifier = modifier) {

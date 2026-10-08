@@ -40,6 +40,7 @@ data class ChartsSummaryState(
     val currency: String = "USD",
     val thisMonthTotal: Double = 0.0,
     val lastMonthTotal: Double = 0.0,
+    val isSamePeriodComparison: Boolean = false,
     val dailyAverage: Double = 0.0,
     val lastMonthDailyAverage: Double = 0.0,
     val topCategory: Category? = null,
@@ -186,6 +187,17 @@ class ChartsViewModel @Inject constructor(
                 val dailyAverage = if (daysElapsed > 0) selMonthTotal / daysElapsed else 0.0
                 val prevMonthDailyAvg = if (prevMonthTxns.isNotEmpty()) prevMonthTotal / daysInPrevMonth else 0.0
 
+                // When viewing the current month, compare against this time last month (Month-to-Date)
+                val lastMonthComparisonTotal = if (isCurrentMonth) {
+                    val prevCutoffCal = (currentNow.clone() as Calendar).apply {
+                        add(Calendar.MONTH, -1)
+                    }
+                    val prevCutoffMillis = prevCutoffCal.timeInMillis
+                    prevMonthTxns.filter { it.timestamp <= prevCutoffMillis }.sumOf { it.amount }
+                } else {
+                    prevMonthTotal
+                }
+
                 val categoryTotals = selMonthTxns.groupBy { it.categoryId }
                     .mapValues { (_, txns) -> txns.sumOf { it.amount } }
                 val topEntry = categoryTotals.maxByOrNull { it.value }
@@ -197,7 +209,8 @@ class ChartsViewModel @Inject constructor(
                 val summaryState = ChartsSummaryState(
                     currency = currency,
                     thisMonthTotal = selMonthTotal,
-                    lastMonthTotal = prevMonthTotal,
+                    lastMonthTotal = lastMonthComparisonTotal,
+                    isSamePeriodComparison = isCurrentMonth,
                     dailyAverage = dailyAverage,
                     lastMonthDailyAverage = prevMonthDailyAvg,
                     topCategory = topCategory,
