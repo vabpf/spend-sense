@@ -129,10 +129,11 @@ fun ChartsScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 // ── Month-End Predictive Forecast (REBD Glass Hero Card) ────────
-                if (state.isCurrentMonth && state.monthForecast != null) {
+                val forecast = state.monthForecast
+                if (state.isCurrentMonth && forecast != null) {
                     item {
                         MonthForecastHeroCard(
-                            forecast = state.monthForecast,
+                            forecast = forecast,
                             currency = summary.currency
                         )
                     }

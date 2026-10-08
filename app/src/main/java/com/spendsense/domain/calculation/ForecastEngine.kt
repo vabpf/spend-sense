@@ -82,8 +82,8 @@ object ForecastEngine {
         }
 
         val tukeyUpper = if (n >= 4) {
-            val q1 = sortedAmounts[(n * 0.25).toInt()]
-            val q3 = sortedAmounts[(n * 0.75).coerceAtMost(n - 1)]
+            val q1 = sortedAmounts[(n * 0.25).toInt().coerceIn(0, n - 1)]
+            val q3 = sortedAmounts[(n * 0.75).toInt().coerceIn(0, n - 1)]
             val iqr = q3 - q1
             q3 + 1.5 * iqr
         } else {
