@@ -61,6 +61,7 @@ import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.spendsense.domain.calculation.CategoryBehaviorProfiler
 import com.spendsense.domain.calculation.MonthForecastResult
 import com.spendsense.domain.model.Category
 import com.spendsense.domain.model.Transaction
@@ -96,6 +97,7 @@ fun ChartsScreen(
 
     var editingCardName by remember { mutableStateOf<String?>(null) }
     var showCardConfigDialog by remember { mutableStateOf(false) }
+    var selectedCategoryForBehavior by remember { mutableStateOf<Category?>(null) }
 
     if (showCardConfigDialog) {
         val existingConfig = editingCardName?.let { name ->
@@ -111,6 +113,28 @@ fun ChartsScreen(
             onDelete = { cardName ->
                 viewModel.deleteCreditCardConfig(cardName)
             }
+        )
+    }
+
+    val targetBehaviorCategory = selectedCategoryForBehavior
+    if (targetBehaviorCategory != null) {
+        val catTxns = remember(targetBehaviorCategory, state.selectedMonthTransactions, state.allTransactions) {
+            state.selectedMonthTransactions.filter { it.categoryId == targetBehaviorCategory.id }.ifEmpty {
+                state.allTransactions.filter { it.categoryId == targetBehaviorCategory.id }
+            }
+        }
+        val behaviorProfile = remember(targetBehaviorCategory, catTxns, summary.currency) {
+            CategoryBehaviorProfiler.profileCategory(
+                category = targetBehaviorCategory,
+                categoryTransactions = catTxns,
+                currency = summary.currency
+            )
+        }
+        CategoryBehaviorModal(
+            profile = behaviorProfile,
+            currency = summary.currency,
+            periodLabel = if (state.isCurrentMonth) "This Month" else state.selectedMonthLabel,
+            onDismiss = { selectedCategoryForBehavior = null }
         )
     }
 
@@ -207,7 +231,8 @@ fun ChartsScreen(
                             modifier = Modifier.weight(1f),
                             currency = summary.currency,
                             category = summary.topCategory,
-                            amount = summary.topCategoryAmount
+                            amount = summary.topCategoryAmount,
+                            onClick = { summary.topCategory?.let { selectedCategoryForBehavior = it } }
                         )
                         BiggestTransactionCard(
                             modifier = Modifier.weight(1f),
@@ -223,7 +248,10 @@ fun ChartsScreen(
                     CategoryDonutChart(
                         slices = state.categorySlices,
                         currency = summary.currency,
-                        monthLabel = if (state.isCurrentMonth) null else state.selectedMonthLabel
+                        monthLabel = if (state.isCurrentMonth) null else state.selectedMonthLabel,
+                        onCategoryClick = { category ->
+                            selectedCategoryForBehavior = category
+                        }
                     )
                 }
 
@@ -667,9 +695,16 @@ private fun TopCategoryCard(
     modifier: Modifier = Modifier,
     currency: String,
     category: Category?,
-    amount: Double
+    amount: Double,
+    onClick: (() -> Unit)? = null
 ) {
-    GlassSummaryCard(modifier = modifier) {
+    GlassSummaryCard(
+        modifier = modifier.then(
+            if (onClick != null && category != null) {
+                Modifier.clickable { onClick() }
+            } else Modifier
+        )
+    ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
                 text = "Top Category",

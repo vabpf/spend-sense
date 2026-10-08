@@ -1,7 +1,9 @@
 package com.spendsense.presentation
 
+import com.spendsense.domain.calculation.CategoryBehaviorProfiler
 import com.spendsense.domain.calculation.CreditStatementEngine
 import com.spendsense.domain.calculation.ForecastEngine
+import com.spendsense.domain.model.Category
 import com.spendsense.domain.model.CreditCardConfig
 import com.spendsense.domain.model.Transaction
 import org.junit.Assert.assertEquals
@@ -351,5 +353,132 @@ class SpendingCalculationLogicTest {
         assertEquals(1300.0, summary.totalImmediateCashNeeded, 0.001)
         // Total active floating debt: $200 (Chase) + $400 (Amex) = $600
         assertEquals(600.0, summary.totalActiveFloatingDebt, 0.001)
+    }
+
+    @Test
+    fun testCategoryBehavior_timeBucketing_morningMiddayEvening() {
+        val testCategory = Category(id = 10L, name = "Food & Dining", colorHex = "#FF5722", iconName = "Restaurant")
+
+        fun makeTimeTxn(id: Long, hour: Int, minute: Int, amount: Double): Transaction {
+            val cal = Calendar.getInstance().apply {
+                set(2026, Calendar.OCTOBER, 8, hour, minute, 0)
+            }
+            return Transaction(
+                id = id,
+                amount = amount,
+                currencyCode = "USD",
+                merchant = "Food Spot",
+                categoryId = 10L,
+                timestamp = cal.timeInMillis,
+                sourcePackageName = "com.test",
+                sourceAppName = "Test"
+            )
+        }
+
+        val txns = listOf(
+            makeTimeTxn(1, 8, 30, 15.0),   // Morning (8:30)
+            makeTimeTxn(2, 12, 15, 30.0),  // Midday Lunch (12:15)
+            makeTimeTxn(3, 19, 45, 80.0),  // Evening (19:45)
+            makeTimeTxn(4, 1, 30, 25.0),   // Late Night (01:30 -> Evening & Night)
+            makeTimeTxn(5, 15, 0, 10.0)    // Afternoon (15:00 -> Daytime / Errands)
+        )
+
+        val profile = CategoryBehaviorProfiler.profileCategory(testCategory, txns, "USD")
+
+        assertEquals(5, profile.transactionCount)
+        assertEquals(160.0, profile.totalAmount, 0.001)
+
+        val eveningBucket = profile.timeBuckets.find { it.bucketName == "Evening & Night" }
+        val middayBucket = profile.timeBuckets.find { it.bucketName == "Workday Midday" }
+        val morningBucket = profile.timeBuckets.find { it.bucketName == "Morning Routine" }
+        val errandBucket = profile.timeBuckets.find { it.bucketName == "Daytime / Errands" }
+
+        // Evening (80) + Late Night (25) = 105
+        assertEquals(105.0, eveningBucket?.totalAmount ?: 0.0, 0.001)
+        assertEquals(2, eveningBucket?.count)
+
+        // Midday = 30
+        assertEquals(30.0, middayBucket?.totalAmount ?: 0.0, 0.001)
+        assertEquals(1, middayBucket?.count)
+
+        // Morning = 15
+        assertEquals(15.0, morningBucket?.totalAmount ?: 0.0, 0.001)
+        assertEquals(1, morningBucket?.count)
+
+        // Errands = 10
+        assertEquals(10.0, errandBucket?.totalAmount ?: 0.0, 0.001)
+        assertEquals(1, errandBucket?.count)
+    }
+
+    @Test
+    fun testCategoryBehavior_ticketTiers_partitionsCorrectlyWithoutDropping() {
+        val testCategory = Category(id = 10L, name = "Food & Dining", colorHex = "#FF5722", iconName = "Restaurant")
+        val amounts = listOf(5.0, 8.0, 15.0, 20.0, 60.0, 120.0)
+
+        val txns = amounts.mapIndexed { idx, amt ->
+            Transaction(
+                id = idx.toLong() + 1,
+                amount = amt,
+                currencyCode = "USD",
+                merchant = "Merchant $idx",
+                categoryId = 10L,
+                timestamp = 1000L + idx * 1000,
+                sourcePackageName = "com.test",
+                sourceAppName = "Test"
+            )
+        }
+
+        val profile = CategoryBehaviorProfiler.profileCategory(testCategory, txns, "USD")
+
+        // Crucial guarantee: all transactions and all money must be accounted for across tiers
+        val totalCountAcrossTiers = profile.ticketTiers.sumOf { it.count }
+        val totalAmountAcrossTiers = profile.ticketTiers.sumOf { it.totalAmount }
+
+        assertEquals(6, totalCountAcrossTiers)
+        assertEquals(228.0, totalAmountAcrossTiers, 0.001)
+
+        val microTier = profile.ticketTiers.find { it.tierName.contains("Micro", ignoreCase = true) }
+        val majorTier = profile.ticketTiers.find { it.tierName.contains("Major", ignoreCase = true) }
+
+        assertTrue(microTier != null)
+        assertTrue(majorTier != null)
+        assertTrue(microTier!!.totalAmount < majorTier!!.totalAmount)
+    }
+
+    @Test
+    fun testCategoryBehavior_topMerchants_aggregatesVisitsAndAverages() {
+        val testCategory = Category(id = 10L, name = "Coffee", colorHex = "#795548", iconName = "Coffee")
+
+        val txns = listOf(
+            Transaction(1, 5.0, "USD", "Starbucks", 10L, 1000L, "com.test", "Test"),
+            Transaction(2, 6.0, "USD", "Starbucks", 10L, 2000L, "com.test", "Test"),
+            Transaction(3, 4.0, "USD", "Starbucks", 10L, 3000L, "com.test", "Test"),
+            Transaction(4, 25.0, "USD", "Blue Bottle", 10L, 4000L, "com.test", "Test")
+        )
+
+        val profile = CategoryBehaviorProfiler.profileCategory(testCategory, txns, "USD")
+
+        assertEquals(2, profile.topMerchants.size)
+        // Blue Bottle ($25) > Starbucks ($15 total)
+        assertEquals("Blue Bottle", profile.topMerchants[0].merchantName)
+        assertEquals(25.0, profile.topMerchants[0].totalAmount, 0.001)
+        assertEquals(1, profile.topMerchants[0].visitCount)
+
+        assertEquals("Starbucks", profile.topMerchants[1].merchantName)
+        assertEquals(15.0, profile.topMerchants[1].totalAmount, 0.001)
+        assertEquals(3, profile.topMerchants[1].visitCount)
+        assertEquals(5.0, profile.topMerchants[1].averageTicket, 0.001)
+    }
+
+    @Test
+    fun testCategoryBehavior_emptyTransactions_returnsEmptyProfile() {
+        val testCategory = Category(id = 10L, name = "Empty", colorHex = "#000000", iconName = "Category")
+        val profile = CategoryBehaviorProfiler.profileCategory(testCategory, emptyList(), "USD")
+
+        assertEquals(0, profile.transactionCount)
+        assertEquals(0.0, profile.totalAmount, 0.001)
+        assertTrue(profile.timeBuckets.isEmpty())
+        assertTrue(profile.ticketTiers.isEmpty())
+        assertTrue(profile.topMerchants.isEmpty())
     }
 }

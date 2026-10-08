@@ -6,7 +6,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
+import com.spendsense.domain.model.Category
 import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -315,7 +318,8 @@ fun CategoryDonutChart(
     slices: List<CategorySlice>,
     currency: String,
     modifier: Modifier = Modifier,
-    monthLabel: String? = null
+    monthLabel: String? = null,
+    onCategoryClick: ((Category) -> Unit)? = null
 ) {
     val title = if (monthLabel.isNullOrBlank()) "Spending by Category" else "Spending by Category ($monthLabel)"
     val totalAmount = slices.sumOf { it.amount }
@@ -409,12 +413,23 @@ fun CategoryDonutChart(
             // Legend Table: Category Name, Money Spent, Percentage
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 slices.forEach { slice ->
                     val catColor = parseColor(slice.category.colorHex)
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(
+                                if (onCategoryClick != null) {
+                                    Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .clickable { onCategoryClick(slice.category) }
+                                        .padding(vertical = 4.dp, horizontal = 4.dp)
+                                } else {
+                                    Modifier.padding(vertical = 2.dp)
+                                }
+                            ),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Canvas(modifier = Modifier.size(8.dp)) {
@@ -449,6 +464,16 @@ fun CategoryDonutChart(
                     }
                 }
             }
+        }
+
+        if (onCategoryClick != null && slices.isNotEmpty()) {
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text = "✦ Tap any category for habit breakdown & top spots",
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                color = Color(0xFF94A3B8),
+                modifier = Modifier.padding(start = 2.dp)
+            )
         }
     }
 }
