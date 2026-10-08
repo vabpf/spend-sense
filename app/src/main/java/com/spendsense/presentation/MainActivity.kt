@@ -263,6 +263,11 @@ class MainActivity : ComponentActivity() {
                                                     reviewData = reviewData,
                                                     onReviewHandled = { reviewData = null },
                                                     initialFilterDate = effectiveFilterDate,
+                                                    onNavigateToCharts = {
+                                                        coroutineScope.launch {
+                                                            pagerState.animateScrollToPage(1)
+                                                        }
+                                                    },
                                                     onNavigateToSettings = {
                                                         coroutineScope.launch {
                                                             pagerState.animateScrollToPage(2)

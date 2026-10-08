@@ -49,6 +49,7 @@ import kotlinx.coroutines.launch
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.spendsense.data.local.entity.RawNotificationEntity
+import com.spendsense.domain.calculation.MonthForecastResult
 import com.spendsense.domain.model.Category
 import com.spendsense.domain.model.ReviewTransactionData
 import com.spendsense.domain.model.Transaction
@@ -147,6 +148,7 @@ fun HomeScreen(
     reviewData: ReviewTransactionData? = null,
     onReviewHandled: () -> Unit = {},
     initialFilterDate: Long? = null,
+    onNavigateToCharts: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
     onNavigateToRegexGenerator: (String?, String?, Long?, String?) -> Unit = { _, _, _, _ -> }
 ) {
@@ -158,6 +160,7 @@ fun HomeScreen(
     val todayConvertedTotal by viewModel.todayConvertedTotal.collectAsState()
     val yesterdayConvertedTotal by viewModel.yesterdayConvertedTotal.collectAsState()
     val currentDailyAverage by viewModel.currentDailyAverage.collectAsState()
+    val currentMonthForecast by viewModel.currentMonthForecast.collectAsState()
     
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -465,6 +468,8 @@ fun HomeScreen(
                         transactionCount = transactions.size,
                         pendingCount = pendingNotifications.size,
                         defaultCurrency = defaultCurrency,
+                        monthForecast = currentMonthForecast,
+                        onForecastClick = onNavigateToCharts,
                         onNotificationClick = { /* Notifications */ }
                     )
 
@@ -1241,6 +1246,8 @@ private fun HomeSummaryCard(
     transactionCount: Int,
     pendingCount: Int,
     defaultCurrency: String,
+    monthForecast: MonthForecastResult? = null,
+    onForecastClick: () -> Unit = {},
     onNotificationClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -1351,6 +1358,35 @@ private fun HomeSummaryCard(
                         fontWeight = FontWeight.Medium,
                         color = Color(0xFF64748B)
                     )
+
+                    if (monthForecast != null) {
+                        val forecastPct = monthForecast.percentVsLastMonth
+                        val chipText = buildString {
+                            append("✦ Est. Month-End: ")
+                            append(formatCurrency(monthForecast.projectedMonthEndTotal, defaultCurrency))
+                            if (forecastPct != null) {
+                                val arrow = if (forecastPct > 0) " ↗" else " ↘"
+                                append(" ($arrow ${abs(forecastPct)}%)")
+                            }
+                        }
+                        val chipTextColor = if (forecastPct != null && forecastPct > 0) Color(0xFFDC2626) else Color(0xFF0284C7)
+                        val chipBgColor = if (forecastPct != null && forecastPct > 0) Color(0xFFFEE2E2) else Color(0xFFE0F2FE)
+
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(chipBgColor)
+                                .clickable(onClick = onForecastClick)
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = chipText,
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.5.sp),
+                                fontWeight = FontWeight.SemiBold,
+                                color = chipTextColor
+                            )
+                        }
+                    }
                 }
 
                 // Mini 7-day Bar Chart (Mon..Sun)

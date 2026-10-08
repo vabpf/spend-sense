@@ -3,6 +3,8 @@ package com.spendsense.presentation.charts
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.spendsense.data.local.SecurePreferences
+import com.spendsense.domain.calculation.ForecastEngine
+import com.spendsense.domain.calculation.MonthForecastResult
 import com.spendsense.domain.model.Category
 import com.spendsense.domain.model.Transaction
 import com.spendsense.domain.repository.CategoryRepository
@@ -82,7 +84,8 @@ data class ChartsDataState(
     val selectedYear: Int = Calendar.getInstance().get(Calendar.YEAR),
     val selectedMonth: Int = Calendar.getInstance().get(Calendar.MONTH),
     val selectedMonthLabel: String = "",
-    val isCurrentMonth: Boolean = true
+    val isCurrentMonth: Boolean = true,
+    val monthForecast: MonthForecastResult? = null
 )
 
 private data class ChartsRawInput(
@@ -220,6 +223,16 @@ class ChartsViewModel @Inject constructor(
                     categories = categories
                 )
 
+                val monthForecast = if (isCurrentMonth) {
+                    ForecastEngine.calculateMonthForecast(
+                        currentMonthTransactions = selMonthTxns,
+                        daysElapsed = daysElapsed,
+                        totalDaysInMonth = currentNow.getActualMaximum(Calendar.DAY_OF_MONTH),
+                        priorMonthTotal = prevMonthTotal,
+                        priorMonthTotalDays = daysInPrevMonth
+                    )
+                } else null
+
                 // ── Donut: category slices for selected month ─────────────────
                 val slices = categoryTotals
                     .mapNotNull { (catId, amount) ->
@@ -311,7 +324,8 @@ class ChartsViewModel @Inject constructor(
                     selectedYear = selectedYear,
                     selectedMonth = selectedMonth,
                     selectedMonthLabel = selectedMonthLabel,
-                    isCurrentMonth = isCurrentMonth
+                    isCurrentMonth = isCurrentMonth,
+                    monthForecast = monthForecast
                 )
             }
         }

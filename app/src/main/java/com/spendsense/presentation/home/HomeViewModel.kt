@@ -7,6 +7,8 @@ import com.spendsense.data.local.dao.MerchantCategoryMappingDao
 import com.spendsense.data.local.dao.RawNotificationDao
 import com.spendsense.data.local.entity.MerchantCategoryMappingEntity
 import com.spendsense.data.local.entity.RawNotificationEntity
+import com.spendsense.domain.calculation.ForecastEngine
+import com.spendsense.domain.calculation.MonthForecastResult
 import com.spendsense.domain.model.Category
 import com.spendsense.domain.model.Transaction
 import com.spendsense.domain.repository.CategoryRepository
@@ -55,6 +57,9 @@ class HomeViewModel @Inject constructor(
 
     private val _currentDailyAverage = MutableStateFlow(0.0)
     val currentDailyAverage: StateFlow<Double> = _currentDailyAverage.asStateFlow()
+
+    private val _currentMonthForecast = MutableStateFlow<MonthForecastResult?>(null)
+    val currentMonthForecast: StateFlow<MonthForecastResult?> = _currentMonthForecast.asStateFlow()
 
     init {
         loadTransactions()
@@ -122,9 +127,16 @@ class HomeViewModel @Inject constructor(
             val curMonth = todayCal.get(Calendar.MONTH)
             val curDay = todayCal.get(Calendar.DAY_OF_MONTH).coerceAtLeast(1)
             
+            val prevMonthCal = (todayCal.clone() as Calendar).apply { add(Calendar.MONTH, -1) }
+            val prevYear = prevMonthCal.get(Calendar.YEAR)
+            val prevMonth = prevMonthCal.get(Calendar.MONTH)
+            val daysInPrevMonth = prevMonthCal.getActualMaximum(Calendar.DAY_OF_MONTH)
+            val totalDaysInCurrentMonth = todayCal.getActualMaximum(Calendar.DAY_OF_MONTH)
+            
             val todayTxns = mutableListOf<Transaction>()
             val yesterdayTxns = mutableListOf<Transaction>()
             val currentMonthTxns = mutableListOf<Transaction>()
+            val prevMonthTxns = mutableListOf<Transaction>()
             
             for (txn in transactions) {
                 tempCal.timeInMillis = txn.timestamp
@@ -136,6 +148,8 @@ class HomeViewModel @Inject constructor(
                 }
                 if (isSameYear && tempCal.get(Calendar.MONTH) == curMonth) {
                     currentMonthTxns.add(txn)
+                } else if (tempCal.get(Calendar.YEAR) == prevYear && tempCal.get(Calendar.MONTH) == prevMonth) {
+                    prevMonthTxns.add(txn)
                 }
             }
 
@@ -151,7 +165,14 @@ class HomeViewModel @Inject constructor(
                 }
             }
 
-            val currentMonthDeferred = currentMonthTxns.map { txn ->
+            val currentMonthConvertedDeferred = currentMonthTxns.map { txn ->
+                async {
+                    val amt = convertTransactionAmount(txn, currency)
+                    txn.copy(amount = amt, currencyCode = currency)
+                }
+            }
+
+            val prevMonthDeferred = prevMonthTxns.map { txn ->
                 async {
                     convertTransactionAmount(txn, currency)
                 }
@@ -163,12 +184,22 @@ class HomeViewModel @Inject constructor(
                 }
             }
 
-            val currentMonthTotal = currentMonthDeferred.sumOf { it.await() }
+            val convertedCurrentMonthTxns = currentMonthConvertedDeferred.map { it.await() }
+            val currentMonthTotal = convertedCurrentMonthTxns.sumOf { it.amount }
+            val prevMonthTotal = prevMonthDeferred.sumOf { it.await() }
 
             _todayConvertedTotal.value = todayDeferred.sumOf { it.await() }
             _yesterdayConvertedTotal.value = yesterdayDeferred.sumOf { it.await() }
             _currentDailyAverage.value = if (curDay > 0) currentMonthTotal / curDay else 0.0
             _convertedTotal.value = allDeferred.sumOf { it.await() }
+
+            _currentMonthForecast.value = ForecastEngine.calculateMonthForecast(
+                currentMonthTransactions = convertedCurrentMonthTxns,
+                daysElapsed = curDay,
+                totalDaysInMonth = totalDaysInCurrentMonth,
+                priorMonthTotal = prevMonthTotal,
+                priorMonthTotalDays = daysInPrevMonth
+            )
         }
     }
 

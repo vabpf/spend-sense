@@ -48,6 +48,20 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import com.spendsense.domain.calculation.MonthForecastResult
 import com.spendsense.domain.model.Category
 import com.spendsense.domain.model.Transaction
 import com.spendsense.presentation.theme.TextSecondary
@@ -114,6 +128,16 @@ fun ChartsScreen(
                 ),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
+                // ── Month-End Predictive Forecast (REBD Glass Hero Card) ────────
+                if (state.isCurrentMonth && state.monthForecast != null) {
+                    item {
+                        MonthForecastHeroCard(
+                            forecast = state.monthForecast,
+                            currency = summary.currency
+                        )
+                    }
+                }
+
                 // ── Row 1: This Month + Daily Average (Glass Effect) ─────────────
                 item {
                     Row(
@@ -199,6 +223,260 @@ fun ChartsScreen(
 // ─────────────────────────────────────────────────────────────────────────────
 // Summary cards (Frosted Glass)
 // ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun MonthForecastHeroCard(
+    modifier: Modifier = Modifier,
+    forecast: MonthForecastResult,
+    currency: String
+) {
+    var isExpanded by remember { mutableStateOf(false) }
+
+    GlassSummaryCard(modifier = modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            // Header Row: Badge & Day Indicator
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(26.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFE0F2FE)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.AutoAwesome,
+                            contentDescription = null,
+                            tint = Color(0xFF0284C7),
+                            modifier = Modifier.size(15.dp)
+                        )
+                    }
+                    Text(
+                        text = "Month-End Forecast",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF0284C7)
+                    )
+                }
+
+                Text(
+                    text = "Day ${forecast.daysElapsed}/${forecast.totalDaysInMonth}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color(0xFF64748B),
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            // Hero Forecast & Trend Pill
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "~${formatAmount(forecast.projectedMonthEndTotal, currency)}",
+                        style = MaterialTheme.typography.headlineMedium.copy(fontSize = 24.sp),
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF0F172A)
+                    )
+                    Text(
+                        text = "Estimated total based on current pace",
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                        color = Color(0xFF64748B)
+                    )
+                }
+
+                val pct = forecast.percentVsLastMonth
+                if (pct != null) {
+                    val isHigher = pct > 0
+                    val pillBg = if (isHigher) Color(0xFFFEE2E2) else Color(0xFFDCFCE7)
+                    val pillColor = if (isHigher) Color(0xFFDC2626) else Color(0xFF16A34A)
+                    val arrow = if (isHigher) "↗" else "↘"
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(pillBg)
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "$arrow ${abs(pct)}% vs last mo",
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                            fontWeight = FontWeight.Bold,
+                            color = pillColor
+                        )
+                    }
+                } else if (forecast.isStabilizingWithPrior) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(Color(0xFFE0F2FE))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "Stabilizing pace",
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF0284C7)
+                        )
+                    }
+                }
+            }
+
+            // Two-tone progress bar
+            val totalEst = forecast.projectedMonthEndTotal.coerceAtLeast(1.0)
+            val spentRatio = (forecast.spendToDate / totalEst).toFloat().coerceIn(0f, 1f)
+
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Color(0xFFE2E8F0))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color(0xFFBAE6FD).copy(alpha = 0.6f))
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(spentRatio)
+                            .fillMaxHeight()
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(CyberBlue, Color(0xFF38BDF8))
+                                )
+                            )
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Spent: ${formatAmount(forecast.spendToDate, currency)}",
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF334155)
+                    )
+                    Text(
+                        text = "Proj. rem: ${formatAmount(forecast.projectedRemainingSpend, currency)} (${forecast.daysRemaining}d)",
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF0284C7)
+                    )
+                }
+            }
+
+            // Tappable breakdown toggle
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { isExpanded = !isExpanded }
+                    .padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (isExpanded) "Hide breakdown" else "View breakdown & safe pace",
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
+                    fontWeight = FontWeight.SemiBold,
+                    color = CyberBlue
+                )
+                Icon(
+                    imageVector = if (isExpanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = CyberBlue,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+
+            // Expandable details section
+            AnimatedVisibility(
+                visible = isExpanded,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFF0F172A).copy(alpha = 0.04f))
+                        .padding(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    BreakdownDetailRow(
+                        label = "Regular daily pace:",
+                        value = "${formatAmount(forecast.variableDailyBurnRate, currency)} / day"
+                    )
+                    if (forecast.isolatedSpikesCount > 0) {
+                        BreakdownDetailRow(
+                            label = "Isolated one-off spikes (${forecast.isolatedSpikesCount}):",
+                            value = "-${formatAmount(forecast.isolatedSpikesTotal, currency)}",
+                            subtext = "Excluded from multiplying daily rate"
+                        )
+                    }
+                    if (forecast.safeRemainingDailyPace != null && forecast.daysRemaining > 0) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 2.dp),
+                            color = Color(0xFFE2E8F0)
+                        )
+                        BreakdownDetailRow(
+                            label = "Safe remaining pace:",
+                            value = "${formatAmount(forecast.safeRemainingDailyPace, currency)} / day",
+                            subtext = "Spend under this to stay below last month"
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BreakdownDetailRow(
+    label: String,
+    value: String,
+    subtext: String? = null
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                color = Color(0xFF64748B)
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.labelMedium.copy(fontSize = 12.sp),
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF0F172A)
+            )
+        }
+        if (subtext != null) {
+            Text(
+                text = subtext,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                color = Color(0xFF94A3B8)
+            )
+        }
+    }
+}
 
 @Composable
 private fun MonthTotalCard(
