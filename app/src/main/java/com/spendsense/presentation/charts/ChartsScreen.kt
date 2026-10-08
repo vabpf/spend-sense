@@ -94,6 +94,26 @@ fun ChartsScreen(
         }
     }
 
+    var editingCardName by remember { mutableStateOf<String?>(null) }
+    var showCardConfigDialog by remember { mutableStateOf(false) }
+
+    if (showCardConfigDialog) {
+        val existingConfig = editingCardName?.let { name ->
+            state.creditCardConfigs.find { it.cardName.trim().equals(name.trim(), ignoreCase = true) }
+        }
+        CreditCardConfigDialog(
+            initialCardName = editingCardName ?: "",
+            existingConfig = existingConfig,
+            onDismiss = { showCardConfigDialog = false },
+            onSave = { config ->
+                viewModel.saveCreditCardConfig(config)
+            },
+            onDelete = { cardName ->
+                viewModel.deleteCreditCardConfig(cardName)
+            }
+        )
+    }
+
     Scaffold(containerColor = Color.Transparent) { _ ->
         Box(modifier = Modifier.fillMaxSize()) {
             // Background gradient scrim: smoothly transitions wallpaper to #F8FAFC
@@ -135,6 +155,21 @@ fun ChartsScreen(
                         MonthForecastHeroCard(
                             forecast = forecast,
                             currency = summary.currency
+                        )
+                    }
+                }
+
+                // ── Credit & Cash Liquidity Card ─────────────────────────────────
+                val liquiditySummary = state.creditLiquiditySummary
+                if (state.isCurrentMonth && liquiditySummary != null && (liquiditySummary.cardCycles.isNotEmpty() || liquiditySummary.totalCreditSpendThisMonth > 0)) {
+                    item {
+                        CreditLiquidityCard(
+                            summary = liquiditySummary,
+                            currency = summary.currency,
+                            onConfigureCard = { cardName ->
+                                editingCardName = cardName
+                                showCardConfigDialog = true
+                            }
                         )
                     }
                 }

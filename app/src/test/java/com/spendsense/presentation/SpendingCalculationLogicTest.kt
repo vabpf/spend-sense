@@ -1,6 +1,8 @@
 package com.spendsense.presentation
 
+import com.spendsense.domain.calculation.CreditStatementEngine
 import com.spendsense.domain.calculation.ForecastEngine
+import com.spendsense.domain.model.CreditCardConfig
 import com.spendsense.domain.model.Transaction
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -210,5 +212,144 @@ class SpendingCalculationLogicTest {
 
         // Safe pace: ($1500 target - $600 spent) / 15 remaining days = $60/day
         assertEquals(60.0, result.safeRemainingDailyPace ?: 0.0, 0.001)
+    }
+
+    @Test
+    fun testCreditCycle_currentDayBeforeClosing_calculatesActiveAndClosedWindows() {
+        val config = CreditCardConfig(
+            cardName = "Chase",
+            statementClosingDay = 15,
+            paymentDueDay = 5
+        )
+
+        // Current time: Oct 8, 2026 12:00:00 (day 8 <= statementDay 15)
+        val nowCal = Calendar.getInstance().apply {
+            set(2026, Calendar.OCTOBER, 8, 12, 0, 0)
+        }
+        val nowMillis = nowCal.timeInMillis
+
+        // Txn in Active window (Sep 16 - Oct 15): Sep 20 ($200) + Oct 5 ($300)
+        val txnActive1 = Transaction(
+            id = 1L, amount = 200.0, currencyCode = "USD", merchant = "Store A",
+            categoryId = 1L,
+            timestamp = Calendar.getInstance().apply { set(2026, Calendar.SEPTEMBER, 20, 10, 0) }.timeInMillis,
+            paymentSource = "Chase", sourcePackageName = "com.test", sourceAppName = "Test"
+        )
+        val txnActive2 = Transaction(
+            id = 2L, amount = 300.0, currencyCode = "USD", merchant = "Store B",
+            categoryId = 1L,
+            timestamp = Calendar.getInstance().apply { set(2026, Calendar.OCTOBER, 5, 10, 0) }.timeInMillis,
+            paymentSource = "Chase", sourcePackageName = "com.test", sourceAppName = "Test"
+        )
+
+        // Txn in Closed window (Aug 16 - Sep 15): Aug 25 ($500) + Sep 10 ($400)
+        val txnClosed1 = Transaction(
+            id = 3L, amount = 500.0, currencyCode = "USD", merchant = "Store C",
+            categoryId = 1L,
+            timestamp = Calendar.getInstance().apply { set(2026, Calendar.AUGUST, 25, 10, 0) }.timeInMillis,
+            paymentSource = "Chase", sourcePackageName = "com.test", sourceAppName = "Test"
+        )
+        val txnClosed2 = Transaction(
+            id = 4L, amount = 400.0, currencyCode = "USD", merchant = "Store D",
+            categoryId = 1L,
+            timestamp = Calendar.getInstance().apply { set(2026, Calendar.SEPTEMBER, 10, 10, 0) }.timeInMillis,
+            paymentSource = "Chase", sourcePackageName = "com.test", sourceAppName = "Test"
+        )
+
+        val txns = listOf(txnActive1, txnActive2, txnClosed1, txnClosed2)
+        val cycle = CreditStatementEngine.calculateCardCycle(config, txns, nowMillis)
+
+        // Active balance: 200 + 300 = $500
+        assertEquals(500.0, cycle.activeStatementBalance, 0.001)
+        // Closed bill: 500 + 400 = $900 (due soon!)
+        assertEquals(900.0, cycle.closedStatementBalance, 0.001)
+        // Days until Oct 15 closing: Oct 8 to Oct 15 = 7 days
+        assertEquals(7, cycle.daysUntilActiveCloses)
+    }
+
+    @Test
+    fun testCreditCycle_currentDayAfterClosing_rollsOverToNextMonthCycle() {
+        val config = CreditCardConfig(
+            cardName = "Chase",
+            statementClosingDay = 15
+        )
+
+        // Current time: Oct 20, 2026 (day 20 > statementDay 15)
+        val nowCal = Calendar.getInstance().apply {
+            set(2026, Calendar.OCTOBER, 20, 12, 0, 0)
+        }
+        val nowMillis = nowCal.timeInMillis
+
+        // Txn in Active window (Oct 16 - Nov 15): Oct 18 ($150)
+        val txnActive = Transaction(
+            id = 1L, amount = 150.0, currencyCode = "USD", merchant = "Store A",
+            categoryId = 1L,
+            timestamp = Calendar.getInstance().apply { set(2026, Calendar.OCTOBER, 18, 10, 0) }.timeInMillis,
+            paymentSource = "Chase", sourcePackageName = "com.test", sourceAppName = "Test"
+        )
+
+        // Txn in Closed window (Sep 16 - Oct 15): Oct 5 ($350)
+        val txnClosed = Transaction(
+            id = 2L, amount = 350.0, currencyCode = "USD", merchant = "Store B",
+            categoryId = 1L,
+            timestamp = Calendar.getInstance().apply { set(2026, Calendar.OCTOBER, 5, 10, 0) }.timeInMillis,
+            paymentSource = "Chase", sourcePackageName = "com.test", sourceAppName = "Test"
+        )
+
+        val cycle = CreditStatementEngine.calculateCardCycle(config, listOf(txnActive, txnClosed), nowMillis)
+
+        assertEquals(150.0, cycle.activeStatementBalance, 0.001)
+        assertEquals(350.0, cycle.closedStatementBalance, 0.001)
+    }
+
+    @Test
+    fun testCreditLiquiditySummary_aggregatesMultipleCards() {
+        val chaseConfig = CreditCardConfig("Chase", 15)
+        val amexConfig = CreditCardConfig("Amex", 25)
+
+        val nowCal = Calendar.getInstance().apply {
+            set(2026, Calendar.OCTOBER, 8, 12, 0, 0)
+        }
+        val nowMillis = nowCal.timeInMillis
+
+        // Chase: Active $200, Closed $500
+        val txnChaseActive = Transaction(
+            id = 1L, amount = 200.0, currencyCode = "USD", merchant = "M1",
+            categoryId = 1L,
+            timestamp = Calendar.getInstance().apply { set(2026, Calendar.OCTOBER, 5, 10, 0) }.timeInMillis,
+            paymentSource = "Chase", sourcePackageName = "com.test", sourceAppName = "Test"
+        )
+        val txnChaseClosed = Transaction(
+            id = 2L, amount = 500.0, currencyCode = "USD", merchant = "M2",
+            categoryId = 1L,
+            timestamp = Calendar.getInstance().apply { set(2026, Calendar.SEPTEMBER, 10, 10, 0) }.timeInMillis,
+            paymentSource = "Chase", sourcePackageName = "com.test", sourceAppName = "Test"
+        )
+
+        // Amex: Active $400, Closed $800
+        val txnAmexActive = Transaction(
+            id = 3L, amount = 400.0, currencyCode = "USD", merchant = "M3",
+            categoryId = 1L,
+            timestamp = Calendar.getInstance().apply { set(2026, Calendar.OCTOBER, 2, 10, 0) }.timeInMillis,
+            paymentSource = "Amex", sourcePackageName = "com.test", sourceAppName = "Test"
+        )
+        val txnAmexClosed = Transaction(
+            id = 4L, amount = 800.0, currencyCode = "USD", merchant = "M4",
+            categoryId = 1L,
+            timestamp = Calendar.getInstance().apply { set(2026, Calendar.SEPTEMBER, 20, 10, 0) }.timeInMillis,
+            paymentSource = "Amex", sourcePackageName = "com.test", sourceAppName = "Test"
+        )
+
+        val summary = CreditStatementEngine.calculateLiquiditySummary(
+            configs = listOf(chaseConfig, amexConfig),
+            allTransactions = listOf(txnChaseActive, txnChaseClosed, txnAmexActive, txnAmexClosed),
+            currentMonthTransactions = listOf(txnChaseActive, txnAmexActive),
+            currentTimestamp = nowMillis
+        )
+
+        // Total immediate cash needed: $500 (Chase) + $800 (Amex) = $1,300
+        assertEquals(1300.0, summary.totalImmediateCashNeeded, 0.001)
+        // Total active floating debt: $200 (Chase) + $400 (Amex) = $600
+        assertEquals(600.0, summary.totalActiveFloatingDebt, 0.001)
     }
 }

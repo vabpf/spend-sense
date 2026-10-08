@@ -49,4 +49,10 @@ abstract class RepositoryModule {
     abstract fun bindDirectAiNotificationParser(
         directAiNotificationParserImpl: DirectAiNotificationParserImpl
     ): DirectAiNotificationParser
+
+    @Binds
+    @Singleton
+    abstract fun bindCreditCardConfigRepository(
+        creditCardConfigRepositoryImpl: com.spendsense.data.repository.CreditCardConfigRepositoryImpl
+    ): com.spendsense.domain.repository.CreditCardConfigRepository
 }

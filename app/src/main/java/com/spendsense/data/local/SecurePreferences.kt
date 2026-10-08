@@ -169,4 +169,12 @@ open class SecurePreferences @Inject constructor(
     open fun setActiveAiModelId(modelId: Long) {
         prefs.edit().putLong("active_ai_model_id", modelId).apply()
     }
+
+    open fun getCreditCardConfigsJson(): String? {
+        return prefs.getString("credit_card_configs", null)
+    }
+
+    open fun saveCreditCardConfigsJson(json: String) {
+        prefs.edit().putString("credit_card_configs", json).apply()
+    }
 }

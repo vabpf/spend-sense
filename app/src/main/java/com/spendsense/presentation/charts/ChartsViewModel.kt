@@ -3,11 +3,15 @@ package com.spendsense.presentation.charts
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.spendsense.data.local.SecurePreferences
+import com.spendsense.domain.calculation.CreditLiquiditySummary
+import com.spendsense.domain.calculation.CreditStatementEngine
 import com.spendsense.domain.calculation.ForecastEngine
 import com.spendsense.domain.calculation.MonthForecastResult
 import com.spendsense.domain.model.Category
+import com.spendsense.domain.model.CreditCardConfig
 import com.spendsense.domain.model.Transaction
 import com.spendsense.domain.repository.CategoryRepository
+import com.spendsense.domain.repository.CreditCardConfigRepository
 import com.spendsense.domain.repository.ExchangeRateRepository
 import com.spendsense.domain.repository.TransactionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -85,12 +89,15 @@ data class ChartsDataState(
     val selectedMonth: Int = Calendar.getInstance().get(Calendar.MONTH),
     val selectedMonthLabel: String = "",
     val isCurrentMonth: Boolean = true,
-    val monthForecast: MonthForecastResult? = null
+    val monthForecast: MonthForecastResult? = null,
+    val creditLiquiditySummary: CreditLiquiditySummary? = null,
+    val creditCardConfigs: List<CreditCardConfig> = emptyList()
 )
 
 private data class ChartsRawInput(
     val transactions: List<Transaction>,
     val categories: List<Category>,
+    val creditConfigs: List<CreditCardConfig>,
     val selYear: Int,
     val selMonth: Int
 )
@@ -99,6 +106,7 @@ private data class ChartsRawInput(
 class ChartsViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository,
     private val categoryRepository: CategoryRepository,
+    private val creditCardConfigRepository: CreditCardConfigRepository,
     private val securePreferences: SecurePreferences,
     private val exchangeRateRepository: ExchangeRateRepository
 ) : ViewModel() {
@@ -118,10 +126,11 @@ class ChartsViewModel @Inject constructor(
             combine(
                 transactionRepository.getAllTransactions(),
                 categoryRepository.getAllCategories(),
+                creditCardConfigRepository.getAllConfigs(),
                 _selectedYear,
                 _selectedMonth
-            ) { transactions, categories, selYear, selMonth ->
-                ChartsRawInput(transactions, categories, selYear, selMonth)
+            ) { transactions, categories, creditConfigs, selYear, selMonth ->
+                ChartsRawInput(transactions, categories, creditConfigs, selYear, selMonth)
             }.collect { input ->
                 val transactions = input.transactions
                 val categories = input.categories
@@ -313,6 +322,12 @@ class ChartsViewModel @Inject constructor(
                     )
                 }
 
+                val liquiditySummary = CreditStatementEngine.calculateLiquiditySummary(
+                    configs = input.creditConfigs,
+                    allTransactions = convertedTransactions,
+                    currentMonthTransactions = selMonthTxns
+                )
+
                 _state.value = ChartsDataState(
                     summary = summaryState,
                     categorySlices = categorySlices,
@@ -325,9 +340,23 @@ class ChartsViewModel @Inject constructor(
                     selectedMonth = selectedMonth,
                     selectedMonthLabel = selectedMonthLabel,
                     isCurrentMonth = isCurrentMonth,
-                    monthForecast = monthForecast
+                    monthForecast = monthForecast,
+                    creditLiquiditySummary = liquiditySummary,
+                    creditCardConfigs = input.creditConfigs
                 )
             }
+        }
+    }
+
+    fun saveCreditCardConfig(config: CreditCardConfig) {
+        viewModelScope.launch {
+            creditCardConfigRepository.saveConfig(config)
+        }
+    }
+
+    fun deleteCreditCardConfig(cardName: String) {
+        viewModelScope.launch {
+            creditCardConfigRepository.deleteConfig(cardName)
         }
     }
 
