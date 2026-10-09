@@ -16,7 +16,11 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitHorizontalTouchSlopOrCancellation
+import androidx.compose.foundation.gestures.horizontalDrag
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -908,10 +912,30 @@ fun HomeScreen(
                                             .offset { IntOffset(offsetAnim.value.roundToInt(), 0) }
                                             .pointerInput(selectedTransactionIds.isEmpty()) {
                                                 if (selectedTransactionIds.isEmpty()) {
-                                                    detectHorizontalDragGestures(
-                                                        onDragEnd = {
+                                                    awaitEachGesture {
+                                                        val down = awaitFirstDown(requireUnconsumed = false)
+                                                        var overSlop = 0f
+                                                        val drag = awaitHorizontalTouchSlopOrCancellation(down.id) { change, over ->
+                                                            // Only intercept drag if card is already revealed (to close/adjust)
+                                                            // or if swiping right (to reveal delete).
+                                                            // Leftward swipe on an unrevealed card must propagate to HorizontalPager to switch screens.
+                                                            val canDrag = if (offsetAnim.value > 0.5f) true else over > 0f
+                                                            if (canDrag) {
+                                                                change.consume()
+                                                                overSlop = over
+                                                            }
+                                                        }
+                                                        if (drag != null) {
+                                                            dragOffset = (dragOffset + overSlop).coerceIn(0f, revealWidthPx)
+                                                            scope.launch { offsetAnim.snapTo(dragOffset) }
+                                                            val dragSuccessful = horizontalDrag(drag.id) { change ->
+                                                                val dragAmount = change.positionChange().x
+                                                                change.consume()
+                                                                dragOffset = (dragOffset + dragAmount).coerceIn(0f, revealWidthPx)
+                                                                scope.launch { offsetAnim.snapTo(dragOffset) }
+                                                            }
                                                             scope.launch {
-                                                                if (offsetAnim.value > revealThresholdPx) {
+                                                                if (dragSuccessful && offsetAnim.value > revealThresholdPx) {
                                                                     offsetAnim.animateTo(
                                                                         revealWidthPx,
                                                                         spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessHigh)
@@ -925,13 +949,8 @@ fun HomeScreen(
                                                                     dragOffset = 0f
                                                                 }
                                                             }
-                                                        },
-                                                        onHorizontalDrag = { change, dragAmount ->
-                                                            change.consume()
-                                                            dragOffset = (dragOffset + dragAmount).coerceIn(0f, revealWidthPx)
-                                                            scope.launch { offsetAnim.snapTo(dragOffset) }
                                                         }
-                                                    )
+                                                    }
                                                 }
                                             }
                                     ) {
