@@ -42,8 +42,7 @@ fun CategoryBehaviorModal(
         sheetState = sheetState,
         containerColor = Color.White,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-        dragHandle = { BottomSheetDefaults.DragHandle() },
-        windowInsets = WindowInsets.statusBars
+        dragHandle = { BottomSheetDefaults.DragHandle() }
     ) {
         Column(
             modifier = Modifier
@@ -109,7 +108,6 @@ fun CategoryBehaviorModal(
                         color = Color(0xFF0F172A)
                     )
                 }
-            }
 
             // Section 1: Time-of-Day Context
             SectionCard(

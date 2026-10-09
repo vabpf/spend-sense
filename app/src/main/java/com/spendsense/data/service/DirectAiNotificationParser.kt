@@ -250,6 +250,7 @@ Return ONLY a single valid JSON object (no markdown, no backticks, no comments):
             }
 
             val currency = json.optString("currency", "USD").takeIf { it.isNotBlank() && it != "null" } ?: "USD"
+            val merchant = json.optString("merchant", "Unknown").takeIf { it.isNotBlank() && it != "null" } ?: "Unknown"
             val rawPaymentSource = json.optString("paymentSource", "").takeIf { it != "null" }?.trim() ?: ""
             val paymentSource = if (rawPaymentSource.matches(Regex("^[xX]\\d+$"))) {
                 rawPaymentSource.uppercase()
