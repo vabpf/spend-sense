@@ -334,9 +334,6 @@ private fun MonthForecastHeroCard(
         useLens = false
     ) {
         Column(
-            modifier = Modifier.animateContentSize(
-                animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing)
-            ),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             // Header Row: Badge & Day Indicator
@@ -511,11 +508,11 @@ private fun MonthForecastHeroCard(
             AnimatedVisibility(
                 visible = isExpanded,
                 enter = expandVertically(
-                    animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing)
-                ) + fadeIn(animationSpec = tween(durationMillis = 180)),
+                    animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing)
+                ) + fadeIn(animationSpec = tween(durationMillis = 140)),
                 exit = shrinkVertically(
-                    animationSpec = tween(durationMillis = 180, easing = FastOutLinearInEasing)
-                ) + fadeOut(animationSpec = tween(durationMillis = 140))
+                    animationSpec = tween(durationMillis = 140, easing = FastOutLinearInEasing)
+                ) + fadeOut(animationSpec = tween(durationMillis = 100))
             ) {
                 Column(
                     modifier = Modifier
