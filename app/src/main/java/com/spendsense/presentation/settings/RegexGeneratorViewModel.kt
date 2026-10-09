@@ -273,7 +273,7 @@ Requirements:
 2. If it IS a transaction:
    - Identify the currency of the transaction (e.g. "VND", "USD", etc.).
    - Identify the thousands separator character used in the transaction amount (e.g. "," or "."). If none is used, set to null.
-   - Extract the account/payment source identifier (e.g. "03xxx589" or "X4685") from the notification.
+   - Extract the account/payment source identifier (e.g. "484804....3488", "X1234", or "03xxx589") from the notification. When matching masked cards like "x1234", always use uppercase "X" (e.g. "X1234").
    - Generate ONE Kotlin-compatible regex pattern that matches the structural format of the notification.
      Guidelines for the regex pattern:
      - It MUST match the entire notification structure, preserving constant/static text, labels, and delimiters (e.g., "TK", "GD:", "|", "SD:", "DEN:", "ND:") as literals.
@@ -282,7 +282,7 @@ Requirements:
        - The transaction amount must be captured using the named group: (?<amount>[0-9,.]+VND) or (?<amount>[0-9,.]+USD) or similar. The currency letters/suffixes MUST be matched inside the capture group 'amount' if present in the text (it is required by the parser to extract and clean correctly).
        - The merchant/payee name must be captured using: (?<merchant>[^|]+) (or another appropriate non-greedy pattern that does not cross segment borders).
        - Match timestamps (e.g., "06/06/26 09:19") with specific date/time patterns (e.g., "\d{2}/\d{2}/\d{2}\s+\d{2}:\d{2}").
-       - Match account identifiers (e.g., "03xxx589") with specific patterns (e.g., "\d+xxx\d+" or "\w+").
+       - Match account/card identifiers (e.g., "484804....3488", "X1234", "03xxx589") with specific patterns (e.g., "\d+\.{2,}\d+", "X\d+", "\d+xxx\d+", or "\w+").
      - Do NOT use generic/lazy wildcards like `.*?` to skip entire fields or structure segments. Every structural segment of the notification template must be explicitly represented so that notifications with different structures fail to match.
 3. If it is NOT a transaction, set regex, thousandsSeparator, currency, and paymentSource to null.
 
@@ -292,7 +292,7 @@ Return ONLY valid JSON with no markdown formatting:
   "regex": "pattern",
   "thousandsSeparator": "," or "." or null,
   "currency": "VND" or "USD" or null,
-  "paymentSource": "03xxx589" or "X4685" or null
+  "paymentSource": "484804....3488" or "X1234" or "03xxx589" or null
 }
         """.trimIndent()
     }
@@ -320,7 +320,12 @@ Return ONLY valid JSON with no markdown formatting:
             val regex = json.optString("regex", "").takeIf { it.isNotBlank() && it != "null" }
             val thousandsSeparator = json.optString("thousandsSeparator", "").takeIf { it.isNotBlank() && it != "null" }
             val currency = json.optString("currency", "").takeIf { it.isNotBlank() && it != "null" }
-            val paymentSource = json.optString("paymentSource", "").takeIf { it.isNotBlank() && it != "null" }
+            val rawPaymentSource = json.optString("paymentSource", "").takeIf { it.isNotBlank() && it != "null" }?.trim()
+            val paymentSource = if (rawPaymentSource != null && rawPaymentSource.matches(Regex("^[xX]\\d+$"))) {
+                rawPaymentSource.uppercase()
+            } else {
+                rawPaymentSource
+            }
             return AiResponse(isTransaction, regex, thousandsSeparator, currency, paymentSource)
         } catch (e: Exception) {
             val regex = extractRegexPatternLegacy(response)
@@ -432,7 +437,7 @@ Return ONLY valid JSON with no markdown formatting:
             return
         }
         if (currentState.isTransaction && currentState.paymentSource.isBlank()) {
-            _state.value = currentState.copy(errorMessage = "Please specify a Payment Source (e.g. card/account identifier like x1234)")
+            _state.value = currentState.copy(errorMessage = "Please specify a Payment Source (e.g. card/account identifier like X1234 or 484804....3488)")
             return
         }
 
@@ -516,7 +521,7 @@ Return ONLY valid JSON with no markdown formatting:
             return
         }
         if (currentState.isTransaction && currentState.paymentSource.isBlank()) {
-            _state.value = currentState.copy(errorMessage = "Please specify a Payment Source (e.g. card/account identifier like x1234)")
+            _state.value = currentState.copy(errorMessage = "Please specify a Payment Source (e.g. card/account identifier like X1234 or 484804....3488)")
             return
         }
 

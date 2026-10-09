@@ -177,13 +177,13 @@ fun CreditLiquidityCard(
                     ) {
                         unsetCreditCards.forEach { cardName ->
                             Surface(
-                                shape = RoundedCornerShape(8.dp),
+                                shape = RoundedCornerShape(999.dp),
                                 color = Color(0xFFE0F2FE).copy(alpha = 0.85f),
                                 border = BorderStroke(1.dp, Color(0xFFBAE6FD)),
                                 modifier = Modifier.clickable { onConfigureCard(cardName) }
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
@@ -258,10 +258,10 @@ fun CreditLiquidityCard(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(RoundedCornerShape(999.dp))
                         .background(Color(0xFFE0F2FE).copy(alpha = 0.5f))
                         .clickable { onConfigureCard(null) }
-                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                        .padding(horizontal = 12.dp, vertical = 7.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -383,7 +383,7 @@ fun CreditCardConfigDialog(
                             availableCardNames.forEach { name ->
                                 val isSelected = cardName.trim().equals(name.trim(), ignoreCase = true)
                                 Surface(
-                                    shape = RoundedCornerShape(8.dp),
+                                    shape = RoundedCornerShape(999.dp),
                                     color = if (isSelected) Color(0xFF0284C7) else Color(0xFFF1F5F9),
                                     modifier = Modifier.clickable { cardName = name }
                                 ) {
@@ -392,7 +392,7 @@ fun CreditCardConfigDialog(
                                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                         color = if (isSelected) Color.White else Color(0xFF475569),
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                                     )
                                 }
                             }

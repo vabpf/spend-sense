@@ -1406,11 +1406,11 @@ private fun HomeSummaryCard(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(999.dp))
                         .background(chipBgColor)
-                        .border(1.dp, borderColor, RoundedCornerShape(12.dp))
+                        .border(1.dp, borderColor, RoundedCornerShape(999.dp))
                         .clickable(onClick = onForecastClick)
-                        .padding(horizontal = 10.dp, vertical = 7.dp),
+                        .padding(horizontal = 12.dp, vertical = 7.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -1445,9 +1445,9 @@ private fun HomeSummaryCard(
                             val arrow = if (forecastPct > 0) "↗" else "↘"
                             Box(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
+                                    .clip(RoundedCornerShape(999.dp))
                                     .background(if (forecastPct > 0) Color(0xFFFEE2E2) else Color(0xFFDCFCE7))
-                                    .padding(horizontal = 5.dp, vertical = 2.dp)
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
                             ) {
                                 Text(
                                     text = "$arrow ${abs(forecastPct)}%",

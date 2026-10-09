@@ -159,7 +159,7 @@ Requirements:
    - Extract the numeric amount (e.g. "50000" or "14.50"). Do not include currency symbols in the amount.
    - Extract the currency code (e.g. "VND", "USD", "EUR"). Default to "USD" if unspecified.
    - Extract the merchant / recipient name (e.g. "GrabFood", "Target", "Amazon").
-   - Extract the account/card identifier (e.g. "x1234", "03xxx589") or empty string if none.
+   - Extract the account/card identifier (e.g. masked card numbers like "484804....3488", "X1234" [use uppercase X, never lowercase x], or account numbers like "03xxx589") or empty string if none.
    - Classify the payment source type strictly into one of the Allowed Payment Source Types above ("Bank Account", "Credit Card", "Debit Card", "Wallet"). Default to "Bank Account" if unspecified or unclear.
    - Select the MOST SUITABLE category strictly from the Available Expense Categories list above.
 3. If false:
@@ -171,7 +171,7 @@ Return ONLY a single valid JSON object (no markdown, no backticks, no comments):
   "amount": 50000.0,
   "currency": "VND",
   "merchant": "GrabFood",
-  "paymentSource": "03xxx589",
+  "paymentSource": "484804....3488",
   "paymentSourceType": "Bank Account",
   "category": "Food & Dining"
 }
@@ -199,13 +199,13 @@ Requirements:
    - Extract the numeric amount (e.g. 50000.0 or 14.50).
    - Extract the currency code (e.g. "VND", "USD").
    - Extract the merchant / recipient name.
-   - Extract the account / card identifier or empty string.
+   - Extract the account/card identifier (e.g. masked card numbers like "484804....3488", "X1234" [use uppercase X, never lowercase x], or account numbers like "03xxx589") or empty string.
    - Classify the payment source type strictly into one of the Allowed Payment Source Types above ("Bank Account", "Credit Card", "Debit Card", "Wallet"). Default to "Bank Account" if unspecified or unclear.
    - Select the best category strictly from the Available Expense Categories list.
    - Generate a resilient Kotlin-compatible regular expression matching this notification template.
      - The regex MUST contain named group (?<amount>...) and named group (?<merchant>...).
      - Escape special characters like |, (, ), [, ], etc.
-     - Capture dynamic fields with appropriate token patterns.
+     - Capture dynamic fields with appropriate token patterns (e.g., "\d+\.{2,}\d+" or "X\d+" for masked cards).
 3. If false:
    - Set isTransaction to false.
 
@@ -215,7 +215,7 @@ Return ONLY a single valid JSON object (no markdown, no backticks, no comments):
   "amount": 50000.0,
   "currency": "VND",
   "merchant": "GrabFood",
-  "paymentSource": "03xxx589",
+  "paymentSource": "484804....3488",
   "paymentSourceType": "Bank Account",
   "category": "Food & Dining",
   "regex": "pattern"
@@ -250,8 +250,12 @@ Return ONLY a single valid JSON object (no markdown, no backticks, no comments):
             }
 
             val currency = json.optString("currency", "USD").takeIf { it.isNotBlank() && it != "null" } ?: "USD"
-            val merchant = json.optString("merchant", "Unknown").takeIf { it.isNotBlank() && it != "null" } ?: "Unknown"
-            val paymentSource = json.optString("paymentSource", "").takeIf { it != "null" } ?: ""
+            val rawPaymentSource = json.optString("paymentSource", "").takeIf { it != "null" }?.trim() ?: ""
+            val paymentSource = if (rawPaymentSource.matches(Regex("^[xX]\\d+$"))) {
+                rawPaymentSource.uppercase()
+            } else {
+                rawPaymentSource
+            }
             val rawPaymentSourceType = json.optString("paymentSourceType", "").takeIf { it.isNotBlank() && it != "null" } ?: ""
             val paymentSourceType = normalizePaymentSourceType(rawPaymentSourceType)
             val category = json.optString("category", null)?.takeIf { it.isNotBlank() && it != "null" }

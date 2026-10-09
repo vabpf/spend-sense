@@ -3,9 +3,10 @@ package com.spendsense.presentation.charts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Receipt
 import androidx.compose.material.icons.rounded.Schedule
@@ -34,30 +35,33 @@ fun CategoryBehaviorModal(
 ) {
     val category = profile.category
     val catColor = parseColor(category.colorHex)
+    val sheetState = rememberModalBottomSheetState()
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        sheetState = sheetState,
         containerColor = Color.White,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-        dragHandle = { BottomSheetDefaults.DragHandle() }
+        dragHandle = { BottomSheetDefaults.DragHandle() },
+        windowInsets = WindowInsets.statusBars
     ) {
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 36.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             // Header: Category Icon, Name, Period & Spend
-            item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.weight(1f)
                     ) {
                         Box(
@@ -108,8 +112,7 @@ fun CategoryBehaviorModal(
             }
 
             // Section 1: Time-of-Day Context
-            item {
-                SectionCard(
+            SectionCard(
                     title = "Time-of-Day Context",
                     icon = Icons.Rounded.Schedule,
                     accentColor = Color(0xFF0284C7)
@@ -201,11 +204,9 @@ fun CategoryBehaviorModal(
                         )
                     }
                 }
-            }
 
             // Section 2: Spending Sizes
-            item {
-                SectionCard(
+            SectionCard(
                     title = "Spending Sizes",
                     icon = Icons.Rounded.Receipt,
                     accentColor = Color(0xFF10B981)
@@ -276,11 +277,9 @@ fun CategoryBehaviorModal(
                         )
                     }
                 }
-            }
 
             // Section 3: Top Frequent Venues & Spots
-            item {
-                SectionCard(
+            SectionCard(
                     title = "Top Frequent Venues & Merchants",
                     icon = Icons.Rounded.Store,
                     accentColor = Color(0xFF8B5CF6)
@@ -331,7 +330,6 @@ fun CategoryBehaviorModal(
             }
         }
     }
-}
 
 @Composable
 private fun SectionCard(

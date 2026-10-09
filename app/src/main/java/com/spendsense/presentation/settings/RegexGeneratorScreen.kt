@@ -239,7 +239,7 @@ fun RegexGeneratorScreen(
                         value = state.paymentSource,
                         onValueChange = { viewModel.updatePaymentSource(it) },
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("e.g. x1234 or account number") },
+                        placeholder = { Text("e.g. X1234, 484804....3488 or account number") },
                         label = { Text("Payment Source Identifier") },
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
