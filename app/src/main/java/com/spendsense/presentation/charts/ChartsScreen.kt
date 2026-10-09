@@ -50,6 +50,9 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -331,7 +334,9 @@ private fun MonthForecastHeroCard(
         useLens = false
     ) {
         Column(
-            modifier = Modifier.animateContentSize(),
+            modifier = Modifier.animateContentSize(
+                animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing)
+            ),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             // Header Row: Badge & Day Indicator
@@ -505,8 +510,12 @@ private fun MonthForecastHeroCard(
             // Expandable details section
             AnimatedVisibility(
                 visible = isExpanded,
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut()
+                enter = expandVertically(
+                    animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing)
+                ) + fadeIn(animationSpec = tween(durationMillis = 180)),
+                exit = shrinkVertically(
+                    animationSpec = tween(durationMillis = 180, easing = FastOutLinearInEasing)
+                ) + fadeOut(animationSpec = tween(durationMillis = 140))
             ) {
                 Column(
                     modifier = Modifier

@@ -1,6 +1,10 @@
 package com.spendsense.presentation.charts
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -51,7 +55,12 @@ fun CreditLiquidityCard(
             .glassEffect(shape = RoundedCornerShape(20.dp))
             .padding(14.dp)
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(
+            modifier = Modifier.animateContentSize(
+                animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing)
+            ),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
             // Header Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -233,8 +242,12 @@ fun CreditLiquidityCard(
 
                 AnimatedVisibility(
                     visible = isExpanded,
-                    enter = expandVertically() + fadeIn(),
-                    exit = shrinkVertically() + fadeOut()
+                    enter = expandVertically(
+                        animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing)
+                    ) + fadeIn(animationSpec = tween(durationMillis = 180)),
+                    exit = shrinkVertically(
+                        animationSpec = tween(durationMillis = 180, easing = FastOutLinearInEasing)
+                    ) + fadeOut(animationSpec = tween(durationMillis = 140))
                 ) {
                     Column(
                         modifier = Modifier
