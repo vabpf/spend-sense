@@ -809,7 +809,14 @@ fun RegexGeneratorScreen(
                             Text("Expense Transaction?")
                             Switch(
                                 checked = state.isTransaction,
-                                onCheckedChange = { viewModel.toggleIsTransaction() }
+                                onCheckedChange = { viewModel.toggleIsTransaction() },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Color.White,
+                                    checkedTrackColor = Color(0xFF0284C7),
+                                    uncheckedThumbColor = Color.White,
+                                    uncheckedTrackColor = Color(0xFFCBD5E1),
+                                    uncheckedBorderColor = Color.Transparent
+                                )
                             )
                         }
 
@@ -821,7 +828,14 @@ fun RegexGeneratorScreen(
                             Text("Active")
                             Switch(
                                 checked = state.isActive,
-                                onCheckedChange = { viewModel.toggleActive() }
+                                onCheckedChange = { viewModel.toggleActive() },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Color.White,
+                                    checkedTrackColor = Color(0xFF0284C7),
+                                    uncheckedThumbColor = Color.White,
+                                    uncheckedTrackColor = Color(0xFFCBD5E1),
+                                    uncheckedBorderColor = Color.Transparent
+                                )
                             )
                         }
 

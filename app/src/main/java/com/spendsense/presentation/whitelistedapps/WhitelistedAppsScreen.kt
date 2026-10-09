@@ -344,7 +344,14 @@ fun WhitelistedAppCard(
             }
             Switch(
                 checked = app.isEnabled,
-                onCheckedChange = onToggle
+                onCheckedChange = onToggle,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = Color(0xFF0284C7),
+                    uncheckedThumbColor = Color.White,
+                    uncheckedTrackColor = Color(0xFFCBD5E1),
+                    uncheckedBorderColor = Color.Transparent
+                )
             )
         }
     }

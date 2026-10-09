@@ -660,7 +660,17 @@ private fun AddPatternDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text("Expense Transaction?")
-                    Switch(checked = isTransaction, onCheckedChange = onIsTransactionChange)
+                    Switch(
+                        checked = isTransaction,
+                        onCheckedChange = onIsTransactionChange,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = Color(0xFF0284C7),
+                            uncheckedThumbColor = Color.White,
+                            uncheckedTrackColor = Color(0xFFCBD5E1),
+                            uncheckedBorderColor = Color.Transparent
+                        )
+                    )
                 }
             }
         },
@@ -929,7 +939,17 @@ private fun EditPatternDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text("Expense Transaction?")
-                    Switch(checked = isTransaction, onCheckedChange = onIsTransactionChange)
+                    Switch(
+                        checked = isTransaction,
+                        onCheckedChange = onIsTransactionChange,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = Color(0xFF0284C7),
+                            uncheckedThumbColor = Color.White,
+                            uncheckedTrackColor = Color(0xFFCBD5E1),
+                            uncheckedBorderColor = Color.Transparent
+                        )
+                    )
                 }
             }
         },
