@@ -156,7 +156,7 @@ class AiTransactionParserImpl @Inject constructor(
         }
     }
 
-    private fun resolveActiveProviderAndModel(): Triple<ProviderAccountEntity, ProviderModelEntity, String>? {
+    private suspend fun resolveActiveProviderAndModel(): Triple<ProviderAccountEntity, ProviderModelEntity, String>? {
         val selectedModel = try {
             val selectedId = securePreferences.selectedModelId
             if (selectedId > 0) {
