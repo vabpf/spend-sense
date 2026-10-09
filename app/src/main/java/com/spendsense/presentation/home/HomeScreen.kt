@@ -1,6 +1,10 @@
 @file:OptIn(ExperimentalMaterial3Api::class)
 package com.spendsense.presentation.home
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -13,6 +17,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.offset
@@ -181,8 +186,22 @@ fun HomeScreen(
     
     var editingTransaction by remember { mutableStateOf<Transaction?>(null) }
     var isAddingTransaction by remember { mutableStateOf(false) }
+    var isSpeedDialExpanded by remember { mutableStateOf(false) }
+    var showQuickTextDialog by remember { mutableStateOf(false) }
     var selectedTransactionIds by remember { mutableStateOf(emptySet<Long>()) }
     var selectedTotalAmount by remember { mutableStateOf(0.0) }
+    val context = LocalContext.current
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            viewModel.parseReceiptImage(context, uri) {
+                isAddingTransaction = true
+            }
+        }
+    }
+
     LaunchedEffect(selectedTransactionIds, transactions, defaultCurrency) {
         val selectedTxns = transactions.filter { selectedTransactionIds.contains(it.id) }
         var sum = 0.0
@@ -195,7 +214,6 @@ fun HomeScreen(
     var showBatchEditDialog by remember { mutableStateOf(false) }
     var showBatchEditConfirmDialog by remember { mutableStateOf(false) }
     var pendingBatchChanges by remember { mutableStateOf<BatchChanges?>(null) }
-    val context = LocalContext.current
 
     val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
     var searchQuery by remember { mutableStateOf("") }
@@ -384,42 +402,26 @@ fun HomeScreen(
         containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0),
         floatingActionButton = {
-            Box(
-                modifier = Modifier
-                    .offset(y = (-90).dp)
-                    .size(54.dp)
-                    .softDropShadow(
-                        shape = CircleShape,
-                        color = Color.Black.copy(alpha = 0.10f),
-                        blur = 12.dp,
-                        offsetY = 4.dp
+            SpeedDialFab(
+                isExpanded = isSpeedDialExpanded,
+                onExpandedChange = { isSpeedDialExpanded = it },
+                onManualClick = {
+                    isSpeedDialExpanded = false
+                    viewModel.clearPrefilledTransactionData()
+                    isAddingTransaction = true
+                },
+                onScanReceiptClick = {
+                    isSpeedDialExpanded = false
+                    photoPickerLauncher.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                     )
-                    .softDropShadow(
-                        shape = CircleShape,
-                        color = CyberBlue.copy(alpha = 0.25f),
-                        blur = 12.dp,
-                        offsetY = 2.dp
-                    )
-                    .shadow(
-                        elevation = 4.dp,
-                        shape = CircleShape,
-                        ambientColor = Color.Black,
-                        spotColor = Color.Black
-                    )
-                    .background(
-                        Brush.linearGradient(listOf(CyberBlue, Color(0xFF00C6FF))),
-                        shape = CircleShape
-                    )
-                    .clickable { isAddingTransaction = true },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Rounded.Add,
-                    contentDescription = "Add Transaction",
-                    tint = Color.White,
-                    modifier = Modifier.size(28.dp)
-                )
-            }
+                },
+                onQuickTextClick = {
+                    isSpeedDialExpanded = false
+                    showQuickTextDialog = true
+                },
+                modifier = Modifier.offset(y = (-90).dp)
+            )
         }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize()) {
@@ -993,7 +995,43 @@ fun HomeScreen(
             }
         }
 
+            AnimatedVisibility(
+                visible = isSpeedDialExpanded,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.35f))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            isSpeedDialExpanded = false
+                        }
+                )
+            }
         }
+    }
+
+    if (viewModel.isAnalyzingTransaction) {
+        ScanningTransactionDialog(
+            statusText = viewModel.analyzingStatusText,
+            onCancel = {}
+        )
+    }
+
+    if (showQuickTextDialog) {
+        QuickFreeTextDialog(
+            onDismiss = { showQuickTextDialog = false },
+            onAnalyze = { text ->
+                showQuickTextDialog = false
+                viewModel.parseQuickText(text) {
+                    isAddingTransaction = true
+                }
+            }
+        )
     }
 
     editingTransaction?.let { transaction ->
@@ -1010,13 +1048,39 @@ fun HomeScreen(
     }
 
     if (isAddingTransaction) {
+        val prefilled = viewModel.prefilledTransactionData
+        val prefilledCategoryId = prefilled?.categoryName?.let { catName ->
+            categories.find { it.name.equals(catName, ignoreCase = true) }?.id
+        }
         AddTransactionDialog(
             categories = categories,
             defaultCurrency = defaultCurrency,
             historyPaymentSources = historyPaymentSources,
-            onDismiss = { isAddingTransaction = false },
-            onConfirm = { amount, currency, merchant, categoryId, paymentSource, paymentSourceType, timestamp ->
-                viewModel.addTransaction(amount, currency, merchant, categoryId, paymentSource, paymentSourceType, timestamp)
+            initialAmount = prefilled?.amount,
+            initialCurrency = prefilled?.currency,
+            initialMerchant = prefilled?.merchant,
+            initialCategoryId = prefilledCategoryId,
+            initialPaymentSource = prefilled?.paymentSource,
+            initialPaymentSourceType = prefilled?.paymentSourceType,
+            initialTimestamp = prefilled?.timestamp,
+            initialNotes = prefilled?.notes,
+            missingFields = prefilled?.missingFields ?: emptyList(),
+            onDismiss = {
+                viewModel.clearPrefilledTransactionData()
+                isAddingTransaction = false
+            },
+            onConfirm = { amount, currency, merchant, categoryId, paymentSource, paymentSourceType, timestamp, notes ->
+                viewModel.addTransaction(
+                    amount = amount,
+                    currencyCode = currency,
+                    merchant = merchant,
+                    categoryId = categoryId,
+                    paymentSource = paymentSource,
+                    paymentSourceType = paymentSourceType,
+                    timestamp = timestamp,
+                    notes = notes
+                )
+                viewModel.clearPrefilledTransactionData()
                 isAddingTransaction = false
             }
         )

@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CalendarToday
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -39,6 +40,15 @@ fun AddTransactionDialog(
     categories: List<Category>,
     defaultCurrency: String = "USD",
     historyPaymentSources: List<HistoryPaymentSource> = emptyList(),
+    initialAmount: Double? = null,
+    initialCurrency: String? = null,
+    initialMerchant: String? = null,
+    initialCategoryId: Long? = null,
+    initialPaymentSource: String? = null,
+    initialPaymentSourceType: String? = null,
+    initialTimestamp: Long? = null,
+    initialNotes: String? = null,
+    missingFields: List<String> = emptyList(),
     onDismiss: () -> Unit,
     onConfirm: (
         amount: Double,
@@ -47,22 +57,54 @@ fun AddTransactionDialog(
         categoryId: Long,
         paymentSource: String,
         paymentSourceType: String,
-        timestamp: Long
+        timestamp: Long,
+        notes: String?
     ) -> Unit
 ) {
-    var amount by remember { mutableStateOf("") }
-    var currency by remember { mutableStateOf(defaultCurrency) }
-    var merchant by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf<Category?>(categories.firstOrNull()) }
+    var amount by remember(initialAmount) {
+        mutableStateOf(
+            if (initialAmount != null && initialAmount > 0) {
+                if (initialAmount % 1.0 == 0.0) initialAmount.toLong().toString() else initialAmount.toString()
+            } else ""
+        )
+    }
+    var currency by remember(initialCurrency, defaultCurrency) {
+        mutableStateOf(initialCurrency ?: defaultCurrency)
+    }
+    var merchant by remember(initialMerchant) {
+        mutableStateOf(initialMerchant ?: "")
+    }
+    var selectedCategory by remember(initialCategoryId, categories) {
+        mutableStateOf(
+            if (initialCategoryId != null) {
+                categories.find { it.id == initialCategoryId } ?: categories.firstOrNull()
+            } else {
+                categories.firstOrNull()
+            }
+        )
+    }
     var currencyExpanded by remember { mutableStateOf(false) }
     var paymentSourceExpanded by remember { mutableStateOf(false) }
-    var paymentSource by remember {
-        mutableStateOf(historyPaymentSources.firstOrNull()?.name ?: "Cash")
+    var paymentSource by remember(initialPaymentSource, historyPaymentSources) {
+        mutableStateOf(
+            initialPaymentSource?.takeIf { it.isNotBlank() }
+                ?: historyPaymentSources.firstOrNull()?.name
+                ?: "Cash"
+        )
     }
-    var paymentSourceType by remember {
-        mutableStateOf(historyPaymentSources.firstOrNull()?.type ?: "Manual")
+    var paymentSourceType by remember(initialPaymentSourceType, historyPaymentSources) {
+        mutableStateOf(
+            initialPaymentSourceType?.takeIf { it.isNotBlank() }
+                ?: historyPaymentSources.firstOrNull()?.type
+                ?: "Manual"
+        )
     }
-    var transactionTimestamp by remember { mutableStateOf(System.currentTimeMillis()) }
+    var transactionTimestamp by remember(initialTimestamp) {
+        mutableStateOf(initialTimestamp ?: System.currentTimeMillis())
+    }
+    var notes by remember(initialNotes) {
+        mutableStateOf(initialNotes ?: "")
+    }
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
     val dateTimeFormatter = remember { SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()) }
@@ -115,6 +157,32 @@ fun AddTransactionDialog(
                     }
                 }
 
+                if (missingFields.contains("merchant")) {
+                    Surface(
+                        color = Color(0xFFFEF3C7),
+                        shape = RoundedCornerShape(6.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Info,
+                                contentDescription = null,
+                                tint = Color(0xFFD97706),
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                text = "Merchant unclear from receipt — please verify",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFFB45309),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+
                 OutlinedTextField(
                     value = merchant,
                     onValueChange = { merchant = it },
@@ -123,6 +191,32 @@ fun AddTransactionDialog(
                     singleLine = true
                 )
 
+
+                if (missingFields.contains("payment_source")) {
+                    Surface(
+                        color = Color(0xFFFEF3C7),
+                        shape = RoundedCornerShape(6.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Info,
+                                contentDescription = null,
+                                tint = Color(0xFFD97706),
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                text = "Missing on receipt — defaulted to Cash / Manual",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFFB45309),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
 
                 ExposedDropdownMenuBox(
                     expanded = paymentSourceExpanded,
@@ -214,6 +308,32 @@ fun AddTransactionDialog(
                     }
                 }
 
+                if (missingFields.contains("date")) {
+                    Surface(
+                        color = Color(0xFFFEF3C7),
+                        shape = RoundedCornerShape(6.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Info,
+                                contentDescription = null,
+                                tint = Color(0xFFD97706),
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                text = "Missing date on receipt — inferred as Today",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFFB45309),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -279,6 +399,15 @@ fun AddTransactionDialog(
                         )
                     }
                 }
+
+                OutlinedTextField(
+                    value = notes,
+                    onValueChange = { notes = it },
+                    label = { Text("Notes (Optional)") },
+                    placeholder = { Text("e.g. Scanned receipt items or notes") },
+                    modifier = Modifier.fillMaxWidth(),
+                    maxLines = 3
+                )
             }
         },
         confirmButton = {
@@ -296,7 +425,8 @@ fun AddTransactionDialog(
                                 category.id,
                                 paymentSource.trim().ifBlank { "Manual" },
                                 paymentSourceType.trim().ifBlank { "Manual" },
-                                transactionTimestamp
+                                transactionTimestamp,
+                                notes.trim().ifBlank { null }
                             )
                         }
                     }

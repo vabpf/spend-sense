@@ -1,5 +1,10 @@
 package com.spendsense.presentation.home
 
+import android.content.Context
+import android.net.Uri
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.spendsense.data.local.SecurePreferences
@@ -7,6 +12,8 @@ import com.spendsense.data.local.dao.MerchantCategoryMappingDao
 import com.spendsense.data.local.dao.RawNotificationDao
 import com.spendsense.data.local.entity.MerchantCategoryMappingEntity
 import com.spendsense.data.local.entity.RawNotificationEntity
+import com.spendsense.data.service.AiTransactionParser
+import com.spendsense.data.service.ParsedTransactionResult
 import com.spendsense.domain.calculation.ForecastEngine
 import com.spendsense.domain.calculation.MonthForecastResult
 import com.spendsense.domain.model.Category
@@ -14,12 +21,15 @@ import com.spendsense.domain.model.Transaction
 import com.spendsense.domain.repository.CategoryRepository
 import com.spendsense.domain.repository.ExchangeRateRepository
 import com.spendsense.domain.repository.TransactionRepository
+import com.spendsense.presentation.util.ReceiptImageHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Calendar
 import javax.inject.Inject
 
@@ -30,7 +40,8 @@ class HomeViewModel @Inject constructor(
     private val rawNotificationDao: RawNotificationDao,
     private val merchantCategoryMappingDao: MerchantCategoryMappingDao,
     private val securePreferences: SecurePreferences,
-    private val exchangeRateRepository: ExchangeRateRepository
+    private val exchangeRateRepository: ExchangeRateRepository,
+    private val aiTransactionParser: AiTransactionParser
 ) : ViewModel() {
 
 
@@ -249,6 +260,57 @@ class HomeViewModel @Inject constructor(
     }
 
 
+    var isAnalyzingTransaction by mutableStateOf(false)
+        private set
+    var analyzingStatusText by mutableStateOf("Analyzing with AI...")
+        private set
+    var prefilledTransactionData by mutableStateOf<ParsedTransactionResult?>(null)
+        private set
+
+    fun parseQuickText(text: String, onComplete: () -> Unit) {
+        viewModelScope.launch {
+            isAnalyzingTransaction = true
+            analyzingStatusText = "Analyzing text with AI..."
+            try {
+                val result = aiTransactionParser.parseFromText(text)
+                if (result != null) {
+                    prefilledTransactionData = result
+                }
+            } catch (_: Exception) {
+            } finally {
+                isAnalyzingTransaction = false
+                onComplete()
+            }
+        }
+    }
+
+    fun parseReceiptImage(context: Context, uri: Uri, onComplete: () -> Unit) {
+        viewModelScope.launch {
+            isAnalyzingTransaction = true
+            analyzingStatusText = "Processing receipt image..."
+            try {
+                val base64DataUrl = withContext(Dispatchers.IO) {
+                    ReceiptImageHelper.processAndEncodeImage(context, uri)
+                }
+                if (base64DataUrl != null) {
+                    analyzingStatusText = "Analyzing receipt with AI..."
+                    val result = aiTransactionParser.parseFromImage(base64DataUrl)
+                    if (result != null) {
+                        prefilledTransactionData = result
+                    }
+                }
+            } catch (_: Exception) {
+            } finally {
+                isAnalyzingTransaction = false
+                onComplete()
+            }
+        }
+    }
+
+    fun clearPrefilledTransactionData() {
+        prefilledTransactionData = null
+    }
+
     fun addTransaction(
         amount: Double,
         currencyCode: String,
@@ -256,7 +318,8 @@ class HomeViewModel @Inject constructor(
         categoryId: Long,
         paymentSource: String = "Manual",
         paymentSourceType: String = "Manual",
-        timestamp: Long = System.currentTimeMillis()
+        timestamp: Long = System.currentTimeMillis(),
+        notes: String? = null
     ) {
         viewModelScope.launch {
             transactionRepository.insertTransaction(
@@ -268,6 +331,7 @@ class HomeViewModel @Inject constructor(
                     timestamp = timestamp,
                     sourcePackageName = "manual",
                     sourceAppName = "Manual Add",
+                    notes = notes,
                     paymentSource = paymentSource,
                     paymentSourceType = paymentSourceType
                 )

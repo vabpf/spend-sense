@@ -13,7 +13,26 @@ data class Message(
     @SerializedName("role")
     val role: String,
     @SerializedName("content")
-    val content: String
+    val content: Any
+)
+
+data class ContentPartText(
+    @SerializedName("type")
+    val type: String = "text",
+    @SerializedName("text")
+    val text: String
+)
+
+data class ImageUrlData(
+    @SerializedName("url")
+    val url: String
+)
+
+data class ContentPartImageUrl(
+    @SerializedName("type")
+    val type: String = "image_url",
+    @SerializedName("image_url")
+    val imageUrl: ImageUrlData
 )
 
 data class ChatCompletionResponse(
@@ -23,7 +42,14 @@ data class ChatCompletionResponse(
     val choices: List<Choice>
 )
 
+data class ResponseMessage(
+    @SerializedName("role")
+    val role: String,
+    @SerializedName("content")
+    val content: String?
+)
+
 data class Choice(
     @SerializedName("message")
-    val message: Message
+    val message: ResponseMessage
 )

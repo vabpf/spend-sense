@@ -4,6 +4,8 @@ import com.spendsense.data.repository.CategoryRepositoryImpl
 import com.spendsense.data.repository.ExchangeRateRepositoryImpl
 import com.spendsense.data.repository.TransactionRepositoryImpl
 import com.spendsense.data.repository.WhitelistedAppRepositoryImpl
+import com.spendsense.data.service.AiTransactionParser
+import com.spendsense.data.service.AiTransactionParserImpl
 import com.spendsense.data.service.DirectAiNotificationParser
 import com.spendsense.data.service.DirectAiNotificationParserImpl
 import com.spendsense.domain.repository.CategoryRepository
@@ -61,4 +63,10 @@ abstract class RepositoryModule {
     abstract fun bindAggregationRepository(
         aggregationRepositoryImpl: com.spendsense.data.repository.AggregationRepositoryImpl
     ): com.spendsense.domain.repository.AggregationRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindAiTransactionParser(
+        aiTransactionParserImpl: AiTransactionParserImpl
+    ): AiTransactionParser
 }
