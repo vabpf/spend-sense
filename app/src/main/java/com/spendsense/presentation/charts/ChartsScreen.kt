@@ -482,22 +482,22 @@ private fun MonthForecastHeroCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(999.dp))
+                    .clip(RoundedCornerShape(8.dp))
                     .clickable { isExpanded = !isExpanded }
-                    .padding(horizontal = 6.dp, vertical = 4.dp),
+                    .padding(vertical = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = if (isExpanded) "Hide breakdown" else "View breakdown & safe pace",
-                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.5.sp),
                     fontWeight = FontWeight.SemiBold,
-                    color = CyberBlue
+                    color = Color(0xFF0284C7)
                 )
                 Icon(
                     imageVector = if (isExpanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
                     contentDescription = null,
-                    tint = CyberBlue,
+                    tint = Color(0xFF0284C7),
                     modifier = Modifier.size(16.dp)
                 )
             }
