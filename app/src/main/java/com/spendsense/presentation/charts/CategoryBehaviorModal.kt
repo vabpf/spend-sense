@@ -2,6 +2,7 @@ package com.spendsense.presentation.charts
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -13,6 +14,7 @@ import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Store
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import com.spendsense.domain.calculation.CategoryBehaviorProfile
 import com.spendsense.presentation.util.getCategoryIcon
 import com.spendsense.presentation.util.parseColor
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,7 +38,10 @@ fun CategoryBehaviorModal(
 ) {
     val category = profile.category
     val catColor = parseColor(category.colorHex)
-    val sheetState = rememberModalBottomSheetState()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+    val isExpanded = sheetState.currentValue == SheetValue.Expanded
+    val scrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -47,14 +53,23 @@ fun CategoryBehaviorModal(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
+                .fillMaxHeight()
+                .verticalScroll(scrollState, enabled = isExpanded)
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 36.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             // Header: Category Icon, Name, Period & Spend
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (!isExpanded) {
+                            Modifier.clickable {
+                                coroutineScope.launch { sheetState.expand() }
+                            }
+                        } else Modifier
+                    ),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
