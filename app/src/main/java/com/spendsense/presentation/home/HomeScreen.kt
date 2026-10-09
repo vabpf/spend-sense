@@ -1015,8 +1015,8 @@ fun HomeScreen(
             defaultCurrency = defaultCurrency,
             historyPaymentSources = historyPaymentSources,
             onDismiss = { isAddingTransaction = false },
-            onConfirm = { amount, currency, merchant, categoryId, paymentSource, paymentSourceType ->
-                viewModel.addTransaction(amount, currency, merchant, categoryId, paymentSource, paymentSourceType)
+            onConfirm = { amount, currency, merchant, categoryId, paymentSource, paymentSourceType, timestamp ->
+                viewModel.addTransaction(amount, currency, merchant, categoryId, paymentSource, paymentSourceType, timestamp)
                 isAddingTransaction = false
             }
         )
@@ -1955,11 +1955,15 @@ fun EditTransactionDialog(
                     onClick = {
                         val selectedDate = datePickerState.selectedDateMillis
                         if (selectedDate != null) {
+                            val utcCal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { timeInMillis = selectedDate }
                             val currentCal = Calendar.getInstance().apply { timeInMillis = transactionTimestamp }
                             val newCal = Calendar.getInstance().apply {
-                                timeInMillis = selectedDate
+                                set(Calendar.YEAR, utcCal.get(Calendar.YEAR))
+                                set(Calendar.MONTH, utcCal.get(Calendar.MONTH))
+                                set(Calendar.DAY_OF_MONTH, utcCal.get(Calendar.DAY_OF_MONTH))
                                 set(Calendar.HOUR_OF_DAY, currentCal.get(Calendar.HOUR_OF_DAY))
                                 set(Calendar.MINUTE, currentCal.get(Calendar.MINUTE))
+                                set(Calendar.SECOND, currentCal.get(Calendar.SECOND))
                             }
                             transactionTimestamp = newCal.timeInMillis
                         }
