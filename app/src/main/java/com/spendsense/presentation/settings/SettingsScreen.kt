@@ -419,23 +419,6 @@ fun SettingsScreen(
                     }
                 }
 
-                // About Section
-                item {
-                    SettingsSectionHeader("About")
-                }
-                item {
-                    SettingsGroupCard {
-                        SettingsItem(
-                            icon = Icons.Rounded.Info,
-                            title = "Version",
-                            description = "1.1.0",
-                            iconBadgeBg = Color(0xFFF1F5F9),
-                            iconTint = Color(0xFF64748B),
-                            onClick = null
-                        )
-                    }
-                }
-
                 item {
                     Spacer(modifier = Modifier.height(80.dp))
                 }
