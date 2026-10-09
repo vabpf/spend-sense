@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
@@ -565,26 +566,30 @@ internal fun MonthlyPaymentSourceStackedBar(
                         Box(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier
+                                .wrapContentWidth(unbounded = true)
                                 .clip(CircleShape)
                                 .background(CyberBlue)
-                                .padding(horizontal = 10.dp, vertical = 4.dp)
+                                .padding(horizontal = 7.dp, vertical = 2.5.dp)
                         ) {
                             Text(
                                 text = month.monthLabel,
-                                style = MaterialTheme.typography.labelSmall,
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
-                                maxLines = 1
+                                maxLines = 1,
+                                softWrap = false
                             )
                         }
                     } else {
                         Text(
                             text = month.monthLabel,
-                            style = MaterialTheme.typography.labelSmall,
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
                             fontWeight = FontWeight.Medium,
                             color = Color(0xFF64748B),
                             textAlign = TextAlign.Center,
-                            maxLines = 1
+                            maxLines = 1,
+                            softWrap = false,
+                            modifier = Modifier.wrapContentWidth(unbounded = true)
                         )
                     }
                 }
