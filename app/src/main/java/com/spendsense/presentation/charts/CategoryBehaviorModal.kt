@@ -203,10 +203,10 @@ fun CategoryBehaviorModal(
                 }
             }
 
-            // Section 2: Ticket-Size Magnitude Tiers
+            // Section 2: Spending Sizes
             item {
                 SectionCard(
-                    title = "Ticket-Size Tiers (Routine vs Splurge)",
+                    title = "Spending Sizes",
                     icon = Icons.Rounded.Receipt,
                     accentColor = Color(0xFF10B981)
                 ) {

@@ -437,12 +437,12 @@ class SpendingCalculationLogicTest {
         assertEquals(6, totalCountAcrossTiers)
         assertEquals(228.0, totalAmountAcrossTiers, 0.001)
 
-        val microTier = profile.ticketTiers.find { it.tierName.contains("Micro", ignoreCase = true) }
-        val majorTier = profile.ticketTiers.find { it.tierName.contains("Major", ignoreCase = true) }
+        val smallTier = profile.ticketTiers.find { it.tierName.contains("Small", ignoreCase = true) }
+        val largeTier = profile.ticketTiers.find { it.tierName.contains("Large", ignoreCase = true) }
 
-        assertTrue(microTier != null)
-        assertTrue(majorTier != null)
-        assertTrue(microTier!!.totalAmount < majorTier!!.totalAmount)
+        assertTrue(smallTier != null)
+        assertTrue(largeTier != null)
+        assertTrue(smallTier!!.totalAmount < largeTier!!.totalAmount)
     }
 
     @Test

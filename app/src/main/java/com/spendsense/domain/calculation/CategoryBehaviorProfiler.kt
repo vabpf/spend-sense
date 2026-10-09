@@ -3,6 +3,7 @@ package com.spendsense.domain.calculation
 import com.spendsense.core.SpendSenseCore
 import com.spendsense.domain.model.Category
 import com.spendsense.domain.model.Transaction
+import java.text.NumberFormat
 import java.util.Calendar
 import java.util.Locale
 
@@ -117,10 +118,12 @@ object CategoryBehaviorProfiler {
         val n = sortedAmounts.size
 
         fun formatThresh(v: Double): String {
+            val rounded = kotlin.math.round(v).toLong()
+            val formatted = NumberFormat.getNumberInstance().format(rounded)
             return if (currency.trim().uppercase() == "VND") {
-                "${String.format(Locale.US, "%.0f", v)}₫"
+                "$formatted₫"
             } else {
-                "$currency ${String.format(Locale.US, "%.0f", v)}"
+                "$currency $formatted"
             }
         }
 
@@ -135,14 +138,14 @@ object CategoryBehaviorProfiler {
 
         if (n in 1..2) {
             if (n == 1 || sortedAmounts.first() == sortedAmounts.last()) {
-                ticketTiers.add(makeTier("Standard Purchases", "Standard", categoryTransactions))
+                ticketTiers.add(makeTier("Regular Expenses", formatThresh(sortedAmounts.first()), categoryTransactions))
             } else {
                 val low = sortedAmounts.first()
                 val high = sortedAmounts.last()
                 val micro = categoryTransactions.filter { it.amount == low }
                 val major = categoryTransactions.filter { it.amount == high }
-                ticketTiers.add(makeTier("Major Outings / Splurges", "Top Tier (${formatThresh(high)})", major))
-                ticketTiers.add(makeTier("Micro / Quick Bites", "Quick (${formatThresh(low)})", micro))
+                ticketTiers.add(makeTier("Large Expenses", "≥ ${formatThresh(high)}", major))
+                ticketTiers.add(makeTier("Small Expenses", "≤ ${formatThresh(low)}", micro))
             }
         } else {
             // n >= 3: Partition into tertiles
@@ -157,16 +160,16 @@ object CategoryBehaviorProfiler {
                 val majorTxns = categoryTransactions.filter { it.amount >= q2 }
 
                 if (majorTxns.isNotEmpty()) {
-                    ticketTiers.add(makeTier("Major Outings / Splurges", "Top Tier (≥ ${formatThresh(q2)})", majorTxns))
+                    ticketTiers.add(makeTier("Large Expenses", "≥ ${formatThresh(q2)}", majorTxns))
                 }
                 if (standardTxns.isNotEmpty()) {
-                    ticketTiers.add(makeTier("Standard Purchases", "${formatThresh(q1)} – ${formatThresh(q2)}", standardTxns))
+                    ticketTiers.add(makeTier("Regular Expenses", "${formatThresh(q1)} – ${formatThresh(q2)}", standardTxns))
                 }
                 if (microTxns.isNotEmpty()) {
-                    ticketTiers.add(makeTier("Micro / Quick Bites", "Micro (≤ ${formatThresh(q1)})", microTxns))
+                    ticketTiers.add(makeTier("Small Expenses", "≤ ${formatThresh(q1)}", microTxns))
                 }
             } else {
-                ticketTiers.add(makeTier("Standard Purchases", "Standard", categoryTransactions))
+                ticketTiers.add(makeTier("Regular Expenses", formatThresh(sortedAmounts.first()), categoryTransactions))
             }
         }
 

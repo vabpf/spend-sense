@@ -131,10 +131,21 @@ pub fn profile_category(
     let n = sorted_amounts.len();
 
     let format_thresh = |v: f64| -> String {
+        let rounded = v.round() as i64;
+        let s = rounded.to_string();
+        let mut formatted = String::new();
+        let chars: Vec<char> = s.chars().collect();
+        let len = chars.len();
+        for (i, ch) in chars.iter().enumerate() {
+            if i > 0 && (len - i) % 3 == 0 {
+                formatted.push(',');
+            }
+            formatted.push(*ch);
+        }
         if currency.trim().eq_ignore_ascii_case("VND") {
-            format!("{:.0}₫", v)
+            format!("{}₫", formatted)
         } else {
-            format!("{} {:.0}", currency, v)
+            format!("{} {}", currency, formatted)
         }
     };
 
@@ -155,14 +166,14 @@ pub fn profile_category(
     let mut ticket_tiers = Vec::new();
     if (1..=2).contains(&n) {
         if n == 1 || (sorted_amounts[0] - sorted_amounts[n - 1]).abs() < 0.001 {
-            ticket_tiers.push(make_tier("Standard Purchases", "Standard", &transactions.iter().collect::<Vec<_>>()));
+            ticket_tiers.push(make_tier("Regular Expenses", &format_thresh(sorted_amounts[0]), &transactions.iter().collect::<Vec<_>>()));
         } else {
             let low = sorted_amounts[0];
             let high = sorted_amounts[n - 1];
             let micro: Vec<&ProfileTransactionInput> = transactions.iter().filter(|t| t.amount == low).collect();
             let major: Vec<&ProfileTransactionInput> = transactions.iter().filter(|t| t.amount == high).collect();
-            ticket_tiers.push(make_tier("Major Outings / Splurges", &format!("Top Tier ({})", format_thresh(high)), &major));
-            ticket_tiers.push(make_tier("Micro / Quick Bites", &format!("Quick ({})", format_thresh(low)), &micro));
+            ticket_tiers.push(make_tier("Large Expenses", &format!("≥ {}", format_thresh(high)), &major));
+            ticket_tiers.push(make_tier("Small Expenses", &format!("≤ {}", format_thresh(low)), &micro));
         }
     } else {
         let bottom_idx = (n / 3).max(1);
@@ -176,16 +187,16 @@ pub fn profile_category(
             let major: Vec<&ProfileTransactionInput> = transactions.iter().filter(|t| t.amount >= q2).collect();
 
             if !major.is_empty() {
-                ticket_tiers.push(make_tier("Major Outings / Splurges", &format!("Top Tier (≥ {})", format_thresh(q2)), &major));
+                ticket_tiers.push(make_tier("Large Expenses", &format!("≥ {}", format_thresh(q2)), &major));
             }
             if !standard.is_empty() {
-                ticket_tiers.push(make_tier("Standard Purchases", &format!("{} – {}", format_thresh(q1), format_thresh(q2)), &standard));
+                ticket_tiers.push(make_tier("Regular Expenses", &format!("{} – {}", format_thresh(q1), format_thresh(q2)), &standard));
             }
             if !micro.is_empty() {
-                ticket_tiers.push(make_tier("Micro / Quick Bites", &format!("Micro (≤ {})", format_thresh(q1)), &micro));
+                ticket_tiers.push(make_tier("Small Expenses", &format!("≤ {}", format_thresh(q1)), &micro));
             }
         } else {
-            ticket_tiers.push(make_tier("Standard Purchases", "Standard", &transactions.iter().collect::<Vec<_>>()));
+            ticket_tiers.push(make_tier("Regular Expenses", &format_thresh(sorted_amounts[0]), &transactions.iter().collect::<Vec<_>>()));
         }
     }
 
@@ -268,7 +279,7 @@ mod tests {
         let single = vec![ProfileTransactionInput { amount: 50.0, timestamp: 1000, merchant: "A".into(), notes: None }];
         let p1 = profile_category(&single, "USD");
         assert_eq!(p1.ticket_tiers.len(), 1);
-        assert_eq!(p1.ticket_tiers[0].tier_name, "Standard Purchases");
+        assert_eq!(p1.ticket_tiers[0].tier_name, "Regular Expenses");
 
         // Two distinct transactions
         let double = vec![
