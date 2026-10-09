@@ -157,16 +157,20 @@ class AiTransactionParserImpl @Inject constructor(
     }
 
     private suspend fun resolveActiveProviderAndModel(): Triple<ProviderAccountEntity, ProviderModelEntity, String>? {
-        val selectedModel = try {
-            val selectedId = securePreferences.selectedModelId
-            if (selectedId > 0) {
-                modelDao.getById(selectedId)
-            } else {
-                modelDao.getAll().firstOrNull()
-            }
-        } catch (_: Exception) {
-            modelDao.getAll().firstOrNull()
-        } ?: return null
+        val preferredModelId = securePreferences.getActiveAiModelId()
+        var selectedModel: ProviderModelEntity? = null
+        if (preferredModelId > 0) {
+            selectedModel = modelDao.getById(preferredModelId)?.takeIf { it.isEnabled }
+        }
+        if (selectedModel == null) {
+            selectedModel = modelDao.getEnabledModels().firstOrNull()
+        }
+        if (selectedModel == null) {
+            selectedModel = modelDao.getAll().firstOrNull()
+        }
+        if (selectedModel == null) {
+            return null
+        }
 
         val account = accountDao.getById(selectedModel.providerAccountId) ?: return null
         val isOpenCode = account.baseUrl.contains("opencode", ignoreCase = true)
