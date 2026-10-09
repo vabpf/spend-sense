@@ -134,10 +134,20 @@ internal fun MonthlyPaymentSourceStackedBar(
 ) {
     if (monthlyData.isEmpty()) return
 
-    val anim = remember { Animatable(0f) }
-    LaunchedEffect(monthlyData, chartMode) {
-        anim.snapTo(0f)
-        anim.animateTo(1f, tween(800, easing = FastOutSlowInEasing))
+    val animKey = remember(monthlyData, chartMode) {
+        monthlyData.fold(chartMode.hashCode()) { acc, data -> acc * 31 + data.year * 100 + data.month + data.total.hashCode() }
+    }
+    var lastAnimKey by rememberSaveable { mutableStateOf<Int?>(null) }
+    val anim = remember { Animatable(if (lastAnimKey == animKey) 1f else 0f) }
+
+    LaunchedEffect(animKey) {
+        if (lastAnimKey != animKey) {
+            anim.snapTo(0f)
+            anim.animateTo(1f, tween(800, easing = FastOutSlowInEasing))
+            lastAnimKey = animKey
+        } else {
+            anim.snapTo(1f)
+        }
     }
     val progress = anim.value
 

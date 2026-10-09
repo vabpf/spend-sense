@@ -1358,35 +1358,6 @@ private fun HomeSummaryCard(
                         fontWeight = FontWeight.Medium,
                         color = Color(0xFF64748B)
                     )
-
-                    if (monthForecast != null) {
-                        val forecastPct = monthForecast.percentVsLastMonth
-                        val chipText = buildString {
-                            append("✦ Est. Month-End: ")
-                            append(formatCurrency(monthForecast.projectedMonthEndTotal, defaultCurrency))
-                            if (forecastPct != null) {
-                                val arrow = if (forecastPct > 0) " ↗" else " ↘"
-                                append(" ($arrow ${abs(forecastPct)}%)")
-                            }
-                        }
-                        val chipTextColor = if (forecastPct != null && forecastPct > 0) Color(0xFFDC2626) else Color(0xFF0284C7)
-                        val chipBgColor = if (forecastPct != null && forecastPct > 0) Color(0xFFFEE2E2) else Color(0xFFE0F2FE)
-
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(chipBgColor)
-                                .clickable(onClick = onForecastClick)
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = chipText,
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.5.sp),
-                                fontWeight = FontWeight.SemiBold,
-                                color = chipTextColor
-                            )
-                        }
-                    }
                 }
 
                 // Mini 7-day Bar Chart (Mon..Sun)
@@ -1421,6 +1392,77 @@ private fun HomeSummaryCard(
                                 color = if (isToday) Color(0xFF0284C7) else Color(0xFF64748B)
                             )
                         }
+                    }
+                }
+            }
+
+            // Month-End Forecast Quick Banner
+            if (monthForecast != null) {
+                val forecastPct = monthForecast.percentVsLastMonth
+                val chipTextColor = if (forecastPct != null && forecastPct > 0) Color(0xFFDC2626) else Color(0xFF0284C7)
+                val chipBgColor = if (forecastPct != null && forecastPct > 0) Color(0xFFFEF2F2) else Color(0xFFF0F9FF)
+                val borderColor = if (forecastPct != null && forecastPct > 0) Color(0xFFFECACA) else Color(0xFFBAE6FD)
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(chipBgColor)
+                        .border(1.dp, borderColor, RoundedCornerShape(12.dp))
+                        .clickable(onClick = onForecastClick)
+                        .padding(horizontal = 10.dp, vertical = 7.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.AutoAwesome,
+                            contentDescription = null,
+                            tint = chipTextColor,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Text(
+                            text = "Est. Month-End",
+                            style = MaterialTheme.typography.labelMedium.copy(fontSize = 11.5.sp),
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF334155)
+                        )
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = formatCurrency(monthForecast.projectedMonthEndTotal, defaultCurrency),
+                            style = MaterialTheme.typography.labelMedium.copy(fontSize = 12.sp),
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF0F172A)
+                        )
+                        if (forecastPct != null) {
+                            val arrow = if (forecastPct > 0) "↗" else "↘"
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(if (forecastPct > 0) Color(0xFFFEE2E2) else Color(0xFFDCFCE7))
+                                    .padding(horizontal = 5.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "$arrow ${abs(forecastPct)}%",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (forecastPct > 0) Color(0xFFDC2626) else Color(0xFF16A34A)
+                                )
+                            }
+                        }
+                        Icon(
+                            imageVector = Icons.Rounded.ChevronRight,
+                            contentDescription = null,
+                            tint = Color(0xFF94A3B8),
+                            modifier = Modifier.size(14.dp)
+                        )
                     }
                 }
             }
@@ -2266,18 +2308,13 @@ private fun formatCurrency(amount: Double, currencyCode: String = "USD"): String
     if (cleanCurrencyCode == "VND") {
         return try {
             val formatter = NumberFormat.getNumberInstance().apply {
-                if (amount % 1.0 == 0.0) {
-                    this.minimumFractionDigits = 0
-                    this.maximumFractionDigits = 0
-                } else {
-                    this.minimumFractionDigits = 0
-                    this.maximumFractionDigits = 2
-                }
+                this.minimumFractionDigits = 0
+                this.maximumFractionDigits = 0
             }
-            val formattedNumber = formatter.format(amount)
+            val formattedNumber = formatter.format(kotlin.math.round(amount))
             "$formattedNumber₫"
         } catch (e: Exception) {
-            "${formatDoublePlain(amount)}₫"
+            "${kotlin.math.round(amount).toLong()}₫"
         }
     }
     return try {

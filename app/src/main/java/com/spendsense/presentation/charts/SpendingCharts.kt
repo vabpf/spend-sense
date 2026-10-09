@@ -30,6 +30,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -330,10 +331,20 @@ fun CategoryDonutChart(
             return@ChartCard
         }
 
-        val sweep = remember { Animatable(0f) }
-        LaunchedEffect(slices) {
-            sweep.snapTo(0f)
-            sweep.animateTo(1f, tween(800, easing = FastOutSlowInEasing))
+        val animKey = remember(slices) {
+            slices.fold(0) { acc, slice -> acc * 31 + slice.category.id.hashCode() + slice.amount.hashCode() }
+        }
+        var lastAnimKey by rememberSaveable { mutableStateOf<Int?>(null) }
+        val sweep = remember { Animatable(if (lastAnimKey == animKey) 1f else 0f) }
+
+        LaunchedEffect(animKey) {
+            if (lastAnimKey != animKey) {
+                sweep.snapTo(0f)
+                sweep.animateTo(1f, tween(800, easing = FastOutSlowInEasing))
+                lastAnimKey = animKey
+            } else {
+                sweep.snapTo(1f)
+            }
         }
         val progress = sweep.value
 
@@ -494,10 +505,20 @@ fun DailySpendingBarChart(
             return@ChartCard
         }
 
-        val anim = remember { Animatable(0f) }
-        LaunchedEffect(bars) {
-            anim.snapTo(0f)
-            anim.animateTo(1f, tween(700, easing = FastOutSlowInEasing))
+        val animKey = remember(bars) {
+            bars.fold(0) { acc, bar -> acc * 31 + bar.label.hashCode() + bar.amount.hashCode() }
+        }
+        var lastAnimKey by rememberSaveable { mutableStateOf<Int?>(null) }
+        val anim = remember { Animatable(if (lastAnimKey == animKey) 1f else 0f) }
+
+        LaunchedEffect(animKey) {
+            if (lastAnimKey != animKey) {
+                anim.snapTo(0f)
+                anim.animateTo(1f, tween(700, easing = FastOutSlowInEasing))
+                lastAnimKey = animKey
+            } else {
+                anim.snapTo(1f)
+            }
         }
         val progress = anim.value
 
@@ -622,10 +643,20 @@ fun MonthlyTrendLineChart(
             return@ChartCard
         }
 
-        val anim = remember { Animatable(0f) }
-        LaunchedEffect(points) {
-            anim.snapTo(0f)
-            anim.animateTo(1f, tween(900, easing = FastOutSlowInEasing))
+        val animKey = remember(points) {
+            points.fold(0) { acc, point -> acc * 31 + point.monthLabel.hashCode() + point.amount.hashCode() }
+        }
+        var lastAnimKey by rememberSaveable { mutableStateOf<Int?>(null) }
+        val anim = remember { Animatable(if (lastAnimKey == animKey) 1f else 0f) }
+
+        LaunchedEffect(animKey) {
+            if (lastAnimKey != animKey) {
+                anim.snapTo(0f)
+                anim.animateTo(1f, tween(900, easing = FastOutSlowInEasing))
+                lastAnimKey = animKey
+            } else {
+                anim.snapTo(1f)
+            }
         }
         val progress = anim.value
 

@@ -49,17 +49,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import com.spendsense.domain.calculation.CategoryBehaviorProfiler
 import com.spendsense.domain.calculation.MonthForecastResult
@@ -95,6 +98,19 @@ fun ChartsScreen(
         }
     }
 
+    val detectedCreditCardSources = remember(state.allTransactions) {
+        state.allTransactions
+            .filter { it.paymentSourceType.equals("Credit Card", ignoreCase = true) && it.paymentSource.isNotBlank() }
+            .map { it.paymentSource.trim() }
+            .distinct()
+    }
+    val configuredCardNames = remember(state.creditCardConfigs) {
+        state.creditCardConfigs.map { it.cardName.trim().lowercase() }.toSet()
+    }
+    val unsetCreditCards = remember(detectedCreditCardSources, configuredCardNames) {
+        detectedCreditCardSources.filter { it.lowercase() !in configuredCardNames }
+    }
+
     var editingCardName by remember { mutableStateOf<String?>(null) }
     var showCardConfigDialog by remember { mutableStateOf(false) }
     var selectedCategoryForBehavior by remember { mutableStateOf<Category?>(null) }
@@ -106,6 +122,7 @@ fun ChartsScreen(
         CreditCardConfigDialog(
             initialCardName = editingCardName ?: "",
             existingConfig = existingConfig,
+            availableCardNames = detectedCreditCardSources,
             onDismiss = { showCardConfigDialog = false },
             onSave = { config ->
                 viewModel.saveCreditCardConfig(config)
@@ -175,7 +192,7 @@ fun ChartsScreen(
                 // ── Month-End Predictive Forecast (REBD Glass Hero Card) ────────
                 val forecast = state.monthForecast
                 if (state.isCurrentMonth && forecast != null) {
-                    item {
+                    item(key = "forecast_hero") {
                         MonthForecastHeroCard(
                             forecast = forecast,
                             currency = summary.currency
@@ -185,11 +202,12 @@ fun ChartsScreen(
 
                 // ── Credit & Cash Liquidity Card ─────────────────────────────────
                 val liquiditySummary = state.creditLiquiditySummary
-                if (state.isCurrentMonth && liquiditySummary != null && (liquiditySummary.cardCycles.isNotEmpty() || liquiditySummary.totalCreditSpendThisMonth > 0)) {
-                    item {
+                if (state.isCurrentMonth && liquiditySummary != null && (liquiditySummary.cardCycles.isNotEmpty() || liquiditySummary.totalCreditSpendThisMonth > 0 || unsetCreditCards.isNotEmpty())) {
+                    item(key = "credit_liquidity") {
                         CreditLiquidityCard(
                             summary = liquiditySummary,
                             currency = summary.currency,
+                            unsetCreditCards = unsetCreditCards,
                             onConfigureCard = { cardName ->
                                 editingCardName = cardName
                                 showCardConfigDialog = true
@@ -199,13 +217,17 @@ fun ChartsScreen(
                 }
 
                 // ── Row 1: This Month + Daily Average (Glass Effect) ─────────────
-                item {
+                item(key = "month_summary_row") {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(IntrinsicSize.Min),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         MonthTotalCard(
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight(),
                             currency = summary.currency,
                             thisMonth = summary.thisMonthTotal,
                             lastMonth = summary.lastMonthTotal,
@@ -213,7 +235,9 @@ fun ChartsScreen(
                             isSamePeriod = summary.isSamePeriodComparison
                         )
                         DailyAverageCard(
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight(),
                             currency = summary.currency,
                             dailyAverage = summary.dailyAverage,
                             lastMonthDailyAverage = summary.lastMonthDailyAverage
@@ -222,20 +246,26 @@ fun ChartsScreen(
                 }
 
                 // ── Row 2: Top Category + Biggest Transaction (Glass Effect) ──────
-                item {
+                item(key = "top_category_row") {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(IntrinsicSize.Min),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         TopCategoryCard(
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight(),
                             currency = summary.currency,
                             category = summary.topCategory,
                             amount = summary.topCategoryAmount,
                             onClick = { summary.topCategory?.let { selectedCategoryForBehavior = it } }
                         )
                         BiggestTransactionCard(
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight(),
                             currency = summary.currency,
                             transaction = summary.biggestTransaction,
                             category = summary.biggestTransactionCategory
@@ -244,7 +274,7 @@ fun ChartsScreen(
                 }
 
                 // ── Donut chart: Spending by Category (White Card) ─────────────────
-                item {
+                item(key = "category_donut") {
                     CategoryDonutChart(
                         slices = state.categorySlices,
                         currency = summary.currency,
@@ -256,7 +286,7 @@ fun ChartsScreen(
                 }
 
                 // ── Monthly Spending & Payment sources (White Card) ───────────────
-                item {
+                item(key = "payment_sources") {
                     PaymentSourcesCard(
                         currentMonthSources = state.currentMonthPaymentSources,
                         monthlyData = state.monthlyPaymentSources,
@@ -268,7 +298,7 @@ fun ChartsScreen(
                 }
 
                 // ── Daily calendar chart (White Card) ─────────────────────────────
-                item {
+                item(key = "calendar_chart") {
                     CalendarSpendingChart(
                         allTransactions = state.allTransactions,
                         categories = summary.categories,
@@ -294,10 +324,16 @@ private fun MonthForecastHeroCard(
     forecast: MonthForecastResult,
     currency: String
 ) {
-    var isExpanded by remember { mutableStateOf(false) }
+    var isExpanded by rememberSaveable { mutableStateOf(false) }
 
-    GlassSummaryCard(modifier = modifier.fillMaxWidth()) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    GlassSummaryCard(
+        modifier = modifier.fillMaxWidth(),
+        useLens = false
+    ) {
+        Column(
+            modifier = Modifier.animateContentSize(),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
             // Header Row: Badge & Day Indicator
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -557,9 +593,9 @@ private fun MonthTotalCard(
     val deltaIcon = if (deltaPositive) Icons.Rounded.ArrowUpward else Icons.Rounded.ArrowDownward
     val deltaLabel = if (lastMonth > 0) {
         val pct = (abs(delta) / lastMonth * 100).toInt()
-        if (isSamePeriod) "$pct% vs this time last month" else "$pct% vs last month"
+        if (isSamePeriod) "$pct% vs prev MTD" else "$pct% vs last month"
     } else {
-        if (isSamePeriod) "No data this time last month" else "No data last month"
+        if (isSamePeriod) "No prev MTD data" else "No last month data"
     }
 
     GlassSummaryCard(modifier = modifier) {
@@ -837,12 +873,14 @@ private fun BiggestTransactionCard(
 @Composable
 private fun GlassSummaryCard(
     modifier: Modifier = Modifier,
+    useLens: Boolean = true,
     content: @Composable () -> Unit
 ) {
     Box(
         modifier = modifier
             .glassEffect(
-                shape = RoundedCornerShape(20.dp)
+                shape = RoundedCornerShape(20.dp),
+                useLens = useLens
             )
             .padding(14.dp)
     ) {

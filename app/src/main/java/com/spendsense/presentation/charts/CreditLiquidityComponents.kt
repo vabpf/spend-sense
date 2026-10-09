@@ -5,6 +5,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,6 +13,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CreditCard
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
@@ -38,6 +40,7 @@ fun CreditLiquidityCard(
     modifier: Modifier = Modifier,
     summary: CreditLiquiditySummary,
     currency: String,
+    unsetCreditCards: List<String> = emptyList(),
     onConfigureCard: (cardName: String?) -> Unit
 ) {
     var isExpanded by remember { mutableStateOf(false) }
@@ -158,6 +161,51 @@ fun CreditLiquidityCard(
                 }
             }
 
+            // Unset credit card prompt chips
+            if (unsetCreditCards.isNotEmpty()) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = "Set statement closing day for:",
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                        color = Color(0xFF64748B),
+                        fontWeight = FontWeight.Medium
+                    )
+                    @OptIn(ExperimentalLayoutApi::class)
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        unsetCreditCards.forEach { cardName ->
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = Color(0xFFE0F2FE).copy(alpha = 0.85f),
+                                border = BorderStroke(1.dp, Color(0xFFBAE6FD)),
+                                modifier = Modifier.clickable { onConfigureCard(cardName) }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Add,
+                                        contentDescription = null,
+                                        tint = Color(0xFF0284C7),
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                    Text(
+                                        text = cardName,
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color(0xFF0284C7)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             if (summary.cardCycles.isNotEmpty()) {
                 // Tappable toggle for card breakdown
                 Row(
@@ -205,7 +253,7 @@ fun CreditLiquidityCard(
                         }
                     }
                 }
-            } else {
+            } else if (unsetCreditCards.isEmpty()) {
                 // Prompt to configure credit cards
                 Row(
                     modifier = Modifier
@@ -320,6 +368,38 @@ fun CreditCardConfigDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                if (availableCardNames.isNotEmpty() && existingConfig == null) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = "Detected cards:",
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.5.sp),
+                            color = Color(0xFF64748B)
+                        )
+                        @OptIn(ExperimentalLayoutApi::class)
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            availableCardNames.forEach { name ->
+                                val isSelected = cardName.trim().equals(name.trim(), ignoreCase = true)
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (isSelected) Color(0xFF0284C7) else Color(0xFFF1F5F9),
+                                    modifier = Modifier.clickable { cardName = name }
+                                ) {
+                                    Text(
+                                        text = name,
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isSelected) Color.White else Color(0xFF475569),
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
                 OutlinedTextField(
                     value = cardName,
                     onValueChange = { cardName = it },
