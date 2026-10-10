@@ -266,49 +266,91 @@ class HomeViewModel @Inject constructor(
         private set
     var prefilledTransactionData by mutableStateOf<ParsedTransactionResult?>(null)
         private set
+    var batchTransactionsData by mutableStateOf<List<ParsedTransactionResult>>(emptyList())
+        private set
 
-    fun parseQuickText(text: String, onComplete: () -> Unit) {
+    fun parseQuickText(text: String, onComplete: (Int) -> Unit = {}) {
         viewModelScope.launch {
             isAnalyzingTransaction = true
             analyzingStatusText = "Analyzing text with AI..."
+            var count = 0
             try {
-                val result = aiTransactionParser.parseFromText(text)
-                if (result != null) {
-                    prefilledTransactionData = result
+                val results = aiTransactionParser.parseBatchFromText(text)
+                count = results.size
+                if (results.size == 1) {
+                    prefilledTransactionData = results.first()
+                    batchTransactionsData = emptyList()
+                } else if (results.size > 1) {
+                    prefilledTransactionData = null
+                    batchTransactionsData = results
+                } else {
+                    prefilledTransactionData = null
+                    batchTransactionsData = emptyList()
                 }
             } catch (_: Exception) {
             } finally {
                 isAnalyzingTransaction = false
-                onComplete()
+                onComplete(count)
             }
         }
     }
 
-    fun parseReceiptImage(context: Context, uri: Uri, onComplete: () -> Unit) {
+    fun parseReceiptImages(context: Context, uris: List<Uri>, onComplete: (Int) -> Unit = {}) {
         viewModelScope.launch {
             isAnalyzingTransaction = true
-            analyzingStatusText = "Processing receipt image..."
+            val allResults = mutableListOf<ParsedTransactionResult>()
             try {
-                val base64DataUrl = withContext(Dispatchers.IO) {
-                    ReceiptImageHelper.processAndEncodeImage(context, uri)
-                }
-                if (base64DataUrl != null) {
-                    analyzingStatusText = "Analyzing receipt with AI..."
-                    val result = aiTransactionParser.parseFromImage(base64DataUrl)
-                    if (result != null) {
-                        prefilledTransactionData = result
+                val total = uris.size
+                for ((index, uri) in uris.withIndex()) {
+                    val progress = if (total > 1) " (${index + 1}/$total)" else ""
+                    analyzingStatusText = "Preparing receipt$progress..."
+                    val base64DataUrl = withContext(Dispatchers.IO) {
+                        ReceiptImageHelper.processAndEncodeImage(context, uri)
                     }
+                    if (base64DataUrl != null) {
+                        analyzingStatusText = "Analyzing receipt$progress with AI..."
+                        val results = aiTransactionParser.parseBatchFromImage(base64DataUrl)
+                        allResults.addAll(results)
+                    }
+                }
+                if (allResults.size == 1) {
+                    prefilledTransactionData = allResults.first()
+                    batchTransactionsData = emptyList()
+                } else if (allResults.size > 1) {
+                    prefilledTransactionData = null
+                    batchTransactionsData = allResults
+                } else {
+                    prefilledTransactionData = null
+                    batchTransactionsData = emptyList()
                 }
             } catch (_: Exception) {
             } finally {
                 isAnalyzingTransaction = false
-                onComplete()
+                onComplete(allResults.size)
             }
+        }
+    }
+
+    fun parseReceiptImage(context: Context, uri: Uri, onComplete: () -> Unit = {}) {
+        parseReceiptImages(context, listOf(uri)) {
+            onComplete()
         }
     }
 
     fun clearPrefilledTransactionData() {
         prefilledTransactionData = null
+    }
+
+    fun clearBatchTransactionsData() {
+        batchTransactionsData = emptyList()
+    }
+
+    fun addBatchTransactions(transactions: List<Transaction>) {
+        viewModelScope.launch {
+            for (t in transactions) {
+                transactionRepository.insertTransaction(t)
+            }
+        }
     }
 
     fun addTransaction(

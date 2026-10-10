@@ -49,7 +49,7 @@ fun QuickFreeTextDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "Type or paste transaction details, and AI will extract the amount, merchant, date, and payment source.",
+                    text = "Type or paste one or multiple transactions (SMS alerts, statements, or expense lists). AI will extract all of them automatically.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color(0xFF64748B)
                 )
@@ -59,14 +59,14 @@ fun QuickFreeTextDialog(
                     onValueChange = { textInput = it },
                     placeholder = {
                         Text(
-                            "e.g. Spent 45,000 VND on lunch at Highlands Coffee with Momo yesterday",
+                            "e.g.\n1. Spent 45,000 VND Highlands Coffee with Momo\n2. Grab ride 75,000 VND Cash\n3. Target $42.50 Visa",
                             color = Color(0xFF94A3B8),
                             style = MaterialTheme.typography.bodyMedium
                         )
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 110.dp, max = 160.dp),
+                        .heightIn(min = 120.dp, max = 220.dp),
                     shape = RoundedCornerShape(14.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = CyberBlue,

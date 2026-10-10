@@ -193,11 +193,15 @@ fun HomeScreen(
     val context = LocalContext.current
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri: Uri? ->
-        if (uri != null) {
-            viewModel.parseReceiptImage(context, uri) {
-                isAddingTransaction = true
+        contract = ActivityResultContracts.PickMultipleVisualMedia()
+    ) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) {
+            viewModel.parseReceiptImages(context, uris) { count ->
+                if (count == 1) {
+                    isAddingTransaction = true
+                } else if (count == 0) {
+                    Toast.makeText(context, "No transactions could be detected", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
@@ -408,6 +412,7 @@ fun HomeScreen(
                 onManualClick = {
                     isSpeedDialExpanded = false
                     viewModel.clearPrefilledTransactionData()
+                    viewModel.clearBatchTransactionsData()
                     isAddingTransaction = true
                 },
                 onScanReceiptClick = {
@@ -1027,9 +1032,34 @@ fun HomeScreen(
             onDismiss = { showQuickTextDialog = false },
             onAnalyze = { text ->
                 showQuickTextDialog = false
-                viewModel.parseQuickText(text) {
-                    isAddingTransaction = true
+                viewModel.parseQuickText(text) { count ->
+                    if (count == 1) {
+                        isAddingTransaction = true
+                    } else if (count == 0) {
+                        Toast.makeText(context, "No transactions could be detected", Toast.LENGTH_SHORT).show()
+                    }
                 }
+            }
+        )
+    }
+
+    if (viewModel.batchTransactionsData.isNotEmpty()) {
+        BatchTransactionsDialog(
+            transactions = viewModel.batchTransactionsData,
+            categories = categories,
+            defaultCurrency = defaultCurrency,
+            historyPaymentSources = historyPaymentSources,
+            onDismiss = {
+                viewModel.clearBatchTransactionsData()
+            },
+            onSaveBatch = { savedList ->
+                viewModel.addBatchTransactions(savedList)
+                viewModel.clearBatchTransactionsData()
+                Toast.makeText(
+                    context,
+                    "Successfully added ${savedList.size} transactions",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         )
     }
